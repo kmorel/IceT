@@ -473,26 +473,14 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
 	if (srcOnTop) {
 	    for (i = 0; i < pixels; i++) {
 	      /* The blending should probably be more flexible. */
-		GLubyte *dest = (GLubyte *)(&destColorBuffer[i]);
-		GLubyte *src = (GLubyte *)(&srcColorBuffer[i]);
-		GLuint sfactor = 255;
-		GLuint dfactor = 255 - src[3];
-		dest[0] = (dest[0]*dfactor + src[0]*sfactor)/255;
-		dest[1] = (dest[1]*dfactor + src[1]*sfactor)/255;
-		dest[2] = (dest[2]*dfactor + src[2]*sfactor)/255;
-		dest[3] = (dest[3]*dfactor + src[3]*sfactor)/255;
+		ICET_OVER((GLubyte *)(&srcColorBuffer[i]),
+			  (GLubyte *)(&destColorBuffer[i]));
 	    }
 	} else {
 	    for (i = 0; i < pixels; i++) {
 	      /* The blending should probably be more flexible. */
-		GLubyte *dest = (GLubyte *)(&destColorBuffer[i]);
-		GLubyte *src = (GLubyte *)(&srcColorBuffer[i]);
-		GLuint sfactor = 255 - dest[3];
-		GLuint dfactor = 255;
-		dest[0] = (dest[0]*dfactor + src[0]*sfactor)/255;
-		dest[1] = (dest[1]*dfactor + src[1]*sfactor)/255;
-		dest[2] = (dest[2]*dfactor + src[2]*sfactor)/255;
-		dest[3] = (dest[3]*dfactor + src[3]*sfactor)/255;
+		ICET_UNDER((GLubyte *)(&srcColorBuffer[i]),
+			   (GLubyte *)(&destColorBuffer[i]));
 	    }
 	}
     }
@@ -562,36 +550,22 @@ void icetCompressedSubComposite(IceTImage destBuffer,
       case SPARSE_IMAGE_C_MAGIC_NUM:
 	  if (srcOnTop) {
 #define COMPRESSED_BUFFER	srcBuffer
-#define READ_PIXEL(srcColor)					\
-    {								\
-      /* The blending should probably be more flexible. */	\
-	GLubyte *dest = (GLubyte *)(destColor);			\
-	GLubyte *src = (GLubyte *)(srcColor);			\
-	GLuint sfactor = 255;					\
-	GLuint dfactor = 255 - src[3];				\
-	dest[0] = (dest[0]*dfactor + src[0]*sfactor)/255;	\
-	dest[1] = (dest[1]*dfactor + src[1]*sfactor)/255;	\
-	dest[2] = (dest[2]*dfactor + src[2]*sfactor)/255;	\
-	dest[3] = (dest[3]*dfactor + src[3]*sfactor)/255;	\
-    }								\
+#define READ_PIXEL(srcColor)						\
+    {									\
+      /* The blending should probably be more flexible. */		\
+	ICET_OVER((GLubyte *)(srcColor), (GLubyte *)(destColor));	\
+    }									\
     srcColor += 1;
 #define INCREMENT_PIXEL()	destColor++;
 #define INCREMENT_INACTIVE_PIXELS(count) destColor += count;
 #include "decompress_func_body.h"
 	  } else {
 #define COMPRESSED_BUFFER	srcBuffer
-#define READ_PIXEL(srcColor)					\
-    {								\
-      /* The blending should probably be more flexible. */	\
-	GLubyte *dest = (GLubyte *)(destColor);			\
-	GLubyte *src = (GLubyte *)(srcColor);			\
-	GLuint sfactor = 255 - dest[3];				\
-	GLuint dfactor = 255;					\
-	dest[0] = (dest[0]*dfactor + src[0]*sfactor)/255;	\
-	dest[1] = (dest[1]*dfactor + src[1]*sfactor)/255;	\
-	dest[2] = (dest[2]*dfactor + src[2]*sfactor)/255;	\
-	dest[3] = (dest[3]*dfactor + src[3]*sfactor)/255;	\
-    }								\
+#define READ_PIXEL(srcColor)						\
+    {									\
+      /* The blending should probably be more flexible. */		\
+	ICET_UNDER((GLubyte *)(srcColor), (GLubyte *)(destColor));	\
+    }									\
     srcColor += 1;
 #define INCREMENT_PIXEL()	destColor++;
 #define INCREMENT_INACTIVE_PIXELS(count) destColor += count;

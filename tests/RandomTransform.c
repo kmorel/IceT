@@ -242,15 +242,12 @@ int RandomTransform(int argc, char *argv[])
     GLint rep_group_size;
     GLint *rep_group;
     GLfloat color[3];
+    GLfloat background_color[3];
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
     srand(time(NULL) + 10*num_proc*rank);
-
-  /* Set up OpenGL. */
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glDisable(GL_LIGHTING);
 
   /* Decide on an image order and data replication group size. */
     image_order = malloc(num_proc * sizeof(GLint));
@@ -282,9 +279,27 @@ int RandomTransform(int argc, char *argv[])
     }
     icetCompositeOrder(image_order);
 
+  /* Agree on background color. */
+    if (rank == 0) {
+	background_color[0] = (float)rand()/(float)RAND_MAX;
+	background_color[1] = (float)rand()/(float)RAND_MAX;
+	background_color[2] = (float)rand()/(float)RAND_MAX;
+	for (i = 1; i < num_proc; i++) {
+	    ICET_COMM_SEND(background_color, 3, ICET_FLOAT, i, 32);
+	}
+    } else {
+	ICET_COMM_RECV(background_color, 3, ICET_FLOAT, 0, 32);
+    }
+
   /* Set up ICE-T. */
     icetDrawFunc(draw);
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.125, 0.125);
+    icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
+
+  /* Set up OpenGL. */
+    glClearColor(background_color[0], background_color[1],
+		 background_color[2], 0.0);
+    glDisable(GL_LIGHTING);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();

@@ -129,6 +129,7 @@ void icetStateSetDefaults(void)
 
     icetEnable(ICET_FLOATING_VIEWPORT);
     icetDisable(ICET_ORDERED_COMPOSITE);
+    icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
     icetEnable(ICET_DISPLAY);
     icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_DISPLAY_INFLATE);

@@ -196,6 +196,8 @@ static void determine_contained_tiles(const GLint contained_viewport[4],
     }
 }
 
+static GLfloat black[] = {0.0, 0.0, 0.0, 0.0};
+
 void icetDrawFrame(void)
 {
     int rank, num_proc;
@@ -229,6 +231,7 @@ void icetDrawFrame(void)
     GLdouble total_time;
     GLfloat background_color[4];
     GLuint background_color_word;
+    GLboolean color_blending;
     int i, j;
 
     icetRaiseDebug("In icetDrawFrame");
@@ -244,9 +247,11 @@ void icetDrawFrame(void)
     icetStateResetTiming();
     total_time = icetWallTime();
 
+    color_blending = (   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
+		      == ICET_COLOR_BUFFER_BIT);
+
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
-    icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, background_color);
     switch (color_format) {
       case GL_RGBA:
 	  ((GLubyte *)&background_color_word)[0]
@@ -273,7 +278,17 @@ void icetDrawFrame(void)
 	      = (GLubyte)(255*background_color[3]);
 	  break;
     }
-    icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, background_color_word);
+    if (color_blending && (   icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND)
+			   || icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND))) {
+      /* We need to correct the background color by zeroing it out at
+       * blending it back at the end. */
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
+	icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
+    } else {
+	icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, background_color);
+	icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, background_color_word);
+    }
 
     icetGetIntegerv(ICET_FRAME_COUNT, &frame_count);
     frame_count++;
@@ -448,7 +463,6 @@ void icetDrawFrame(void)
      we are responsible for. */
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE,
 		    &data_replication_group_size);
-icetRaiseDebug1("data_replication_group_size=%d", data_replication_group_size);
     if (data_replication_group_size > 1) {
 	data_replication_group = icetReserveBufferMem(sizeof(GLint)*num_proc);
 	icetGetIntegerv(ICET_DATA_REPLICATION_GROUP, data_replication_group);
@@ -466,9 +480,7 @@ icetRaiseDebug1("data_replication_group_size=%d", data_replication_group_size);
 		for (group_id = 0; group_id < data_replication_group_size;
 		     group_id++) {
 		    if (display_nodes[tile]==data_replication_group[group_id]) {
-icetRaiseDebug1("Someone in this group is displaying tile %d", tile);
 			if (data_replication_group[group_id] == rank) {
-icetRaiseDebug("And it's me");
 			  /* I'm displaying this tile, let's render it. */
 			    tile_rendering = tile;
 			    num_rendering_tile = 1;
@@ -490,7 +502,6 @@ icetRaiseDebug("And it's me");
 	    }
 
 	  /* Assign the rest of the processes to tiles. */
-icetRaiseDebug2("Assigning %d more tiles to %d processes", num_contained, data_replication_group_size);
 	    if (num_contained > 0) {
 		int proc_to_tiles = 0;
 		int group_id;
@@ -518,7 +529,6 @@ icetRaiseDebug2("Assigning %d more tiles to %d processes", num_contained, data_r
 	    if (tile_rendering >= 0) {
 		GLint *tv = tile_viewports + 4*tile_rendering;
 		int new_length = tv[2]/num_rendering_tile;
-icetRaiseDebug2("Rendering tile %d with %d others", tile_rendering, num_rendering_tile);
 		num_contained = 1;
 		contained_list[0] = tile_rendering;
 		contained_viewport[1] = tv[1];
@@ -533,7 +543,6 @@ icetRaiseDebug2("Rendering tile %d with %d others", tile_rendering, num_renderin
 		    contained_viewport[2] = new_length;
 		}
 	    } else {
-icetRaiseDebug("I ain't rendering nothin'.");
 		num_contained = 0;
 		contained_viewport[0] = global_viewport[0]-1;
 		contained_viewport[1] = global_viewport[1]-1;
@@ -552,29 +561,22 @@ icetRaiseDebug("I ain't rendering nothin'.");
 	    while (factor <= data_replication_group_size) {
 		int split_axis = contained_viewport[2] < contained_viewport[3];
 		int new_length;
-icetRaiseDebug1("Spliting on axis %d", split_axis);
 		while (data_replication_group_size%factor != 0) factor++;
-icetRaiseDebug1("Making %d pieces.", factor);
 	      /* Split the viewport along the axis factor times.  Also
 		 split the group into factor pieces. */
 		new_length = contained_viewport[2+split_axis]/factor;
-icetRaiseDebug1("new_length=%d", new_length);
 		for (i = 0; data_replication_group[i] != rank; i++);
-icetRaiseDebug1("I'm at index %d in the data replication group", i);
 		data_replication_group_size /= factor;	/* New subgroup. */
 		i /= data_replication_group_size;	/* i = piece I'm in. */
-icetRaiseDebug1("I'm in piece %d", i);
 		data_replication_group += i*data_replication_group_size;
 		if (i == factor-1) {
 		  /* Make sure last piece does not drop pixels due to
 		     rounding errors. */
 		    contained_viewport[2+split_axis] -= i*new_length;
-icetRaiseDebug("I'm the last piece.");
 		} else {
 		    contained_viewport[2+split_axis] = new_length;
 		}
 		contained_viewport[split_axis] += i*new_length;
-icetRaiseDebug4("New contained_viewport %d %d %d %d", contained_viewport[0], contained_viewport[1], contained_viewport[2], contained_viewport[3]);
 	    }
 	    determine_contained_tiles(contained_viewport, znear, zfar,
 				      tile_viewports, num_tiles,
@@ -638,6 +640,25 @@ icetRaiseDebug4("New contained_viewport %d %d %d %d", contained_viewport[0], con
     glMatrixMode(GL_MODELVIEW);
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
+  /* Correct background color where applicable. */
+    glClearColor(background_color[0], background_color[1],
+		 background_color[2], background_color[3]);
+    if (   color_blending && (display_tile >= 0)
+	&& icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
+	GLubyte *color = icetGetImageColorBuffer(image);
+	GLubyte *bc = (GLubyte *)(&background_color_word);
+	GLuint pixels = icetGetImagePixelCount(image);
+	GLuint i;
+	GLdouble blend_time;
+	icetGetDoublev(ICET_BLEND_TIME, &blend_time);
+	blend_time = icetWallTime() - blend_time;
+	for (i = 0; i < pixels; i++, color += 4) {
+	    ICET_UNDER(bc, color);
+	}
+	blend_time = icetWallTime() - blend_time;
+	icetStateSetDouble(ICET_BLEND_TIME, blend_time);
+    }
+
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
 	GLubyte *colorBuffer;
@@ -668,13 +689,16 @@ icetRaiseDebug4("New contained_viewport %d %d %d %d", contained_viewport[0], con
 #ifdef GL_TEXTURE_3D
 	    glDisable(GL_TEXTURE_3D);
 #endif
-	    if (icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND)) {
+	    if (   color_blending
+		&& icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND)
+		&& !icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_BLEND);
+		glClear(GL_COLOR_BUFFER_BIT);
 	    } else {
 		glDisable(GL_BLEND);
 	    }
-	    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	    glClear(GL_DEPTH_BUFFER_BIT);
 	    if (icetIsEnabled(ICET_DISPLAY_INFLATE)) {
 		inflateBuffer(colorBuffer,
 			      tile_viewports[display_tile*4+2],

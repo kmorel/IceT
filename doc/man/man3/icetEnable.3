@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetEnable/Disable 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetEnable/Disable 3 "August 12, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .BR icetEnable ", " icetDisable
 \- enable/disable an
@@ -31,30 +31,43 @@ Valid values for
 .I pname
 are:
 .TP 20
+.B ICET_CORRECT_COLORED_BACKGROUND
+Colored backgrounds are problematic when performing color blended
+compositing in that the background color will be additively blended from
+each image.  Enabling this flag will internally cause the color to be
+reset to black and then cause the color to be blended back into the
+resulting images.  This flag is disabled by default.
+.TP
 .B ICET_DISPLAY
 If enabled, the final, composited image for each tile is written back to
 the frame buffer before the return of
 .BR icetDrawFrame .
-Enabled by default.
+This flag is enabled by default.
 .TP
 .B ICET_DISPLAY_COLORED_BACKGROUND
 If this and
 .B ICET_DISPLAY
 are enabled, uses OpenGL blending to ensure that all background is set to
-the correct color.  Disabled by default.
+the correct color.  This flag is disabled by default.  This option does not
+affect the images returned from
+.BR icetGetColorBuffer " or " icetGetDepthBuffer ;
+it only affects the image in the OpenGL color buffer.
 .TP
 .B ICET_DISPLAY_INFLATE
 If this and
 .B ICET_DISPLAY
 are enabled and the renderable window is larger then the displayed tile (as
-determined by the current OpenGL viewport),
-then resample the image to fit within the renderable window before writing
-back to frame buffer.  Disabled by default.
+determined by the current OpenGL viewport), then resample the image to fit
+within the renderable window before writing back to frame buffer.  This
+flag is disabled by default.  This option does not affect the images
+returned from
+.BR icetGetColorBuffer " or " icetGetDepthBuffer ;
+it only affects the image in the OpenGL color buffer.
 .TP
 .B ICET_FLOATING_VIEWPORT
 If enabled, the projection will be shifted such that the geometry will be
 rendered in one shot whenever possible, even if the geometry straddles up
-to four tiles.  Enabled by default.
+to four tiles.  This flag is enabled by default.
 .TP
 .B ICET_ORDERED_COMPOSITE
 If enabled, the image composition will be performed in the order specified
@@ -67,7 +80,7 @@ compositing if doing color blending and disable if you are doing z-buffer
 comparisons.  If enabled, you should call
 .B icetCompositeOrder
 between each frame to update the image order as camera angles change.
-Disabled by default.
+This flag is disabled by default.
 .SH ERRORS
 .TP 20
 .B ICET_INVALID_VALUE

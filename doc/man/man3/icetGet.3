@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetGet 3 "July 21, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetGet 3 "August 12, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetGet
 \- get an
@@ -63,6 +63,13 @@ integer as specified by
 .BR ICET_COLOR_FORMAT .
 The idea is to rapidly fill the background of color buffers.
 .TP
+.B ICET_BLEND_TIME
+The total time, in seconds, spent in performing color blending of images
+during the last call to
+.BR icetDrawFrame .
+Stored as a double.  An alias for this value is
+.BR ICET_COMPARE_TIME .
+.TP
 .B ICET_BUFFER_READ_TIME
 The total time, in seconds, spent reading from OpenGL buffers during the
 last call to
@@ -97,7 +104,8 @@ reads and stores color buffers.  Currently always set to
 The total time, in seconds, spent in performing Z comparisons of images
 during the last call to
 .BR icetDrawFrame .
-Stored as a double.
+Stored as a double.  An alias for this value is
+.BR ICET_BLEND_TIME .
 .TP
 .B ICET_COMPOSITE_ORDER
 The order in which images are to be composited if

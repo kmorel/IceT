@@ -97,6 +97,7 @@ int DisplayNoDraw(int argc, char *argv[])
 		* other process is drawing the clear screen. */
 		&& ((num_proc > 2) || (iteration != 1)) ) {
 		int p;
+		int bad_count = 0;
 		printf("Checking pixels.\n");
 		color_buffer = icetGetColorBuffer();
 		for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
@@ -104,12 +105,15 @@ int DisplayNoDraw(int argc, char *argv[])
 			char filename[256];
 			printf("BAD PIXEL %d.%d\n", p/4, p%4);
 			printf("    Expected 255, got %d\n", color_buffer[p]);
-			result = TEST_FAILED;
-			sprintf(filename, "DisplayNoDraw_%s_%d.ppm",
-				icetGetStrategyName(), iteration);
-			write_ppm(filename, color_buffer,
-				  SCREEN_WIDTH, SCREEN_HEIGHT);
-			break;
+			bad_count++;
+			if (bad_count >= 10) {
+			    result = TEST_FAILED;
+			    sprintf(filename, "DisplayNoDraw_%s_%d.ppm",
+				    icetGetStrategyName(), iteration);
+			    write_ppm(filename, color_buffer,
+				      SCREEN_WIDTH, SCREEN_HEIGHT);
+			    break;
+			}
 		    }
 		}
 	    }
