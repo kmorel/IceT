@@ -16,8 +16,9 @@
 #
 
 #Load compiler settings used for ICE-T.
-INCLUDE(${CMAKE_ROOT}/Modules/CMakeImportBuildSettings.cmake)
-CMAKE_IMPORT_BUILD_SETTINGS(${ICET_BUILD_SETTINGS_FILE})
+#On second thought, why enforce the duplication of compiler flags?
+#INCLUDE(${CMAKE_ROOT}/Modules/CMakeImportBuildSettings.cmake)
+#CMAKE_IMPORT_BUILD_SETTINGS(${ICET_BUILD_SETTINGS_FILE})
 
 # Add compiler flags needed to use ICE-T.
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ICET_REQUIRED_C_FLAGS}")
