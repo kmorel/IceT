@@ -23,3 +23,7 @@ SET(ICET_SRCS
 ADD_LIBRARY(icet ${ICET_SRCS})
 
 INSTALL_TARGETS(/lib icet)
+INSTALL_FILES(/include/GL .h
+		${ICET_SOURCE_DIR}/src/include/GL/ice-t
+		${ICET_SOURCE_DIR}/src/include/GL/ice-t_buckets
+		${ICET_BINARY_DIR}/src/include/GL/ice-t_config)

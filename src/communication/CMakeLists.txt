@@ -17,3 +17,4 @@ ADD_LIBRARY(icet_mpi ${ICET_MPI_SRCS})
 TARGET_LINK_LIBRARIES(icet_mpi icet)
 
 INSTALL_TARGETS(/lib icet_mpi)
+INSTALL_FILES(/include/GL .h ${ICET_SOURCE_DIR}/src/include/GL/ice-t_mpi)
