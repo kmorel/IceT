@@ -1,0 +1,98 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetInputOutputBuffers 3 "April  6, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetInputOutputBuffers
+\- set
+.B ICE-T
+composition mode.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetInputOutputBuffers(GLenum " inputs ", GLenum " outputs ");"
+.fi
+.SH DESCRIPTION
+.B icetInputOutputBuffers
+sets what OpenGL frame buffers
+.B ICE-T
+reads and generates.  During a call to
+.BR icetDrawFrame ", " ICE-T
+reads the input buffers directly from OpenGL after it performs a callback
+to the draw function (set by
+.BR icetDrawFunc ).
+Output buffers are stored internally after the call to
+.B icetDrawFrame
+finishes.  The output buffers can be retrieved with calls to the
+.BR icetGetColorBuffer " and " icetGetDepthBuffer
+functions.  In addition, if the color buffer output is on and
+.B ICET_DISPLAY
+is enabled, the color buffer is also written back to the OpenGL frame
+buffer before
+.B icetDrawFrame
+returns.
+.PP
+Both
+.IR inputs " and " outputs
+are or'ed values of one or more of the following flags:
+.TP
+.B ICET_COLOR_BUFFER_BIT
+Reads/generates color data.  Color data is stored in RGBA or BGRA format.
+Each channel is 8-bits, resulting in a 32-bit word when combined together.
+Each 32-bit color value is always aligned on 32-bit word boundaries for
+faster computation.
+.TP
+.B ICET_DEPTH_BUFFER_BIT
+Reads/generates depth data.  Depth data is stored as 32-bit unsigned
+integers.
+.PP
+The current values of the input and output buffers are stored in the
+.BR ICET_INPUT_BUFFERS " and " ICET_OUTPUT_BUFFERS
+state variables.  By default, the
+.B ICET_INPUT_BUFFERS
+value is set to
+.RB ( ICET_COLOR_BUFFER_BIT " | " ICET_DEPTH_BUFFER_BIT ),
+and the
+.B ICET_OUTPUT_BUFFERS
+value is set to
+.BR ICET_COLOR_BUFFER_BIT .
+.PP
+The composition operator
+.B ICE-T
+uses is defined by the inputs.  If the depth buffer is an input, then Z
+comparison is performed.  If the depth buffer is not an input, alpha
+blending is performed.  Note that in the latter case, order of composition
+may matter and therefore not all composition strategies will work.
+.SH ERRORS
+.TP 20
+.B ICET_INVALID_VALUE
+An output was selected that is not also an input or no outputs were
+selected at all.
+.SH BUGS
+Blending of colors cannot be used in conjunction with depth testing.  Even
+with depth testing, the order of operation for color blending is important,
+so such a combination is not likely to be useful.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetGetColorBuffer ", " icetGetDepthBuffer ", " icetDrawFrame
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

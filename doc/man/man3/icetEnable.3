@@ -1,0 +1,89 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetEnable/Disable 3 "April 14, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.BR icetEnable ", " icetDisable
+\- enable/disable an
+.B ICE-T
+feature.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetEnable(GLenum " pname ");"
+.BI "void icetDisable(GLenum " pname ");"
+.fi
+.SH DESCRIPTION
+The
+.BR icetEnable " and " icetDisable
+functions turn various
+.B ICE-T
+features on and off.
+.I pname
+is a symbolic constant representing the feature to be turned on or off.
+Valid values for
+.I pname
+are:
+.TP 20
+.B ICET_DISPLAY
+If enabled, the final, composited image for each tile is written back to
+the frame buffer before the return of
+.BR icetDrawFrame .
+Enabled by default.
+.TP
+.B ICET_DISPLAY_COLORED_BACKGROUND
+If this and
+.B ICET_DISPLAY
+are enabled, uses OpenGL blending to ensure that all background is set to
+the correct color.  Disabled by default.
+.TP
+.B ICET_DISPLAY_INFLATE
+If this and
+.B ICET_DISPLAY
+are enabled and the renderable window is larger then the displayed tile (as
+determined by the current OpenGL viewport),
+then resample the image to fit within the renderable window before writing
+back to frame buffer.  Disabled by default.
+.TP
+.B ICET_FLOATING_VIEWPORT
+If enabled, the projection will be shifted such that the geometry will be
+rendered in one shot whenever possible, even if the geometry straddles up
+to four tiles.  Enabled by default.
+.SH ERRORS
+.TP 20
+.B ICET_INVALID_VALUE
+If
+.I pname
+is not a feature to be enabled or disabled.
+.SH WARNINGS
+None.
+.SH BUGS
+The check for a valid
+.I pname
+is not thorough, and thus the
+.B ICET_INVALID_VALUE
+error may not always be raised.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetIsEnabled
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

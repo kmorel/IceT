@@ -1,0 +1,98 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetAddTile 3 "April 14, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetAddTile
+\- add a tile to the logical display.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "int icetAddTile(GLint " x ", GLint " y ","
+.BI "                GLsizei " width ", GLsizei " height ","
+.BI "                int " display_rank ");"
+.fi
+.SH DESCRIPTION
+Adds a tile to the tiled display.  Every process, whether actually
+displaying a tile or not, must declare the tiles in the display and which
+processes drive them with
+.BR icetResetTiles " and " icetAddTile .
+Thus, each process calls
+.B icetAddTile
+once for each tile in the display, and all processes must declare them in
+the same order.
+.PP
+The parameters
+.IR x ", " y ", " width ", and " height
+define the tiles viewport in the logical global display much in the same
+way
+.B glViewport
+declares a region in a physical display.
+.B ICE-T
+places no limits on the extents of the logical global display.  That is,
+there are no limits on the values of
+.IR x " and " y .
+They can extend as far as they want in both the positive and negative
+directions.
+.PP
+.B ICE-T
+will project its images onto the region of the logical global display that
+just covers all of the tiles.  Therefore, shifting all the tiles in the
+logical global display by the same amount will have no real overall
+effect.
+.PP
+The
+.I display_rank
+parameter identifies the rank of the process that will be displaying the
+given tile.  It is assumed that the output of the rendering window of the
+given process is projected onto the space in a tiled display given by
+.IR x ", " y ", " width ", and " height .
+Each tile must have a valid rank (between
+.BR 0 " and " ICET_NUM_PROCESSORS - 1 ).
+Furthermore, no process may be displaying more than one tile.
+.SH RETURN VALUE
+Returns the index of the tile created.
+.SH ERRORS
+.TP 20
+.B ICET_INVALID_VALUE
+Raised if
+.I display_rank
+is not a valid processor rank or
+.I display_rank
+is already assigned to another tile.  If this error is raised, nothing is
+done and -1 is returned.
+.SH WARNINGS
+None.
+.SH BUGS
+.B icetAddTile
+will let you add tiles of different sizes, but the use of different sized
+tiles is not yet supported.  The user should try to make sure that all
+tiles are of the same size.
+.PP
+All processes must specify the same tiles in the same order.
+.B ICE-T
+will assume this even though it is not explicitly detected or enforced.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetResetTiles ", " icetDisplayNodes
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

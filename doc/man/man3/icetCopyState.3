@@ -1,0 +1,68 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetCopyState 3 "June 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetCopyState
+\- copy state machine of one context to another.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetCopyState(IceTContext " dest ", const IceTContext " src ");"
+.fi
+.SH DESCRIPTION
+The
+.B icetCopyState
+function replaces the state of
+.I dest
+with the current state of
+.IR src .
+This function can be used to quickly duplicate a context.
+.PP
+The
+.B IceTCommunicator
+object associated with
+.I dest
+is
+.I not
+changed (nor can it ever be).  Consequently, the state values of
+.BR ICET_RANK " and " ICET_NUM_PROCESSORS
+are not copied either, since they are directly tied to the
+.B IceTCommunicator
+object.  However, every other state parameter is copied.
+.SH ERRORS
+None.
+.SH WARNINGS
+None.
+.SH BUGS
+The state is copied blindly.  It is therefore possible to copy states that
+are invalid for a context's communicator.  For example, a display rank may
+not refer to a valid process id.
+.SH NOTES
+Behavior is undefined if
+.IR dest " or " src
+has never been created or has already been destroyed.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetCreateContext ", " icetGetContext ", " icetSetContext
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

@@ -1,0 +1,62 @@
+** -*- text -*- *************************************************************
+**
+** Revision history of ICE-T.
+**
+** Copyright 2003 Sandia Coporation
+** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+** license for use of this work by or on behalf of the U.S. Government.
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that this Notice and any statement
+** of authorship are reproduced on all copies.
+**
+*****************************************************************************
+
+Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
+	a composite on just the depth buffer.  This is useful when creating
+	shadow buffers.  This should also make it easier to implement
+	image-only compositing for parallel volume rendering.
+
+	Abstracted the communications layer such that it is no longer
+	dependent on MPI.  Of course, using MPI is still supported and is
+	the only communications layer currently provided (although the user
+	can potentially make his own).
+
+	Removed icetInit, which only called icetCreateContext to make a
+	"default" context.  The only real consiquence of this change is
+	that ICE-T can now be placed in a state where it has no current
+	context.  This could lead to seg-faults if the user does not set
+	another context as current and then tries to use ICE-T, but this is
+	an erroneous use of ICE-T anyway.
+
+	Changed build system to use CMake instead of autoconf.
+
+	The library has been split into three parts: libicet, libicet_mpi,
+	and libicet_strategies (mostly for convenience with the CMake build
+	processes).  The major consequence (besides obvious linker flags)
+	is that a default strategy is no longer set.
+
+Revision 0.3: Added the ability to render tiles smaller then the actual
+	display window and then inflate the image back onto the tiles.
+	Also changed the convention of how the projection matrix is set
+	from using set functions or callbacks to simply setting it before
+	calling icetDrawFrame.  The projection matrix is restored before
+	icetDrawFrame returns.
+
+	Removed clunky icetDisplayNodes function.  Display nodes are now
+	specified in icetAddTile.
+
+	Problems that appeared in revision 0.2 seem to be mostly fixed
+	now.  Added a check in the uncompress and compare compressed
+	functions to make sure there are no buffer overruns.  Adds a bit of
+	overhead, but seems to have stopped an occasional seg fault that
+	probably occurred when MPI dorked the data.
+
+Revision 0.2: A whole host of fixes.  Added a regression testing suite.
+	Current version seems quite stable except for intermittent problems
+	with split strategy under Myrinet.  Probably either race condition
+	or Myrinet/MPI bug.
+
+Revision 0.1: Semi-stable after movement from MTIC to ICE-T and building
+	autoconf scripts for use on Win32 rather than MSVC project files.
+	Found some issues with split and reduce strategies after moving to
+	Myrinet.

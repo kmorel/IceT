@@ -1,0 +1,52 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetGetContext 3 "March 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetGetContext
+\- retrieves the current context
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.B IceTContext icetGetContext(void);
+.fi
+.SH DESCRIPTION
+The
+.B icetGetContext
+function retrieves the handle for the current context.  This handle may be
+stored and set for later use with
+.B icetSetContext
+(assuming the context has not been since destroyed).
+.SH RETURN VALUE
+A handle for the current context.
+.SH ERRORS
+None.
+.SH WARNINGS
+None.
+.SH BUGS
+None known.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetSetContext ", " icetCreateContext ", " icetDestroyContext ", "
+.BR icetCopyState
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

@@ -1,0 +1,102 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetStrategy 3 "June 11, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetStrategy
+\- set the strategy used to composite images.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetStrategy(IceTStrategy " strategy ");"
+.fi
+.SH DESCRIPTION
+The
+.B ICE-T
+API comes packaged with several algorithms for compositing images.  The
+algorithm to use is determined by selecting a
+.IB strategy .
+The strategy is selected with
+.BR icetStrategy .
+A strategy must be selected before
+.B icetDrawFrame
+is called.
+.PP
+The
+.I strategy
+is of type
+.BR IceTStrategy .
+This is an opaque type.  There are no conventions to create or change an
+.BR IceTStrategy ,
+but there are several predefined strategies to select from.  They are:
+.TP 8
+.B ICET_STRATEGY_SERIAL
+Basically applies a `traditional' single tile composition (such as binary
+swap) to each tile in the order they were defined.  Because each processor
+must take part in the composition of each tile regardless of whether they
+draw into it, this strategy is usually very inefficient when compositing
+for more than tile.  It is provided mostly for comparative purposes.
+.TP
+.B ICET_STRATEGY_DIRECT
+As each processor renders an image for a tile, that image is sent directly
+to the processor that will display that tile.  This usually results in a
+few processors receiving and processing the majority of the data, and is
+therefore usually an inefficient strategy.
+.TP
+.B ICET_STRATEGY_SPLIT
+Like
+.BR ICET_STRATEGY_DIRECT ,
+except that the tiles are split up, and each processor is assigned a piece
+of a tile in such a way that each processor receives and processes about
+the same amount of data.  This strategy is often very efficient, but due to
+the large amount of messages passed, it has not proven to be very scalable
+or robust.
+.TP
+.B ICET_STRATEGY_REDUCE
+A two phase algorithm.  In the first phase, tile images are redistributed
+such that each processor has one image for one tile.  In the second phase,
+a `traditional' single tile composition is performed for each tile.  Since
+each processor contains an image for only one tile, all these compositions
+may happen simultaneously.  This is a well rounded strategy that seems to
+perform well in a wide variety of applications.
+.TP
+.B ICET_STRATEGY_VTREE
+An extension to the binary tree algorithm for image composition.  Sets up a
+`virtual' composition tree for each tile image.  Processors that belong to
+multiple trees (because they render to more than one tile) are allowed to
+float between trees.  This strategy is not quite as well load balanced as
+.BR ICET_STRATEGY_REDUCE " or " ICET_STRATEGY_SPLIT ,
+but has very well behaved network communication.
+.SH ERRORS
+None.
+.SH WARNINGS
+None.
+.SH BUGS
+Use the
+.B ICET_STRATEGY_SPLIT
+strategy with care.  It has proven to be unreliable on several high-speed
+interconnects.  Avoid using it at all in a production application.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetDrawFrame ", " icetGetStrategyName
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

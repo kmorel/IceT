@@ -1,0 +1,75 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetGetError 3 "May 15, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetGetError
+\- return the last error condition
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "GLenum icetGetError(void);"
+.fi
+.SH DESCRIPTION
+Retrieves the first error or warning condition that occurred since the last
+call to
+.B icetGetError
+or since program startup, whichever happened last.
+.PP
+Once an error condition has been retrieved with
+.BR icetGetError ,
+the error condition is reset to no error and cannot be retrieved again.
+.SH RETURN VALUE
+One of the following flags will be returned:
+.TP 20
+.B ICET_NO_ERROR
+No error has been raised since the last call to
+.BR icetGetError .
+.TP
+.B ICET_SANITY_CHECK_FAIL
+An internal error (or warning) has occurred.
+.TP
+.B ICET_INVALID_ENUM
+A function has been passed an invalid constant.
+.TP
+.B ICET_BAD_CAST
+A function has been passed a value of the wrong type.
+.TP
+.B ICET_OUT_OF_MEMORY
+.B ICE-T
+has ran out of memory for buffer space.
+.TP
+.B ICET_INVALID_OPERATION
+An inappropriate function has been called.
+.TP
+.B ICET_INVALID_VALUE
+An inappropriate value has been passed to a function.
+.SH BUGS
+It is not possible to tell if the returned value was caused by an error or
+a warning.
+.SH NOTES
+The error value is not context dependent.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetDiagnostics
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

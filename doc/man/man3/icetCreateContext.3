@@ -1,0 +1,72 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetCreateContext 3 "June  2, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetCreateContext
+\- creates a new context.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "IceTContext icetCreateContext(IceTCommunicator " comm ");"
+.fi
+.SH DESCRIPTION
+The
+.B icetCreateContext
+creates a new context, makes it current, and returns a handle to the new
+context.
+.PP
+Like OpenGL, the ICE-T engine behaves like a large state
+machine.  The parameters for engine operation is held in the current
+state.  The entire state is encapsulated in a context.  Each new context
+contains its own copy of the state.
+.PP
+It is therefore possible to change the entire current state of ICE-T by
+simply switch contexts.  Switching contexts is much faster than trying to
+change many state parameters.
+.SH ERRORS
+None
+.SH WARNINGS
+None
+.SH BUGS
+It may be tempting to use contexts to run different ICE-T operations on
+separate program threads.  Although certainly possible, great care must be
+taken.  First of all, all threads will share the same context.  Second of
+all, ICE-T is not thread safe.  Therefore, a multi-threaded program would
+have to run all ICE-T commands in `critical sections' to ensure that the
+correct context is being used, and the methods execute safely in general.
+.SH NOTES
+.B icetCreateContext
+duplicates the communicator
+.IR comm .
+Thus, to avoid deadlocks on certain implementations (such as MPI), the user
+level program should call
+.B icetCreateContext
+on all processes with the same
+.I comm
+object at about the same time.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetDestroyContext ", " icetGetContext ", "
+.BR icetSetContext ", " icetCopyState ", " icetGet
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

@@ -1,0 +1,61 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2002 Sandia National Laboratories
+
+Id
+..
+.TH icetSetContext 3 "March 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetSetContext
+\- changes the current context.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetSetContext(IceTContext " context ");"
+.fi
+.SH DESCRIPTION
+The
+.B icetSetContext
+function sets the ICE-T state machine to work with the context defined by
+.I context
+and the state associated with it.
+.SH ERRORS
+.TP 20
+.B ICET_INVALID_VALUE
+.I context
+is not valid.
+.SH WARNINGS
+None.
+.SH BUGS
+None known.
+.SH NOTES
+The behavior of
+.B icetSetContext
+is somewhat indeterminate if
+.I context
+is not valid.  Usually, an
+.B ICET_INVALID_VALUE
+error will be raised, but it is possible that the context will be set to
+some other context.  Under any circumstances, a valid context will be
+current when this function returns.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetGetContext ", " icetCreateContext ", " icetCopyState
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:
