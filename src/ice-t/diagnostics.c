@@ -24,7 +24,7 @@ static GLenum currentError = ICET_NO_ERROR;
 static GLenum currentLevel;
 
 void icetRaiseDiagnostic(const char *msg, GLenum type,
-			 GLbitfield level, const char *file, int line)
+                         GLbitfield level, const char *file, int line)
 {
     static int raisingDiagnostic = 0;
     GLbitfield diagLevel;
@@ -32,64 +32,68 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
     char *m;
     int rank;
 
-#define FINISH	raisingDiagnostic = 0; return
+#define FINISH        raisingDiagnostic = 0; return
 
     if (raisingDiagnostic) {
-	printf("PANIC: diagnostic raised while rasing diagnostic!\n");
-	icetStateDump();
+        printf("PANIC: diagnostic raised while rasing diagnostic!\n");
+        icetStateDump();
 #ifdef DEBUG
-	icetDebugBreak();
+        icetDebugBreak();
 #endif
-	return;
+        return;
     }
     if (icetGetState() == NULL) {
-	printf("PANIC: diagnostic raised when no context was current!\n");
+        printf("PANIC: diagnostic raised when no context was current!\n");
 #ifdef DEBUG
-	icetDebugBreak();
+        icetDebugBreak();
 #endif
-	return;
+        return;
     }
     raisingDiagnostic = 1;
     full_message[0] = '\0';
     m = full_message;
     if ((currentError == ICET_NO_ERROR) || (level < currentLevel)) {
-	currentError = type;
-	currentLevel = level;
+        currentError = type;
+        currentLevel = level;
     }
     icetGetIntegerv(ICET_DIAGNOSTIC_LEVEL, (GLint *)(&diagLevel));
     if ((diagLevel & level) != level) {
       /* Don't do anything if we are not reporting the raised diagnostic. */
-	FINISH;
+        FINISH;
     }
 
     rank = ICET_COMM_RANK();
     if ((diagLevel & ICET_DIAG_ALL_NODES) != 0) {
       /* Reporting on all nodes. */
-	sprintf(m, "ICET,%d:", rank);
+        sprintf(m, "ICET,%d:", rank);
     } else if (rank == 0) {
       /* Rank 0 is lone reporter. */
-	strcpy(m, "ICET:");
+        strcpy(m, "ICET:");
     } else {
       /* Not reporting because not rank 0. */
-	FINISH;
+        FINISH;
     }
     m += strlen(m);
   /* Add description of diagnostic type. */
     switch (level & 0xFF) {
       case ICET_DIAG_ERRORS:
-	  strcpy(m, "ERROR:");
-	  break;
+          strcpy(m, "ERROR:");
+          break;
       case ICET_DIAG_WARNINGS:
-	  strcpy(m, "WARNING:");
-	  break;
+          strcpy(m, "WARNING:");
+          break;
       case ICET_DIAG_DEBUG:
-	  strcpy(m, "DEBUG:");
-	  break;
+          strcpy(m, "DEBUG:");
+          break;
     }
     m += strlen(m);
 #ifdef DEBUG
     sprintf(m, "%s:%d:", file, line);
     m += strlen(m);
+#else
+    /* shut up warnings */
+    (void)file;
+    (void)line;
 #endif
 
     sprintf(m, " %s\n", msg);
@@ -98,7 +102,7 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
 
 #ifdef DEBUG
     if ((level & 0xFF) == ICET_DIAG_ERRORS) {
-	icetDebugBreak();
+        icetDebugBreak();
     }
 #endif
 

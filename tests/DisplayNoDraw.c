@@ -33,17 +33,17 @@ static void draw(void)
     printf("In draw\n");
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (global_rank != iteration) {
-	glBegin(GL_QUADS);
-	  glVertex3f(-1.0, -1.0, 0.0);
-	  glVertex3f(1.0, -1.0, 0.0);
-	  glVertex3f(1.0, 1.0, 0.0);
-	  glVertex3f(-1.0, 1.0, 0.0);
-	glEnd();
+        glBegin(GL_QUADS);
+          glVertex3f(-1.0, -1.0, 0.0);
+          glVertex3f(1.0, -1.0, 0.0);
+          glVertex3f(1.0, 1.0, 0.0);
+          glVertex3f(-1.0, 1.0, 0.0);
+        glEnd();
     }
     printf("Leaving draw\n");
 }
 
-int DisplayNoDraw(int argc, char *argv[])
+int DisplayNoDraw(int, char *[])
 {
     int result = TEST_PASSED;
     int i;
@@ -63,9 +63,9 @@ int DisplayNoDraw(int argc, char *argv[])
     icetDrawFunc(draw);
 
     if (rank == 0) {
-	icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
+        icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
     } else {
-	icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+        icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
     }
 
     glMatrixMode(GL_PROJECTION);
@@ -79,45 +79,45 @@ int DisplayNoDraw(int argc, char *argv[])
     glColor4f(1.0, 1.0, 1.0, 1.0);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-	GLubyte *color_buffer;
+        GLubyte *color_buffer;
 
-	icetStrategy(strategy_list[i]);
-	printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
+        icetStrategy(strategy_list[i]);
+        printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
 
-	for (iteration = 0; iteration < num_proc; iteration++) {
-	    printf("Blank tile is rank %d\n", iteration);
+        for (iteration = 0; iteration < num_proc; iteration++) {
+            printf("Blank tile is rank %d\n", iteration);
 
-	    icetDrawFrame();
-	    swap_buffers();
+            icetDrawFrame();
+            swap_buffers();
 
-	    if (   (rank == 0)
-		&& (num_proc > 1)
-	       /* This last case covers when there is only 2 processes,
-		* the root, as always, is not drawing anything and the
-		* other process is drawing the clear screen. */
-		&& ((num_proc > 2) || (iteration != 1)) ) {
-		int p;
-		int bad_count = 0;
-		printf("Checking pixels.\n");
-		color_buffer = icetGetColorBuffer();
-		for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
-		    if (color_buffer[p] != 255) {
-			char filename[256];
-			printf("BAD PIXEL %d.%d\n", p/4, p%4);
-			printf("    Expected 255, got %d\n", color_buffer[p]);
-			bad_count++;
-			if (bad_count >= 10) {
-			    result = TEST_FAILED;
-			    sprintf(filename, "DisplayNoDraw_%s_%d.ppm",
-				    icetGetStrategyName(), iteration);
-			    write_ppm(filename, color_buffer,
-				      SCREEN_WIDTH, SCREEN_HEIGHT);
-			    break;
-			}
-		    }
-		}
-	    }
-	}
+            if (   (rank == 0)
+                && (num_proc > 1)
+               /* This last case covers when there is only 2 processes,
+                * the root, as always, is not drawing anything and the
+                * other process is drawing the clear screen. */
+                && ((num_proc > 2) || (iteration != 1)) ) {
+                int p;
+                int bad_count = 0;
+                printf("Checking pixels.\n");
+                color_buffer = icetGetColorBuffer();
+                for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
+                    if (color_buffer[p] != 255) {
+                        char filename[256];
+                        printf("BAD PIXEL %d.%d\n", p/4, p%4);
+                        printf("    Expected 255, got %d\n", color_buffer[p]);
+                        bad_count++;
+                        if (bad_count >= 10) {
+                            result = TEST_FAILED;
+                            sprintf(filename, "DisplayNoDraw_%s_%d.ppm",
+                                    icetGetStrategyName(), iteration);
+                            write_ppm(filename, color_buffer,
+                                      SCREEN_WIDTH, SCREEN_HEIGHT);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     finalize_test();

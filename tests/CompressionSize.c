@@ -74,62 +74,62 @@ static int DoCompressionTest(int num_buffers)
 
     printf("\nCreating worst possible image.\n");
     for (i = 0; i < pixels; i += 2) {
-	if (colorbuffer) {
-	    colorbuffer[4*i + 0] = 0xFF;
-	    colorbuffer[4*i + 1] = 0xFF;
-	    colorbuffer[4*i + 2] = 0xFF;
-	    colorbuffer[4*i + 3] = 0xFF;
+        if (colorbuffer) {
+            colorbuffer[4*i + 0] = 0xFF;
+            colorbuffer[4*i + 1] = 0xFF;
+            colorbuffer[4*i + 2] = 0xFF;
+            colorbuffer[4*i + 3] = 0xFF;
 
-	    colorbuffer[4*(i+1) + 0] = 0x00;
-	    colorbuffer[4*(i+1) + 1] = 0x00;
-	    colorbuffer[4*(i+1) + 2] = 0x00;
-	    colorbuffer[4*(i+1) + 3] = 0x00;
-	}
-	if (depthbuffer) {
-	    depthbuffer[i] = 0x00000000;
-	    depthbuffer[i+1] = fardepth;
-	}
+            colorbuffer[4*(i+1) + 0] = 0x00;
+            colorbuffer[4*(i+1) + 1] = 0x00;
+            colorbuffer[4*(i+1) + 2] = 0x00;
+            colorbuffer[4*(i+1) + 3] = 0x00;
+        }
+        if (depthbuffer) {
+            depthbuffer[i] = 0x00000000;
+            depthbuffer[i+1] = fardepth;
+        }
     }
     printf("Compressing image.\n");
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-	   icetSparseImageSize(pixels), size);
+           icetSparseImageSize(pixels), size);
     if (   (size > icetSparseImageSize(pixels))
-	|| (size < (GLuint)(2+2*num_buffers)*pixels) ) {
-	printf("Size differs from expected size!\n");
-	result = TEST_FAILED;
+        || (size < (GLuint)(2+2*num_buffers)*pixels) ) {
+        printf("Size differs from expected size!\n");
+        result = TEST_FAILED;
     }
 
     printf("\nCreating a different worst possible image.\n");
     for (i = 0; i < pixels; i++) {
-	if (colorbuffer) {
-	    colorbuffer[4*i + 0] = 0xAA;
-	    colorbuffer[4*i + 1] = i%256;
-	    colorbuffer[4*i + 2] = 255 - i%256;
-	    colorbuffer[4*i + 3] = 0xAA;
-	}
-	if (depthbuffer) {
-	    depthbuffer[i] = 0x00000000;
-	}
+        if (colorbuffer) {
+            colorbuffer[4*i + 0] = 0xAA;
+            colorbuffer[4*i + 1] = i%256;
+            colorbuffer[4*i + 2] = 255 - i%256;
+            colorbuffer[4*i + 3] = 0xAA;
+        }
+        if (depthbuffer) {
+            depthbuffer[i] = 0x00000000;
+        }
     }
     printf("Compressing image.\n");
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-	   icetSparseImageSize(pixels), size);
+           icetSparseImageSize(pixels), size);
     if (   (size > icetSparseImageSize(pixels))
-	|| (size < (GLuint)4*num_buffers*pixels) ) {
-	printf("Size differs from expected size!\n");
-	result = TEST_FAILED;
+        || (size < (GLuint)4*num_buffers*pixels) ) {
+        printf("Size differs from expected size!\n");
+        result = TEST_FAILED;
     }
 
     printf("\nCompressing zero size image.\n");
     icetInitializeImage(imagebuffer, 0);
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-	   icetSparseImageSize(0), size);
+           icetSparseImageSize(0), size);
     if (size > icetSparseImageSize(0)) {
-	printf("Size differs from expected size!\n");
-	result = TEST_FAILED;
+        printf("Size differs from expected size!\n");
+        result = TEST_FAILED;
     }
 
   /* This test can be a little volatile.  The icetGetCompressedTileImage
@@ -148,11 +148,11 @@ static int DoCompressionTest(int num_buffers)
     printf("Now render and get compressed image.\n");
     size = icetGetCompressedTileImage(0, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-	   icetSparseImageSize(pixels), size);
+           icetSparseImageSize(pixels), size);
     if (   (size > icetSparseImageSize(pixels))
-	|| (size < (GLuint)4*num_buffers*pixels) ) {
-	printf("Size differs from expected size!\n");
-	result = TEST_FAILED;
+        || (size < (GLuint)4*num_buffers*pixels) ) {
+        printf("Size differs from expected size!\n");
+        result = TEST_FAILED;
     }
 
     printf("Cleaning up.\n");
@@ -161,7 +161,7 @@ static int DoCompressionTest(int num_buffers)
     return result;
 }
 
-int CompressionSize(int argc, char *argv[])
+int CompressionSize(int, char *[])
 {
     int result;
 
@@ -173,17 +173,17 @@ int CompressionSize(int argc, char *argv[])
     printf("\n\nCompress color only.\n");
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT, ICET_COLOR_BUFFER_BIT);
     if (result == TEST_PASSED) {
-	result = DoCompressionTest(1);
+        result = DoCompressionTest(1);
     } else {
-	DoCompressionTest(1);
+        DoCompressionTest(1);
     }
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-			   ICET_COLOR_BUFFER_BIT);
+                           ICET_COLOR_BUFFER_BIT);
     printf("\n\nCompress color and depth.\n");
     if (result == TEST_PASSED) {
-	result = DoCompressionTest(2);
+        result = DoCompressionTest(2);
     } else {
-	DoCompressionTest(2);
+        DoCompressionTest(2);
     }
 
     finalize_test();

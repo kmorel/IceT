@@ -68,7 +68,8 @@ static GLint allocatedTileSize = 0;
 void icetRenderTransferFullImages(IceTImage imageBuffer,
                                   IceTSparseImage inImage,
                                   IceTSparseImage outImage,
-                                  GLint num_receiving, GLint *tile_image_dest)
+                                  GLint /* num_receiving */, 
+                                  GLint *tile_image_dest)
 {
     GLint num_sending;
     GLint *tile_list;

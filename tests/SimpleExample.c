@@ -53,7 +53,7 @@ static void draw(void)
     glPopMatrix();
 }
 
-int SimpleExample(int argc, char *argv[])
+int SimpleExample(int, char *[])
 {
     float angle;
 

@@ -157,7 +157,7 @@ void resize( GLsizei width, GLsizei height )
 
 } /* end void resize( ) */    
 
-static Bool WaitForMapNotify(Display *d, XEvent *e, char *arg) 
+static Bool WaitForMapNotify(Display *, XEvent *e, char *arg) 
 { 
   if( (e->type == MapNotify) && (e->xmap.window == (Window)arg) )
   { 
