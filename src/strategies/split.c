@@ -111,8 +111,8 @@ static IceTImage splitStrategy(void)
      processes available. */
     while (num_allocated < num_proc) {
       /* Add processes to the tile with the lowest process:image ratio. */
-	int min_id = 0;
-	float min_ratio = 1;
+	int min_id = -1;
+	float min_ratio = num_proc;
 	for (tile = 0; tile < num_tiles; tile++) {
 	    float ratio;
 	  /* Don't even consider tiles with no contributors. */
@@ -123,15 +123,20 @@ static IceTImage splitStrategy(void)
 		min_id = tile;
 	    }
 	}
-icetRaiseDebug2("Adding proc to %d, which has ratio %f", min_id, min_ratio);
+#ifdef DEBUG
+	if (min_id < 0) {
+	    icetRaiseError("Could not find candidate to add tile.",
+			   ICET_SANITY_CHECK_FAIL);
+	}
+#endif
 	tile_groups[min_id+1]++;
 	num_allocated++;
     }
-    while (num_allocated < num_proc) {
+    while (num_allocated > num_proc) {
       /* Remove processes from the tile with the highest process:image
 	 ratio. */
-	int max_id = 0;
-	float max_ratio = 1;
+	int max_id = -1;
+	float max_ratio = 0;
 	for (tile = 0; tile < num_tiles; tile++) {
 	    float ratio;
 	  /* Don't even consider tiles with a minimum allocation. */
@@ -142,7 +147,12 @@ icetRaiseDebug2("Adding proc to %d, which has ratio %f", min_id, min_ratio);
 		max_id = tile;
 	    }
 	}
-icetRaiseDebug2("Removing proc from %d, which has ratio %f", max_id, max_ratio);
+#ifdef DEBUG
+	if (max_id < 0) {
+	    icetRaiseError("Could not find candidate to remove tile.",
+			   ICET_SANITY_CHECK_FAIL);
+	}
+#endif
 	tile_groups[max_id+1]--;
 	num_allocated--;
     }
