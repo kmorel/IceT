@@ -13,7 +13,7 @@
 #ifndef _ICET_BUCKETS_H_
 #define _ICET_BUCKETS_H_
 
-#include "ice-t_config.h"
+#include "GL/ice-t_config.h"
 
 #include <GL/gl.h>
 

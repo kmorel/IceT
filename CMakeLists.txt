@@ -112,7 +112,7 @@ INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
 
 # Save ICE-T specific configuration options.
 #First, configuration for build directory.
-SET(ICET_INCLUDE_DIRS_CONFIG ${ICET_SOURCE_DIR}/src/include)
+SET(ICET_INCLUDE_DIRS_CONFIG "${ICET_SOURCE_DIR}/src/include;${ICET_BINARY_DIR}/src/include")
 SET(ICET_LIBRARY_DIRS_CONFIG ${ICET_LIBRARY_DIR})
 SET(ICET_USE_FILE_CONFIG ${ICET_SOURCE_DIR}/UseICET.cmake)
 SET(ICET_BUILD_SETTINGS_FILE_CONFIG ${ICET_BINARY_DIR}/ICETBuildSettings.cmake)
