@@ -114,12 +114,17 @@ INCLUDE(${CMAKE_ROOT}/Modules/CMakeExportBuildSettings.cmake)
 CMAKE_EXPORT_BUILD_SETTINGS(${ICET_BINARY_DIR}/ICETBuildSettings.cmake)
 INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
 
+# Save the library dependency graph for external projects.
+EXPORT_LIBRARY_DEPENDENCIES(${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
+INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
+
 # Save ICE-T specific configuration options.
 #First, configuration for build directory.
 SET(ICET_INCLUDE_DIRS_CONFIG "${ICET_SOURCE_DIR}/src/include;${ICET_BINARY_DIR}/src/include")
 SET(ICET_LIBRARY_DIRS_CONFIG ${ICET_LIBRARY_DIR})
 SET(ICET_USE_FILE_CONFIG ${ICET_SOURCE_DIR}/UseICET.cmake)
 SET(ICET_BUILD_SETTINGS_FILE_CONFIG ${ICET_BINARY_DIR}/ICETBuildSettings.cmake)
+SET(ICET_LIBRARY_DEPENDS_FILE ${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
 	       ${ICET_BINARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
 #Second, configuration for install directory.
@@ -128,6 +133,8 @@ SET(ICET_LIBRARY_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}/lib)
 SET(ICET_USE_FILE_CONFIG ${CMAKE_INSTALL_PREFIX}/lib/UseICET.cmake)
 SET(ICET_BUILD_SETTINGS_FILE_CONFIG
     ${CMAKE_INSTALL_PREFIX}/lib/ICETBuildSettings.cmake)
+SET(ICET_LIBRARY_DEPENDS_FILE
+    ${CMAKE_INSTALL_PREFIX}/lib/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
 	       ${ICET_LIBRARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
 INSTALL_FILES(/lib .cmake ${ICET_SOURCE_DIR}/UseICET
