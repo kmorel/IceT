@@ -247,7 +247,7 @@ static IceTImage splitStrategy(void)
     }
 
   /* Send composited fragment to display process. */
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
     if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
 	icetAddSentBytes(4*fragment_size);
 	requests[0] = ICET_COMM_ISEND(icetGetImageColorBuffer(imageFragment),

@@ -131,9 +131,9 @@ GLuint *icetGetImageDepthBuffer(IceTImage image)
 
 void icetInitializeImage(IceTImage image, GLuint pixel_count)
 {
-    GLuint type;
+    GLenum type;
 
-    icetGetIntegerv(ICET_INPUT_BUFFERS, &type);
+    icetGetIntegerv(ICET_INPUT_BUFFERS, (GLint *)&type);
     type |= FULL_IMAGE_BASE_MAGIC_NUM;
 
     icetInitializeImageType(image, pixel_count, type);
@@ -149,12 +149,12 @@ void icetClearImage(IceTImage image)
     GLenum output_buffers;
     GLuint pixels = icetGetImagePixelCount(image);
 
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
     if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
 	GLuint background_color;
 	GLuint *color = (GLuint *)icetGetImageColorBuffer(image);
 	GLuint i;
-	icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, &background_color);
+	icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (GLint *)&background_color);
 	for (i = 0; i < pixels; i++) {
 	    color[i] = background_color;
 	}
@@ -368,7 +368,8 @@ GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
 				  FULL_IMAGE_CD_MAGIC_NUM);
 	  color = (GLuint *)icetGetImageColorBuffer(imageBuffer);
 	  depth = icetGetImageDepthBuffer(imageBuffer);
-	  icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, &background_color);
+	  icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
+			  (GLint *)&background_color);
 	  far_depth = getFarDepth(NULL);
 #define COMPRESSED_BUFFER	compressedBuffer
 #define READ_PIXEL(src)		*color = *(src++);  *depth = *(src++);
@@ -385,7 +386,8 @@ GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
 	  icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
 				  FULL_IMAGE_C_MAGIC_NUM);
 	  color = (GLuint *)icetGetImageColorBuffer(imageBuffer);
-	  icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, &background_color);
+	  icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
+			  (GLint *)&background_color);
 #define COMPRESSED_BUFFER	compressedBuffer
 #define READ_PIXEL(src)		*color = *(src++);
 #define INCREMENT_PIXEL()	color++;
@@ -837,7 +839,7 @@ static void readSubImage(GLint fb_x, GLint fb_y,
 	glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
 		     colorFormat, GL_UNSIGNED_BYTE, colorBuffer);
 
-	icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, &background_color);
+	icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (GLint *)&background_color);
       /* Clear out bottom. */
 	for (y = 0; y < ib_y; y++) {
 	    for (x = 0; x < full_width; x++) {

@@ -664,7 +664,7 @@ void icetDrawFrame(void)
 	GLubyte *colorBuffer;
 	GLenum output_buffers;
 
-	icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
+	icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
 	if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
 	    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 1);
 	    colorBuffer = icetGetImageColorBuffer(image);

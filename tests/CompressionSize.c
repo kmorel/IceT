@@ -127,8 +127,7 @@ static int DoCompressionTest(int num_buffers)
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
 	   icetSparseImageSize(0), size);
-    if (   (size > icetSparseImageSize(0))
-	|| (size < 0) ) {
+    if (size > icetSparseImageSize(0)) {
 	printf("Size differs from expected size!\n");
 	result = TEST_FAILED;
     }
