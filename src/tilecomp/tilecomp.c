@@ -187,7 +187,7 @@ static void init(int argc, char **argv)
     time_t currenttime;
 
     icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &processors);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &processors);
 
     if (rank == 0) {
 	if (argc > 1) {
