@@ -45,6 +45,8 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	patch 1: More updates to the build system to actually allow other
 	CMake-built programs use ICE-T.
 
+	patch 2: Fixed a bug with the background color.
+
 Revision 0.3: Added the ability to render tiles smaller then the actual
 	display window and then inflate the image back onto the tiles.
 	Also changed the convention of how the projection matrix is set
