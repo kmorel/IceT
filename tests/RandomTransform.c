@@ -38,6 +38,8 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
+#define DIFF(x, y)	((x) < (y) ? (y) - (x) : (x) - (y))
+
 int RandomTransform(int argc, char *argv[])
 {
     int i, x, y;
@@ -280,9 +282,9 @@ int RandomTransform(int argc, char *argv[])
 
 		for (y = 0; y < local_height; y++) {
 		    for (x = 0; x < local_width; x++) {
-			if (   db[y*local_width + x]
-			    != refdbuf[(y+ref_off_y)*SCREEN_WIDTH
-				      +x + ref_off_x] ) {
+			if (DIFF(db[y*local_width + x],
+				 refdbuf[(y+ref_off_y)*SCREEN_WIDTH
+					+x + ref_off_x]) > 0x0000FFFF) {
 			  /* Uh, oh.  Pixels don't match.  This could be a  */
 			  /* genuine error or it could be a floating point  */
 			  /* offset when projecting edge boundries to	    */

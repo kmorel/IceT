@@ -35,7 +35,7 @@ IF (ICET_MPIRUN_EXE)
   SET(POST_TEST_FLAGS ${ICET_MPI_POSTFLAGS})
 ENDIF (ICET_MPIRUN_EXE)
 
-SET(ICET_TEST_FLAGS "" CACHE STRING "Arguments given to the test program.")
+SET(ICET_TEST_FLAGS "-redirect" CACHE STRING "Arguments given to the test program.")
 MARK_AS_ADVANCED(ICET_TEST_FLAGS)
 SEPARATE_ARGUMENTS(ICET_TEST_FLAGS)
 
@@ -48,7 +48,7 @@ FOREACH (test ${MyTests})
 ENDFOREACH(test)
 
 IF (WIN32)
-  ADD_CUSTOM_TARGET(logclean erase log.????)
+  ADD_CUSTOM_TARGET(logclean erase log.???? *.ppm)
 ELSE (WIN32)
-  ADD_CUSTOM_TARGET(logclean rm -f log.????)
+  ADD_CUSTOM_TARGET(logclean rm -f log.???? *.ppm)
 ENDIF (WIN32)
