@@ -357,7 +357,7 @@ void icetDrawFrame(void)
         GLdouble viewport_matrix[16];
         GLdouble tmp_matrix[16];
         GLdouble total_transform[16];
-        GLint left, right, bottom, top;
+        GLdouble left, right, bottom, top;
         GLdouble x, y;
         GLdouble z, invw;
 
@@ -421,15 +421,20 @@ void icetDrawFrame(void)
                     + total_transform[MI(2,3)])
                  * invw);
 
-            if (left   > floor(x)) left   = (GLint)floor(x);
-            if (right  < ceil(x) ) right  = (GLint)ceil(x);
-            if (bottom > floor(y)) bottom = (GLint)floor(y);
-            if (top    < ceil(y) ) top    = (GLint)ceil(y);
+            if (left   > x) left   = x;
+            if (right  < x) right  = x;
+            if (bottom > y) bottom = y;
+            if (top    < y) top    = y;
             if (znear  > z) znear  = z;
             if (zfar   < z) zfar   = z;
 
             bound_vert += 3;
         }
+
+        left = floor(left);
+        right = ceil(right);
+        bottom = floor(bottom);
+        top = ceil(top);
 
       /* Clip bounds to global viewport. */
         if (left   < global_viewport[0]) left = global_viewport[0];
@@ -634,12 +639,6 @@ void icetDrawFrame(void)
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 1);
     image = (*strategy.compose)();
 
-  /* Restore projection matrix. */
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixd(projection_matrix);
-    glMatrixMode(GL_MODELVIEW);
-    icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
-
   /* Correct background color where applicable. */
     glClearColor(background_color[0], background_color[1],
                  background_color[2], background_color[3]);
@@ -679,7 +678,21 @@ void icetDrawFrame(void)
 
         if (   ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0)
             && icetIsEnabled(ICET_DISPLAY) ) {
+            GLint readBuffer;
+
             icetRaiseDebug("Displaying image.");
+
+            icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
+            glDrawBuffer(readBuffer);
+
+          // Place raster position in lower left corner.
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            glMatrixMode(GL_MODELVIEW);
+            glPushMatrix();
+            glLoadIdentity();
+            glRasterPos2f(-1, -1);
+            glPopMatrix();
 
             colorBuffer = icetGetImageColorBuffer(image);
 
@@ -711,6 +724,12 @@ void icetDrawFrame(void)
             glPopAttrib();
         }
     }
+
+  /* Restore projection matrix. */
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixd(projection_matrix);
+    glMatrixMode(GL_MODELVIEW);
+    icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
     icetRaiseDebug("Calculating times.");
     buf_write_time = icetWallTime() - buf_write_time;
