@@ -399,7 +399,7 @@ void icetStateDump(void)
 	    printf("param = 0x%x\n", i);
 	    printf("type  = 0x%x\n", state->type);
 	    printf("size  = %d\n", state->size);
-	    printf("data  = 0x%x\n", (int)state->data);
+	    printf("data  = %p\n", state->data);
 	    printf("mod   = %d\n", (int)state->mod_time);
 	}
 	state++;

@@ -133,11 +133,12 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Waitany = Waitany;
     comm->Comm_size = Comm_size;
     comm->Comm_rank = Comm_rank;
-    MPI_Comm_dup(mpi_comm, (MPI_Comm *)&comm->data);
+    comm->data = malloc(sizeof(MPI_Comm));
+    MPI_Comm_dup(mpi_comm, (MPI_Comm *)comm->data);
 
 #ifdef BREAK_ON_MPI_ERROR
     MPI_Errhandler_create(ErrorHandler, &eh);
-    MPI_Errhandler_set((MPI_Comm)comm->data, eh);
+    MPI_Errhandler_set(*((MPI_Comm *)comm->data), eh);
     MPI_Errhandler_free(&eh);
 #endif
 
@@ -150,7 +151,7 @@ void icetDestroyMPICommunicator(IceTCommunicator comm)
 }
 
 
-#define MPI_COMM        ((MPI_Comm)self->data)
+#define MPI_COMM        (*((MPI_Comm *)self->data))
 
 static IceTCommunicator Duplicate(IceTCommunicator self)
 {
@@ -159,22 +160,23 @@ static IceTCommunicator Duplicate(IceTCommunicator self)
 
 static void Destroy(IceTCommunicator self)
 {
-    MPI_Comm_free((MPI_Comm *)&self->data);
+    MPI_Comm_free((MPI_Comm *)self->data);
+    free(self->data);
     free(self);
 }
 
 #define CONVERT_DATATYPE(icet_type, mpi_type)                                \
-    switch (icet_type) {                                                \
-      case ICET_BYTE:        mpi_type = MPI_BYTE;        break;                        \
-      case ICET_SHORT:        mpi_type = MPI_SHORT;        break;                        \
-      case ICET_INT:        mpi_type = MPI_INT;        break;                        \
-      case ICET_FLOAT:        mpi_type = MPI_FLOAT;        break;                        \
-      case ICET_DOUBLE:        mpi_type = MPI_DOUBLE;        break;                        \
-      default:                                                                \
-          icetRaiseError("MPI Communicator received bad data type.",        \
-                         ICET_INVALID_ENUM);                                \
-          mpi_type = MPI_BYTE;                                                \
-          break;                                                        \
+    switch (icet_type) {                                                     \
+      case ICET_BYTE:   mpi_type = MPI_BYTE;    break;                       \
+      case ICET_SHORT:  mpi_type = MPI_SHORT;   break;                       \
+      case ICET_INT:    mpi_type = MPI_INT;     break;                       \
+      case ICET_FLOAT:  mpi_type = MPI_FLOAT;   break;                       \
+      case ICET_DOUBLE: mpi_type = MPI_DOUBLE;  break;                       \
+      default:                                                               \
+          icetRaiseError("MPI Communicator received bad data type.",         \
+                         ICET_INVALID_ENUM);                                 \
+          mpi_type = MPI_BYTE;                                               \
+          break;                                                             \
     }
 
 static void Send(IceTCommunicator self,
