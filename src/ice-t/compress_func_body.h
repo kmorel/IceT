@@ -195,7 +195,7 @@
     if (_totalcount != (GLuint)PIXEL_COUNT) {
 	char msg[256];
 	sprintf(msg, "Total run lengths don't equal pixel count: %d != %d",
-		_totalcount, PIXEL_COUNT);
+		(int)_totalcount, (int)(PIXEL_COUNT));
 	icetRaiseError(msg, ICET_SANITY_CHECK_FAIL);
     }
 #endif
@@ -205,7 +205,7 @@
     COMPRESSED_SIZE = (GLuint)(  (IceTPointerArithmetic)_dest
 			       - (IceTPointerArithmetic)COMPRESSED_BUFFER);
     icetRaiseDebug1("Compression: %d%%",
-		    100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8));
+		    (int)(100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8)));
 }
 
 #ifdef _MSC_VER

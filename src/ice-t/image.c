@@ -616,11 +616,11 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
     glLoadIdentity();
 
     icetRaiseDebug4("contained viewport: %d %d %d %d",
-		    contained_viewport[0], contained_viewport[1],
-		    contained_viewport[2], contained_viewport[3]);
+		    (int)contained_viewport[0], (int)contained_viewport[1],
+		    (int)contained_viewport[2], (int)contained_viewport[3]);
     icetRaiseDebug4("tile viewport: %d %d %d %d",
-		    tile_viewport[0], tile_viewport[1],
-		    tile_viewport[2], tile_viewport[3]);
+		    (int)tile_viewport[0], (int)tile_viewport[1],
+		    (int)tile_viewport[2], (int)tile_viewport[3]);
 
     if (   !contained_mask[tile]
 	|| (contained_viewport[0] + contained_viewport[2] < tile_viewport[0])
@@ -762,7 +762,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
 	glFlush();
 	glReadPixels(0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
 		     &far_depth);
-	icetRaiseDebug1("Setting far depth to 0x%X", far_depth);
+	icetRaiseDebug1("Setting far depth to 0x%X", (unsigned int)far_depth);
 	icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, far_depth);
     }
 
@@ -804,10 +804,11 @@ static void readSubImage(GLint fb_x, GLint fb_y,
     GLuint far_depth;
     GLint x, y;
 
-    icetRaiseDebug4("Reading viewport %d %d %d %d", fb_x, fb_y,
-		    sub_width, sub_height);
-    icetRaiseDebug2("Image offset %d %d", ib_x, ib_y);
-    icetRaiseDebug2("Full image dimensions %d %d", full_width, full_height);
+    icetRaiseDebug4("Reading viewport %d %d %d %d", (int)fb_x, (int)fb_y,
+		    (int)sub_width, (int)sub_height);
+    icetRaiseDebug2("Image offset %d %d", (int)ib_x, (int)ib_y);
+    icetRaiseDebug2("Full image dimensions %d %d",
+		    (int)full_width, (int)full_height);
 
 #ifdef DEBUG
     if (   (GET_MAGIC_NUM(buffer) & FULL_IMAGE_BASE_MAGIC_NUM)
@@ -924,7 +925,7 @@ static GLuint getFarDepth(const GLuint *depthBuffer)
 	icetRaiseWarning("Far depth failed sanity check, resetting.",
 			 ICET_SANITY_CHECK_FAIL);
 	icetRaiseDebug2("Old value: 0x%x,  New value: 0x%x",
-			far_depth, depthBuffer[0]);
+			(unsigned int)far_depth, (unsigned int)depthBuffer[0]);
 	far_depth = depthBuffer[0];
 	icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, far_depth);
     }

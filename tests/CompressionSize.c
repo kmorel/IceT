@@ -59,7 +59,7 @@ static int DoCompressionTest(int num_buffers)
     result = TEST_PASSED;
 
     icetGetIntegerv(ICET_INPUT_BUFFERS, &tmp);
-    printf("Using input buffers of 0x%x\n", tmp);
+    printf("Using input buffers of 0x%x\n", (int)tmp);
 
     glGetIntegerv(GL_VIEWPORT, viewport);
     pixels = viewport[2]*viewport[3];
@@ -93,7 +93,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Compressing image.\n");
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-           icetSparseImageSize(pixels), size);
+           (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
         || (size < (GLuint)(2+2*num_buffers)*pixels) ) {
         printf("Size differs from expected size!\n");
@@ -115,7 +115,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Compressing image.\n");
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-           icetSparseImageSize(pixels), size);
+           (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
         || (size < (GLuint)4*num_buffers*pixels) ) {
         printf("Size differs from expected size!\n");
@@ -126,7 +126,7 @@ static int DoCompressionTest(int num_buffers)
     icetInitializeImage(imagebuffer, 0);
     size = icetCompressImage(imagebuffer, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-           icetSparseImageSize(0), size);
+           (int)icetSparseImageSize(0), (int)size);
     if (size > icetSparseImageSize(0)) {
         printf("Size differs from expected size!\n");
         result = TEST_FAILED;
@@ -148,7 +148,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Now render and get compressed image.\n");
     size = icetGetCompressedTileImage(0, compressedbuffer);
     printf("Expected size: %d.  Actual size: %d\n",
-           icetSparseImageSize(pixels), size);
+           (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
         || (size < (GLuint)4*num_buffers*pixels) ) {
         printf("Size differs from expected size!\n");

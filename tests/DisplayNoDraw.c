@@ -47,7 +47,7 @@ int DisplayNoDraw(int argc, char *argv[])
 {
     int result = TEST_PASSED;
     int i;
-    int rank, num_proc;
+    GLint rank, num_proc;
 
     /* To remove warning */
     (void)argc;

@@ -23,8 +23,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int rank;
-int num_proc;
+GLint rank;
+GLint num_proc;
 
 static void draw(void)
 {

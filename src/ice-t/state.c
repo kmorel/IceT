@@ -221,14 +221,14 @@ unsigned long icetStateGetTime(GLenum pname)
       case ICET_NULL:							       \
 	  {								       \
 	      char msg[256];						       \
-	      sprintf(msg, "No such parameter, 0x%x.", pname);		       \
+	      sprintf(msg, "No such parameter, 0x%x.", (int)pname);	       \
 	      icetRaiseError(msg, ICET_INVALID_ENUM);			       \
 	  }								       \
 	  break;							       \
       default:								       \
 	  {								       \
 	      char msg[256];						       \
-	      sprintf(msg, "Could not cast value for 0x%x.", pname);	       \
+	      sprintf(msg, "Could not cast value for 0x%x.", (int)pname);      \
 	      icetRaiseError(msg, ICET_BAD_CAST);			       \
 	  }								       \
     }
@@ -264,12 +264,12 @@ void icetGetPointerv(GLenum pname, GLvoid **params)
     int i;
     if (value->type == ICET_NULL) {
 	char msg[256];
-	sprintf(msg, "No such parameter, 0x%x.", pname);
+	sprintf(msg, "No such parameter, 0x%x.", (int)pname);
 	icetRaiseError(msg, ICET_INVALID_ENUM);
     }
     if (value->type != ICET_POINTER) {
 	char msg[256];
-	sprintf(msg, "Could not cast value for 0x%x.", pname);
+	sprintf(msg, "Could not cast value for 0x%x.", (int)pname);
 	icetRaiseError(msg, ICET_BAD_CAST);
     }
     copyArrayGivenCType(GLvoid *, params, GLvoid *, value->data, value->size);
@@ -397,8 +397,8 @@ void icetStateDump(void)
     for (i = 0; i < ICET_STATE_SIZE; i++) {
 	if (state->type != ICET_NULL) {
 	    printf("param = 0x%x\n", i);
-	    printf("type  = 0x%x\n", state->type);
-	    printf("size  = %d\n", state->size);
+	    printf("type  = 0x%x\n", (int)state->type);
+	    printf("size  = %d\n", (int)state->size);
 	    printf("data  = %p\n", state->data);
 	    printf("mod   = %d\n", (int)state->mod_time);
 	}

@@ -38,7 +38,7 @@ int BlankTiles(int argc, char *argv[])
     int i, j, x, y;
     GLubyte *cb;
     int result = TEST_PASSED;
-    int rank, num_proc;
+    GLint rank, num_proc;
 
     /* To remove warning */
     (void)argc;

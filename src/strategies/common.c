@@ -264,7 +264,7 @@ void icetSendRecvLargeMessages(GLint numMessagesSending,
 
     sqi = 0;  rqi = 0;
     if (rqi < numRecv) {
-        icetRaiseDebug1("Receiving from %d", recvQueue[rqi]);
+        icetRaiseDebug1("Receiving from %d", (int)recvQueue[rqi]);
         startLargeRecv(incomingBuffer, bufferSize, recvQueue[rqi],
                        &requests[RECV_IDX]);
     } else {
@@ -278,7 +278,7 @@ void icetSendRecvLargeMessages(GLint numMessagesSending,
         (*handleDataFunc)(data, rank);
     }
     if (sqi < numSend) {
-        icetRaiseDebug1("Sending to %d", sendQueue[sqi]);
+        icetRaiseDebug1("Sending to %d", (int)sendQueue[sqi]);
         startLargeSend(sendQueue[sqi], &requests[SEND_IDX],
                        generateDataFunc, sendIds);
     } else {
@@ -287,24 +287,24 @@ void icetSendRecvLargeMessages(GLint numMessagesSending,
     while ((rqi < numRecv) || (sqi < numSend)) {
         icetRaiseDebug("Starting wait.");
         i = ICET_COMM_WAITANY(2, requests);
-        icetRaiseDebug1("Wait returned with %d finished.", i);
+        icetRaiseDebug1("Wait returned with %d finished.", (int)i);
         switch (i) {
           case RECV_IDX:
-              icetRaiseDebug1("Receive from %d finished", recvQueue[rqi]);
+              icetRaiseDebug1("Receive from %d finished", (int)recvQueue[rqi]);
               incomingBuffer = (*handleDataFunc)(incomingBuffer,
                                                  recvQueue[rqi]);
               rqi++;
               if (rqi < numRecv) {
-                  icetRaiseDebug1("Receiving from %d", recvQueue[rqi]);
+                  icetRaiseDebug1("Receiving from %d", (int)recvQueue[rqi]);
                   startLargeRecv(incomingBuffer, bufferSize, recvQueue[rqi],
                                  &requests[RECV_IDX]);
               }
               continue;
           case SEND_IDX:
-              icetRaiseDebug1("Send to %d finished", sendQueue[sqi]);
+              icetRaiseDebug1("Send to %d finished", (int)sendQueue[sqi]);
               sqi++;
               if (sqi < numSend) {
-                  icetRaiseDebug1("Sending to %d", sendQueue[sqi]);
+                  icetRaiseDebug1("Sending to %d", (int)sendQueue[sqi]);
                   startLargeSend(sendQueue[sqi], &requests[SEND_IDX],
                                  generateDataFunc, sendIds);
               }
@@ -439,7 +439,7 @@ static void BswapComposeNoCombine(GLint *compose_group, GLint group_size,
             int i;
 
             BIT_REVERSE(offset, upper_group_rank, extra_pow2size);
-            icetRaiseDebug1("My offset: %d", offset);
+            icetRaiseDebug1("My offset: %d", (int)offset);
             offset *= pixels/extra_pow2size;
 
           /* Trying to figure out what processes to send to is tricky.  We
@@ -457,7 +457,7 @@ static void BswapComposeNoCombine(GLint *compose_group, GLint group_size,
 
                 BIT_REVERSE(dest_rank, i, num_pieces);
                 dest_rank = dest_rank*extra_pow2size + upper_group_rank;
-                icetRaiseDebug2("Sending piece %d to %d", i, dest_rank);
+                icetRaiseDebug2("Sending piece %d to %d", i, (int)dest_rank);
 
               /* Is compression the right thing?  It's currently easier. */
                 compressedSize = icetCompressSubImage(imageBuffer,
@@ -520,7 +520,7 @@ static void BswapComposeNoCombine(GLint *compose_group, GLint group_size,
        * this is just clearing out the upper bits. */
         if (extra_pow2size > 0) {
             GLint src = pow2size + (group_rank & (extra_pow2size-1));
-            icetRaiseDebug1("Absorbing image from %d", src);
+            icetRaiseDebug1("Absorbing image from %d", (int)src);
             ICET_COMM_RECV(inImage, icetSparseImageSize(pixels),
                            ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
             icetCompressedSubComposite(imageBuffer, offset, pixels,
@@ -637,7 +637,7 @@ static void RecursiveTreeCompose(GLint *compose_group, GLint group_size,
     if (current_image == SEND_IMAGE) {
       /* Hasta la vista, baby. */
         GLint compressedSize;
-        icetRaiseDebug1("Sending image to %d", compose_group[pair_proc]);
+        icetRaiseDebug1("Sending image to %d", (int)compose_group[pair_proc]);
         compressedSize = icetCompressImage(imageBuffer,
                                            compressedImageBuffer);
         icetAddSentBytes(compressedSize);
@@ -645,7 +645,7 @@ static void RecursiveTreeCompose(GLint *compose_group, GLint group_size,
                        compose_group[pair_proc], TREE_IMAGE_DATA);
     } else if (current_image == RECV_IMAGE) {
       /* Get my image. */
-        icetRaiseDebug1("Getting image from %d", compose_group[pair_proc]);
+        icetRaiseDebug1("Getting image from %d", (int)compose_group[pair_proc]);
         ICET_COMM_RECV(compressedImageBuffer,
                        icetSparseImageSize(icetGetImagePixelCount(imageBuffer)),
                        ICET_BYTE,

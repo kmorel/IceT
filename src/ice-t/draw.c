@@ -468,8 +468,8 @@ void icetDrawFrame(void)
     }
 
     icetRaiseDebug4("contained_viewport = %d %d %d %d",
-                    contained_viewport[0], contained_viewport[1],
-                    contained_viewport[2], contained_viewport[3]);
+                    (int)contained_viewport[0], (int)contained_viewport[1],
+                    (int)contained_viewport[2], (int)contained_viewport[3]);
 
   /* If we are doing data replication, reduced the amount of screen space
      we are responsible for. */
@@ -598,8 +598,8 @@ void icetDrawFrame(void)
     }
 
     icetRaiseDebug4("new contained_viewport = %d %d %d %d",
-                    contained_viewport[0], contained_viewport[1],
-                    contained_viewport[2], contained_viewport[3]);
+                    (int)contained_viewport[0], (int)contained_viewport[1],
+                    (int)contained_viewport[2], (int)contained_viewport[3]);
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, contained_viewport);
     icetStateSetDoublev(ICET_NEAR_DEPTH, 1, &znear);
     icetStateSetDoublev(ICET_FAR_DEPTH, 1, &zfar);
