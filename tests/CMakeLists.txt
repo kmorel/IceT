@@ -9,6 +9,7 @@
 #
 
 SET(MyTests
+	SimpleExample.c
 	BlankTiles.c
 	CompressionSize.c
 	DisplayNoDraw.c

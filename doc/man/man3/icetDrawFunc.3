@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetDrawFunc 3 "March 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetDrawFunc 3 "August 12, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetDrawFunc
 \- set a callback for drawing.
@@ -40,10 +40,16 @@ as this would cause ICE-T to place image data in the wrong location in the
 tiled display and improperly cull geometry.  It is acceptable to add
 transformations to
 .BR GL_MODELVIEW_MATRIX ,
-but the bounding vertices are assumed to be already made.  Therefore, any
-changes to
+but the bounding vertices given with
+.BR icetBoundingVerticies " or " icetBoundingBox*
+are assumed to already be transformed by any such changes to the modelview
+matrix.  Also,
+.B GL_MODELVIEW_MATRIX
+must be restored before the draw function returns.  Therefore, any changes
+to
 .BR GL_MODELVIEW_MATRIX
-are still discouraged.
+are to be done with care and should be surrounded by a pair of glPushMatrix
+and glPopMatrix functions.
 .PP
 .I func
 may be called several times from within a call to
