@@ -23,6 +23,8 @@ ELSE (WIN32)
   SET(UTIL_SRCS ${UTIL_SRCS} glwin_glx.c)
 ENDIF (WIN32)
 
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+
 CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
 		       EXTRA_INCLUDE mpi_comm.h
 		       FUNCTION init_mpi_comm)
