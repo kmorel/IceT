@@ -80,10 +80,13 @@ void icetStateCopy(IceTState dest, const IceTState src)
     }
 }
 
-static float black[] = {0.0, 0.0, 0.0, 0.0};
+static GLfloat black[] = {0.0, 0.0, 0.0, 0.0};
 
 void icetStateSetDefaults(void)
 {
+    GLint *int_array;
+    int i;
+
     icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_WARNINGS);
 
     icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
@@ -101,6 +104,13 @@ void icetStateSetDefaults(void)
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
 			   ICET_COLOR_BUFFER_BIT);
+    int_array = malloc(ICET_COMM_SIZE() * sizeof(GLint));
+    for (i = 0; i < ICET_COMM_SIZE(); i++) {
+	int_array[i] = i;
+    }
+    icetStateSetIntegerv(ICET_COMPOSITE_ORDER, ICET_COMM_SIZE(), int_array);
+    icetStateSetIntegerv(ICET_PROCESS_ORDERS, ICET_COMM_SIZE(), int_array);
+    free(int_array);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
     icetStateSetInteger(ICET_READ_BUFFER, GL_BACK);
@@ -169,7 +179,15 @@ void icetStateSetPointer(GLenum pname, GLvoid *value)
     stateSet(pname, 1, ICET_POINTER, &value);
 }
 
-unsigned long icetGetTime(GLenum pname)
+GLenum icetStateGetType(GLenum pname)
+{
+    return icetGetState()[pname].type;
+}
+GLint icetStateGetSize(GLenum pname)
+{
+    return icetGetState()[pname].size;
+}
+unsigned long icetStateGetTime(GLenum pname)
 {
     return icetGetState()[pname].mod_time;
 }

@@ -21,7 +21,7 @@
 
 static IceTImage directCompose(void);
 
-IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", directCompose };
+IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
 
 static IceTImage directCompose(void)
 {

@@ -27,7 +27,7 @@ static int delegate(int **tile_image_destp,
 		    int buffer_size);
 
 
-IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", reduceCompose };
+IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_FALSE, reduceCompose };
 
 static IceTImage reduceCompose(void)
 {

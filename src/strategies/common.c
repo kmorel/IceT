@@ -52,7 +52,12 @@ static void *rtfi_handleDataFunc(void *inImage, int src) {
 	if (rtfi_first) {
 	    icetDecompressImage(inImage, rtfi_imageBuffer);
 	} else {
-	    icetCompressedComposite(rtfi_imageBuffer, inImage, 1);
+	    GLint rank;
+	    GLint *process_orders;
+	    icetGetIntegerv(ICET_RANK, &rank);
+	    process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+	    icetCompressedComposite(rtfi_imageBuffer, inImage,
+				    process_orders[src] < process_orders[rank]);
 	}
     }
     rtfi_first = 0;
@@ -95,6 +100,7 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
     }
 
     icetSendRecvLargeMessages(num_sending, imageDestinations,
+			      icetIsEnabled(ICET_ORDERED_COMPOSITE),
 			      rtfi_generateDataFunc, rtfi_handleDataFunc,
 			      inImage, icetSparseImageSize(max_pixels));
 }
@@ -119,6 +125,7 @@ static int *recvFrom = NULL;
 static int allocatedCommSize = 0;
 void icetSendRecvLargeMessages(int numMessagesSending,
 			       int *messageDestinations,
+			       int messagesInOrder,
 			       IceTGenerateData generateDataFunc,
 			       IceTHandleData handleDataFunc,
 			       void *incomingBuffer,
@@ -126,11 +133,14 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 {
     int comm_size;
     int rank;
-    int i, j;
+    int i;
+    int sender;
     int numSend, numRecv;
     int someoneSends;
     int sendToSelf;
     int sqi, rqi;	/* Send/Recv queue index. */
+    GLint *composite_order;
+    GLint *process_orders;
 
 #define RECV_IDX 0
 #define SEND_IDX 1
@@ -138,6 +148,9 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &comm_size);
     icetGetIntegerv(ICET_RANK, &rank);
+
+    composite_order = icetUnsafeStateGet(ICET_COMPOSITE_ORDER);
+    process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
 
   /* Make sure we have big enough arrays.  We should not have to allocate
      very often. */
@@ -166,6 +179,10 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	sendIds[messageDestinations[i]] = i;
     }
 
+  /* We'll just handle send to self as a special case. */
+    sendToSelf = myDests[rank];
+    myDests[rank] = 0;
+
   /* Gather masks for all processes. */
     ICET_COMM_ALLGATHER(myDests, comm_size, ICET_BYTE, allDests);
 
@@ -175,7 +192,6 @@ void icetSendRecvLargeMessages(int numMessagesSending,
      than saving the sends and recieves per step, we will simply push them
      into queues and run the send and receive queues in parallel later. */
     numSend = 0;  numRecv = 0;
-    sendToSelf = 0;
     do {
 	someoneSends = 0;
       /* We are going to keep track of what every processor receives to
@@ -183,18 +199,44 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	 iteration.  Clear out the array first. */
 	for (i = 0; i < comm_size; i++) recvFrom[i] = -1;
       /* Try to find a destination for each sender. */
-	for (i = 0; i < comm_size; i++) {
-	    char *localDests = allDests + i*comm_size;
-	    for (j = 0; j < comm_size; j++) {
-		if (localDests[j] && (recvFrom[j] < 0)) {
-		    localDests[j] = 0;
-		    if (i == j) {
-			if (rank == i) sendToSelf = 1;
+	for (sender = 0; sender < comm_size; sender++) {
+	    char *localDests = allDests + sender*comm_size;
+	    int receiver;
+	    for (receiver = 0; receiver < comm_size; receiver++) {
+		if (localDests[receiver] && (recvFrom[receiver] < 0)) {
+		    if (messagesInOrder) {
+		      /* Make sure there is not another message that must
+			 be sent first. */
+			int left, right;
+			if (process_orders[sender] < process_orders[receiver]) {
+			    left = process_orders[sender];
+			    right = process_orders[receiver];
+			} else {
+			    left = process_orders[receiver];
+			    right = process_orders[sender];
+			}
+			for (left++; left < right; left++) {
+			    int p = composite_order[left];
+			    if (allDests[p*comm_size + receiver]) break;
+			}
+			if (left != right) {
+			  /* We have to wait for someone else to send
+			     before we can send this one. */
+			    continue;
+			}
+		    }
+		    localDests[receiver] = 0;
+		  /* This is no longer necessary since we take care of
+		     sentToSelf above
+		     
+		    if (sender == receiver) {
+			if (rank == sender) sendToSelf = 1;
 			continue;
 		    }
-		    recvFrom[j] = i;
-		    if (i == rank) {
-			sendQueue[numSend++] = j;
+		  */
+		    recvFrom[receiver] = sender;
+		    if (sender == rank) {
+			sendQueue[numSend++] = receiver;
 		    }
 		    someoneSends = 1;
 		    break;
@@ -206,6 +248,14 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	    recvQueue[numRecv++] = recvFrom[rank];
 	}
     } while (someoneSends);
+#ifdef DEBUG
+    for (i = 0; i < comm_size*comm_size; i++) {
+	if (allDests[i] != 0) {
+	    icetRaiseError("Apperent deadlock encountered.",
+			   ICET_SANITY_CHECK_FAIL);
+	}
+    }
+#endif
 
     sqi = 0;  rqi = 0;
     if (rqi < numRecv) {
@@ -258,6 +308,17 @@ void icetSendRecvLargeMessages(int numMessagesSending,
     }
 }
 
+#define BIT_REVERSE(result, x, max_val_plus_one)			      \
+{									      \
+    int placeholder;							      \
+    int input = (x);							      \
+    (result) = 0;							      \
+    for (placeholder=0x0001; placeholder<max_val_plus_one; placeholder<<=1) { \
+	(result) <<= 1;							      \
+	(result) += input & 0x0001;					      \
+	input >>= 1;							      \
+    }									      \
+}
 
 static void BswapCollectFinalImages(int *compose_group, int group_size,
 				    int group_rank, IceTImage imageBuffer,
@@ -276,11 +337,14 @@ static void BswapCollectFinalImages(int *compose_group, int group_size,
 	GLubyte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
 	icetRaiseDebug("Collecting image data.");
 	for (i = 0; i < group_size; i++) {
-	    if (i != group_rank) {
+	    int src;
+	  /* Actual peice is located at the bit reversal of i. */
+	    BIT_REVERSE(src, i, group_size);
+	    if (src != group_rank) {
 		requests[i] =
 		    ICET_COMM_IRECV(colorBuffer + 4*pixel_count*i,
-				    4*pixel_count, ICET_BYTE, compose_group[i],
-				    SWAP_IMAGE_DATA);
+				    4*pixel_count, ICET_BYTE,
+				    compose_group[src], SWAP_IMAGE_DATA);
 	    } else {
 		requests[i] = ICET_COMM_REQUEST_NULL;
 	    }
@@ -293,11 +357,14 @@ static void BswapCollectFinalImages(int *compose_group, int group_size,
 	GLuint *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
 	icetRaiseDebug("Collecting depth data.");
 	for (i = 0; i < group_size; i++) {
-	    if (i != group_rank) {
+	    int src;
+	  /* Actual peice is located at the bit reversal of i. */
+	    BIT_REVERSE(src, i, group_size);
+	    if (src != group_rank) {
 		requests[i] =
 		    ICET_COMM_IRECV(depthBuffer + pixel_count*i,
 				    pixel_count, ICET_INT,
-				    compose_group[i], SWAP_DEPTH_DATA);
+				    compose_group[src], SWAP_DEPTH_DATA);
 	    } else {
 		requests[i] = ICET_COMM_REQUEST_NULL;
 	    }
@@ -336,8 +403,10 @@ static void BswapSendFinalImage(int *compose_group, int image_dest,
  * the image is broken into pow2size pieces and stored in the first set of
  * processes.  pow2size is assumed to be the largest power of 2 <=
  * group_size.  Each process has the image offset in buffer to its
- * appropriate location.  If both color and depth buffers are inputs, both
- * are located in the uncollected images regardless of what buffers are
+ * appropriate location.  Each process contains the ith piece, where i is
+ * group_rank with the bits reversed (which is necessary to get the
+ * ordering correct).  If both color and depth buffers are inputs, both are
+ * located in the uncollected images regardless of what buffers are
  * selected for outputs. */
 static void BswapComposeNoCombine(int *compose_group, int group_size,
 				  int pow2size, int group_rank,
@@ -361,73 +430,92 @@ static void BswapComposeNoCombine(int *compose_group, int group_size,
       /* Now I may have some image data to send to lower group. */
 	if (upper_group_rank < extra_pow2size) {
 	    int num_pieces = pow2size/extra_pow2size;
-	    GLuint offset = (pixels/extra_pow2size)*upper_group_rank;
+	    GLuint offset;
 	    int i;
+
+	    BIT_REVERSE(offset, upper_group_rank, extra_pow2size);
+	    icetRaiseDebug1("My offset: %d", offset);
+	    offset *= pixels/extra_pow2size;
+
+	  /* Trying to figure out what processes to send to is tricky.  We
+	   * can do this by getting the peice number (bit reversal of
+	   * upper_group_rank), multiply this by num_pieces, add the number
+	   * of each local piece to get the piece number for the lower
+	   * half, and finally reverse the bits again.  Equivocally, we can
+	   * just reverse the bits of the local piece num, multiply by
+	   * num_peices and add that to upper_group_rank to get the final
+	   * location. */
 	    pixels = pixels/pow2size;
 	    for (i = 0; i < num_pieces; i++) {
+		int compressedSize;
+		int dest_rank;
+
+		BIT_REVERSE(dest_rank, i, num_pieces);
+		dest_rank = dest_rank*extra_pow2size + upper_group_rank;
+		icetRaiseDebug2("Sending piece %d to %d", i, dest_rank);
+
 	      /* Is compression the right thing?  It's currently easier. */
-		int compressedSize = icetCompressSubImage(imageBuffer,
-							  offset + i*pixels,
-							  pixels, outImage);
+		compressedSize = icetCompressSubImage(imageBuffer,
+						      offset + i*pixels,
+						      pixels, outImage);
 		icetAddSentBytes(compressedSize);
 	      /* Send to processor in lower "half" that has same part of
 	       * image. */
 		ICET_COMM_SEND(outImage, compressedSize, ICET_BYTE,
-			       compose_group[upper_group_rank*num_pieces + i],
+			       compose_group[dest_rank],
 			       SWAP_IMAGE_DATA);
 	    }
 	}
 	return;
     } else {
       /* I am part of the lower group.  Do the actual binary swap. */
-	int left = 0;
-	int right = pow2size;
+      /* To do the ordering correct, at iteration i we must swap with a
+       * process 2^i units away.  The easiest way to find the process to
+       * pair with is to simply xor the group_rank with a value with the
+       * ith bit set. */
+	int bitmask = 0x0001;
 	int offset = 0;
 
-	while ((right-left) > 1) {
-	    int middle   = (right+left)/2;
-	    int sub_size = (right-left)/2;
+	for (bitmask = 0x0001; bitmask < pow2size; bitmask <<= 1) {
 	    int pair;
 	    int inOnTop;
 	    int compressedSize;
 
+	    pair = group_rank ^ bitmask;
+
 	    pixels /= 2;
 
-	    if (group_rank < middle) {
+	    if (group_rank < pair) {
 		compressedSize = icetCompressSubImage(imageBuffer,
 						      offset + pixels, pixels,
 						      outImage);
-		pair = compose_group[group_rank + sub_size];
-
-		right = middle;
-
 		inOnTop = 0;
 	    } else {
 		compressedSize = icetCompressSubImage(imageBuffer,
 						      offset, pixels,
 						      outImage);
-		pair = compose_group[group_rank - sub_size];
-
-		offset += pixels;
-
-		left = middle;
-
 		inOnTop = 1;
+		offset += pixels;
 	    }
 
 	    icetAddSentBytes(compressedSize);
 	    ICET_COMM_SENDRECV(outImage, compressedSize,
-			       ICET_BYTE, pair, SWAP_IMAGE_DATA,
+			       ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA,
 			       inImage, icetSparseImageSize(pixels),
-			       ICET_BYTE, pair, SWAP_IMAGE_DATA);
+			       ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA);
 
 	    icetCompressedSubComposite(imageBuffer, offset, pixels,
 				       inImage, inOnTop);
 	}
 
       /* Now absorb any image that was part of extra stuff. */
+      /* To get the processor where the extra stuff is located, I could
+       * reverse the bits of the local process, divide by the appropriate
+       * amount, and reverse the bits again.  However, the equivalent to
+       * this is just clearing out the upper bits. */
 	if (extra_pow2size > 0) {
-	    int src = pow2size + group_rank/(pow2size/extra_pow2size);
+	    int src = pow2size + (group_rank & (extra_pow2size-1));
+	    icetRaiseDebug1("Absorbing image from %d", src);
 	    ICET_COMM_RECV(inImage, icetSparseImageSize(pixels),
 			   ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
 	    icetCompressedSubComposite(imageBuffer, offset, pixels,
@@ -456,7 +544,8 @@ void icetBswapCompose(int *compose_group, int group_size, int image_dest,
 
     pixels = icetGetImagePixelCount(imageBuffer);
   /* Make sure we can divide pixels evenly amongst processors. */
-    pixels = (pixels/pow2size + 1)*pow2size;
+  /* WARNING: Will leave some pixels un-composed. */
+    pixels = (pixels/pow2size)*pow2size;
 
   /* Do actual bswap. */
     BswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
@@ -465,12 +554,14 @@ void icetBswapCompose(int *compose_group, int group_size, int image_dest,
     if (group_rank == image_dest) {
       /* Collect image if I'm the destination. */
 	BswapCollectFinalImages(compose_group, pow2size, group_rank,
-			   imageBuffer, pixels/pow2size);
+				imageBuffer, pixels/pow2size);
     } else if (group_rank < pow2size) {
       /* Send image to destination. */
 	int sub_image_size = pixels/pow2size;
+	int piece_num;
+	BIT_REVERSE(piece_num, group_rank, pow2size);
 	BswapSendFinalImage(compose_group, image_dest, imageBuffer,
-		       sub_image_size, group_rank*sub_image_size);
+			    sub_image_size, piece_num*sub_image_size);
     }
 }
 

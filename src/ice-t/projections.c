@@ -37,9 +37,9 @@ void icetProjectTile(GLint tile)
     GLint renderable_width, renderable_height;
 
   /* Update tile projections. */
-    if (viewport_time != icetGetTime(ICET_TILE_VIEWPORTS)) {
+    if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
 	update_tile_projections();
-	viewport_time = icetGetTime(ICET_TILE_VIEWPORTS);
+	viewport_time = icetStateGetTime(ICET_TILE_VIEWPORTS);
     }
 
     if ((tile < 0) || (tile >= num_tiles)) {
@@ -64,9 +64,9 @@ void icetProjectTile(GLint tile)
 
     glMultMatrixd(tile_projections + 16*tile);
 
-    if (projection_time != icetGetTime(ICET_PROJECTION_MATRIX)) {
+    if (projection_time != icetStateGetTime(ICET_PROJECTION_MATRIX)) {
 	icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection);
-	projection_time = icetGetTime(ICET_PROJECTION_MATRIX);
+	projection_time = icetStateGetTime(ICET_PROJECTION_MATRIX);
     }
 
     glMultMatrixd(global_projection);

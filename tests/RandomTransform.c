@@ -13,6 +13,7 @@
 *****************************************************************************/
 
 #include <GL/ice-t.h>
+#include <context.h>
 #include "test_codes.h"
 #include "test-util.h"
 #include "glwin.h"
@@ -40,20 +41,204 @@ static void draw(void)
 
 #define DIFF(x, y)	((x) < (y) ? (y) - (x) : (x) - (y))
 
+static int compare_color_buffers(int local_width, int local_height,
+				 GLubyte *refcbuf, int rank)
+{
+    int ref_off_x, ref_off_y;
+    int bad_pixel_count;
+    int x, y;
+    char filename[FILENAME_MAX];
+    GLubyte *cb;
+
+    printf("Checking returned image.\n");
+    cb = icetGetColorBuffer();
+    ref_off_x = (rank%tile_dim) * local_width;
+    ref_off_y = (rank/tile_dim) * local_height;
+    bad_pixel_count = 0;
+#define CBR(x, y) (cb[(y)*local_width*4 + (x)*4 + 0])
+#define CBG(x, y) (cb[(y)*local_width*4 + (x)*4 + 1])
+#define CBB(x, y) (cb[(y)*local_width*4 + (x)*4 + 2])
+#define CBA(x, y) (cb[(y)*local_width*4 + (x)*4 + 3])
+#define REFCBUFR(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 0])
+#define REFCBUFG(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 1])
+#define REFCBUFB(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 2])
+#define REFCBUFA(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 3])
+#define CB_EQUALS_REF(x, y)			\
+    (   (CBR((x), (y)) == REFCBUFR((x) + ref_off_x, (y) + ref_off_y) )	\
+     && (CBG((x), (y)) == REFCBUFG((x) + ref_off_x, (y) + ref_off_y) )	\
+     && (CBB((x), (y)) == REFCBUFB((x) + ref_off_x, (y) + ref_off_y) )	\
+     && (   CBA((x), (y)) == REFCBUFA((x) + ref_off_x, (y) + ref_off_y)	\
+	 || CBA((x), (y)) == 0 ) )
+
+    for (y = 0; y < local_height; y++) {
+	for (x = 0; x < local_width; x++) {
+	    if (!CB_EQUALS_REF(x, y)) {
+	      /* Uh, oh.  Pixels don't match.  This could be a genuine
+	       * error or it could be a floating point offset when
+	       * projecting edge boundries to pixels.  If the latter is the
+	       * case, there will be very few errors.  Count the errors,
+	       * and make sure there are not too many.  */
+		bad_pixel_count++;
+	    }
+	}
+    }
+
+  /* Check to make sure there were not too many errors. */
+    if (   (bad_pixel_count > 0.001*local_width*local_height)
+	&& (bad_pixel_count > local_width)
+	&& (bad_pixel_count > local_height) )
+    {
+      /* Too many errors.  Call it bad. */
+	printf("Too many bad pixels!!!!!!\n");
+      /* Write current images. */
+	sprintf(filename, "ref%03d.ppm", rank);
+	write_ppm(filename, refcbuf, SCREEN_WIDTH, SCREEN_HEIGHT);
+	sprintf(filename, "bad%03d.ppm", rank);
+	write_ppm(filename, cb, local_width, local_height);
+      /* Write difference image. */
+	for (y = 0; y < local_height; y++) {
+	    for (x = 0; x < local_width; x++) {
+		int off_x = x + ref_off_x;
+		int off_y = y + ref_off_y;
+		if (CBR(x, y) < REFCBUFR(off_x, off_y)){
+		    CBR(x,y) = REFCBUFR(off_x,off_y) - CBR(x,y);
+		} else {
+		    CBR(x,y) = CBR(x,y) - REFCBUFR(off_x,off_y);
+		}
+		if (CBG(x, y) < REFCBUFG(off_x, off_y)){
+		    CBG(x,y) = REFCBUFG(off_x,off_y) - CBG(x,y);
+		} else {
+		    CBG(x,y) = CBG(x,y) - REFCBUFG(off_x,off_y);
+		}
+		if (CBB(x, y) < REFCBUFB(off_x, off_y)){
+		    CBB(x,y) = REFCBUFB(off_x,off_y) - CBB(x,y);
+		} else {
+		    CBB(x,y) = CBB(x,y) - REFCBUFB(off_x,off_y);
+		}
+	    }
+	}
+	sprintf(filename, "diff%03d.ppm", rank);
+	write_ppm(filename, cb, local_width, local_height);
+	return 0;
+    }
+#undef CBR
+#undef CBG
+#undef CBB
+#undef CBA
+#undef REFCBUFR
+#undef REFCBUFG
+#undef REFCBUFB
+#undef REFCBUFA
+#undef CB_EQUALS_REF
+
+    return 1;
+	
+}
+
+static int compare_depth_buffers(int local_width, int local_height,
+				 GLuint *refdbuf, int rank)
+{
+    int ref_off_x, ref_off_y;
+    int bad_pixel_count;
+    int x, y;
+    char filename[FILENAME_MAX];
+    GLuint *db;
+
+    printf("Checking returned image.\n");
+    db = icetGetDepthBuffer();
+    ref_off_x = (rank%tile_dim) * local_width;
+    ref_off_y = (rank/tile_dim) * local_height;
+    bad_pixel_count = 0;
+
+    for (y = 0; y < local_height; y++) {
+	for (x = 0; x < local_width; x++) {
+	    if (DIFF(db[y*local_width + x],
+		     refdbuf[(y+ref_off_y)*SCREEN_WIDTH
+			    +x + ref_off_x]) > 0x0000FFFF) {
+	      /* Uh, oh.  Pixels don't match.  This could be a genuine
+	       * error or it could be a floating point offset when
+	       * projecting edge boundries to pixels.  If the latter is the
+	       * case, there will be very few errors.  Count the errors,
+	       * and make sure there are not too many.  */
+		bad_pixel_count++;
+	    }
+	}
+    }
+
+  /* Check to make sure there were not too many errors. */
+    if (   (bad_pixel_count > 0.001*local_width*local_height)
+	&& (bad_pixel_count > local_width)
+	&& (bad_pixel_count > local_height) )
+    {
+      /* Too many errors.  Call it bad. */
+	printf("Too many bad pixels!!!!!!\n");
+
+      /* Write encoded image. */
+	for (y = 0; y < local_height; y++) {
+	    for (x = 0; x < local_width; x++) {
+		GLuint ref = refdbuf[(y+ref_off_y)*SCREEN_WIDTH
+				    +x + ref_off_x];
+		GLuint rendered = db[y*local_width + x];
+		GLubyte *encoded = (GLubyte *)&db[y*local_width+x];
+		long error = ref - rendered;
+		if (error < 0) error = -error;
+		encoded[0] = (error & 0xFF000000) >> 24;
+		encoded[1] = (error & 0x00FF0000) >> 16;
+		encoded[2] = (error & 0x0000FF00) >> 8;
+	    }
+	}
+	sprintf(filename, "depth_error%03d.ppm", rank);
+	write_ppm(filename, (GLubyte*)db,
+		  local_width, local_height);
+
+	return 0;
+    }
+    return 1;
+}
+
+static void check_results(int result)
+{
+    int rank, num_proc;
+    int fail = (result != TEST_PASSED);
+
+    icetGetIntegerv(ICET_RANK, &rank);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+
+    if (rank+1 < num_proc) {
+	int in_fail;
+	ICET_COMM_RECV(&in_fail, 1, ICET_INT, rank+1, 1111);
+	fail |= in_fail;
+    }
+    if (rank-1 >= 0) {
+	ICET_COMM_SEND(&fail, 1, ICET_INT, rank-1, 1111);
+	ICET_COMM_RECV(&fail, 1, ICET_INT, rank-1, 2222);
+    }
+    if (rank+1 < num_proc) {
+	ICET_COMM_SEND(&fail, 1, ICET_INT, rank+1, 2222);
+    }
+
+    if (fail) {
+	exit(TEST_FAILED);
+    }
+}
+
 int RandomTransform(int argc, char *argv[])
 {
     int i, x, y;
     GLubyte *cb;
     GLubyte *refcbuf = NULL;
+    GLubyte *refcbuf2 = NULL;
     GLuint *db;
     GLuint *refdbuf = NULL;
     int result = TEST_PASSED;
     GLfloat mat[16];
-    char filename[FILENAME_MAX];
     int rank, num_proc;
+    GLint *image_order;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+
+    srand(time(NULL) + 10*num_proc*rank);
 
   /* Set up OpenGL. */
     glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -66,6 +251,28 @@ int RandomTransform(int argc, char *argv[])
 		  1.0f*((rank&0x04) == 0x04));
     }
 
+  /* Decide on an image order. */
+    image_order = malloc(num_proc * sizeof(GLint));
+    if (rank == 0) {
+	for (i = 0; i < num_proc; i++) image_order[i] = i;
+	printf("Image order:\n");
+	for (i = 0; i < num_proc; i++) {
+	    int swap_idx = rand()%(num_proc-i) + i;
+	    int swap = image_order[swap_idx];
+	    image_order[swap_idx] = image_order[i];
+	    image_order[i] = swap;
+	    printf("%4d", image_order[i]);
+	}
+	printf("\n");
+	for (i = 1; i < num_proc; i++) {
+	    ICET_COMM_SEND(image_order, num_proc, ICET_INT, i, 34);
+	}
+    } else {
+	ICET_COMM_RECV(image_order, num_proc, ICET_INT, 0, 34);
+    }
+    icetCompositeOrder(image_order);
+    free(image_order);
+
   /* Set up ICE-T. */
     icetDrawFunc(draw);
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.125, 0.125);
@@ -75,7 +282,6 @@ int RandomTransform(int argc, char *argv[])
     glOrtho(-1, 1, -1, 1, -1, 1);
 
   /* Get random transformation matrix. */
-    srand(time(NULL) + 10*num_proc*rank);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glTranslatef(2.0f*rand()/RAND_MAX - 1.0f,
@@ -101,10 +307,10 @@ int RandomTransform(int argc, char *argv[])
     for (i = 0; i < num_proc; i++) {
 	icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, i);
     }
+
+    printf("\nGetting base images for z compare.\n");
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
 			   ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT);
-
-    printf("\nGetting base image.\n");
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(mat);
     icetDrawFrame();
@@ -118,11 +324,25 @@ int RandomTransform(int argc, char *argv[])
     refdbuf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(GLuint));
     memcpy(refdbuf, db, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(GLuint));
 
+    printf("Getting base image for color blend.\n");
+    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT, ICET_COLOR_BUFFER_BIT);
+    icetEnable(ICET_ORDERED_COMPOSITE);
+    icetDrawFrame();
+    swap_buffers();
+
+    cb = icetGetColorBuffer();
+    refcbuf2 = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * 4);
+    memcpy(refcbuf2, cb, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
+
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
+	GLboolean test_ordering;
+
 	icetStrategy(strategy_list[i]);
 	printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
+
+	icetGetBooleanv(ICET_STRATEGY_SUPPORTS_ORDERING, &test_ordering);
 
 	for (tile_dim = 1; tile_dim*tile_dim <= num_proc; tile_dim++) {
 	    int local_width = SCREEN_WIDTH/tile_dim;
@@ -159,6 +379,7 @@ int RandomTransform(int argc, char *argv[])
 	    printf("\nDoing color buffer.\n");
 	    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT|ICET_DEPTH_BUFFER_BIT,
 				   ICET_COLOR_BUFFER_BIT);
+	    icetDisable(ICET_ORDERED_COMPOSITE);
 
 	    printf("Rendering frame.\n");
 	    glMatrixMode(GL_PROJECTION);
@@ -172,90 +393,14 @@ int RandomTransform(int argc, char *argv[])
 	    swap_buffers();
 
 	    if (rank < tile_dim*tile_dim) {
-		int ref_off_x, ref_off_y;
-		int bad_pixel_count;
-		printf("Checking returned image.\n");
-		cb = icetGetColorBuffer();
-		ref_off_x = (rank%tile_dim) * local_width;
-		ref_off_y = (rank/tile_dim) * local_height;
-		bad_pixel_count = 0;
-#define CBR(x, y) (cb[(y)*local_width*4 + (x)*4 + 0])
-#define CBG(x, y) (cb[(y)*local_width*4 + (x)*4 + 1])
-#define CBB(x, y) (cb[(y)*local_width*4 + (x)*4 + 2])
-#define CBA(x, y) (cb[(y)*local_width*4 + (x)*4 + 3])
-#define REFCBUFR(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 0])
-#define REFCBUFG(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 1])
-#define REFCBUFB(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 2])
-#define REFCBUFA(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 3])
-#define CB_EQUALS_REF(x, y)			\
-    (   (CBR((x), (y)) == REFCBUFR((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (CBG((x), (y)) == REFCBUFG((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (CBB((x), (y)) == REFCBUFB((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (   CBA((x), (y)) == REFCBUFA((x) + ref_off_x, (y) + ref_off_y)	\
-	 || CBA((x), (y)) == 0 ) )
-
-		for (y = 0; y < local_height; y++) {
-		    for (x = 0; x < local_width; x++) {
-			if (!CB_EQUALS_REF(x, y)) {
-			  /* Uh, oh.  Pixels don't match.  This could be a  */
-			  /* genuine error or it could be a floating point  */
-			  /* offset when projecting edge boundries to	    */
-			  /* pixels.  If the latter is the case, there will */
-			  /* be very few errors.  Count the errors, and	    */
-			  /* make sure there are not too many.		    */
-			    bad_pixel_count++;
-			}
-		    }
-		}
-
-	      /* Check to make sure there were not too many errors. */
-		if (   (bad_pixel_count > 0.001*local_width*local_height)
-		    && (bad_pixel_count > local_width)
-		    && (bad_pixel_count > local_height) )
-		{
-		  /* Too many errors.  Call it bad. */
-		    printf("Too many bad pixels!!!!!!\n");
-		  /* Write current images. */
-		    sprintf(filename, "ref%03d.ppm", rank);
-		    write_ppm(filename, refcbuf, SCREEN_WIDTH, SCREEN_HEIGHT);
-		    sprintf(filename, "bad%03d.ppm", rank);
-		    write_ppm(filename, cb, local_width, local_height);
-		  /* Write difference image. */
-		    for (y = 0; y < local_height; y++) {
-			for (x = 0; x < local_width; x++) {
-			    int off_x = x + ref_off_x;
-			    int off_y = y + ref_off_y;
-			    if (CBR(x, y) < REFCBUFR(off_x, off_y)){
-				CBR(x,y) = REFCBUFR(off_x,off_y) - CBR(x,y);
-			    } else {
-				CBR(x,y) = CBR(x,y) - REFCBUFR(off_x,off_y);
-			    }
-			    if (CBG(x, y) < REFCBUFG(off_x, off_y)){
-				CBG(x,y) = REFCBUFG(off_x,off_y) - CBG(x,y);
-			    } else {
-				CBG(x,y) = CBG(x,y) - REFCBUFG(off_x,off_y);
-			    }
-			    if (CBB(x, y) < REFCBUFB(off_x, off_y)){
-				CBB(x,y) = REFCBUFB(off_x,off_y) - CBB(x,y);
-			    } else {
-				CBB(x,y) = CBB(x,y) - REFCBUFB(off_x,off_y);
-			    }
-			}
-		    }
-		    sprintf(filename, "diff%03d.ppm", rank);
-		    write_ppm(filename, cb, local_width, local_height);
+		if (!compare_color_buffers(local_width, local_height,
+					   refcbuf, rank)) {
 		    result = TEST_FAILED;
 		}
-#undef CBR
-#undef CBG
-#undef CBB
-#undef CBA
-#undef REFCBUFR
-#undef REFCBUFG
-#undef REFCBUFB
-#undef REFCBUFA
-#undef CB_EQUALS_REF
+	    } else {
+		printf("Not a display node.  Not testing image.\n");
 	    }
+	    check_results(result);
 
 	    printf("\nDoing depth buffer.\n");
 	    icetInputOutputBuffers(ICET_DEPTH_BUFFER_BIT,ICET_DEPTH_BUFFER_BIT);
@@ -272,60 +417,44 @@ int RandomTransform(int argc, char *argv[])
 	    swap_buffers();
 
 	    if (rank < tile_dim*tile_dim) {
-		int ref_off_x, ref_off_y;
-		int bad_pixel_count;
-		printf("Checking returned image.\n");
-		db = icetGetDepthBuffer();
-		ref_off_x = (rank%tile_dim) * local_width;
-		ref_off_y = (rank/tile_dim) * local_height;
-		bad_pixel_count = 0;
-
-		for (y = 0; y < local_height; y++) {
-		    for (x = 0; x < local_width; x++) {
-			if (DIFF(db[y*local_width + x],
-				 refdbuf[(y+ref_off_y)*SCREEN_WIDTH
-					+x + ref_off_x]) > 0x0000FFFF) {
-			  /* Uh, oh.  Pixels don't match.  This could be a  */
-			  /* genuine error or it could be a floating point  */
-			  /* offset when projecting edge boundries to	    */
-			  /* pixels.  If the latter is the case, there will */
-			  /* be very few errors.  Count the errors, and	    */
-			  /* make sure there are not too many.		    */
-			    bad_pixel_count++;
-			}
-		    }
-		}
-
-	      /* Check to make sure there were not too many errors. */
-		if (   (bad_pixel_count > 0.001*local_width*local_height)
-		    && (bad_pixel_count > local_width)
-		    && (bad_pixel_count > local_height) )
-		{
-		  /* Too many errors.  Call it bad. */
-		    printf("Too many bad pixels!!!!!!\n");
-
-		  /* Write encoded image. */
-		    for (y = 0; y < local_height; y++) {
-			for (x = 0; x < local_width; x++) {
-			    GLuint ref = refdbuf[(y+ref_off_y)*SCREEN_WIDTH
-						+x + ref_off_x];
-			    GLuint rendered = db[y*local_width + x];
-			    GLubyte *encoded = (GLubyte *)&db[y*local_width+x];
-			    long error = ref - rendered;
-			    if (error < 0) error = -error;
-			    encoded[0] = (error & 0xFF000000) >> 24;
-			    encoded[1] = (error & 0x00FF0000) >> 16;
-			    encoded[2] = (error & 0x0000FF00) >> 8;
-			}
-		    }
-		    sprintf(filename, "depth_error%03d.ppm", rank);
-		    write_ppm(filename, (GLubyte*)db,
-			      local_width, local_height);
-
+		if (!compare_depth_buffers(local_width, local_height,
+					   refdbuf, rank)) {
 		    result = TEST_FAILED;
 		}
 	    } else {
 		printf("Not a display node.  Not testing image.\n");
+	    }
+	    check_results(result);
+
+	    if (test_ordering) {
+		printf("\nDoing blended color buffer.\n");
+		icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT,
+				       ICET_COLOR_BUFFER_BIT);
+		icetEnable(ICET_ORDERED_COMPOSITE);
+
+		printf("Rendering frame.\n");
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
+			-1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
+			-1, 1);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadMatrixf(mat);
+		icetDrawFrame();
+		swap_buffers();
+
+		if (rank < tile_dim*tile_dim) {
+		    if (!compare_color_buffers(local_width, local_height,
+					       refcbuf2, rank)) {
+			result = TEST_FAILED;
+		    }
+		} else {
+		    printf("Not a display node.  Not testing image.\n");
+		}
+		check_results(result);
+		icetDisable(ICET_ORDERED_COMPOSITE);
+	    } else {
+		printf("\nStrategy does not support ordering, skipping.\n");
 	    }
 	}
     }

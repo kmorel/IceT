@@ -185,6 +185,7 @@ bSetupPixelFormat(HDC hdc)
     ppfd->cRedBits = 4;
     ppfd->cGreenBits = 4;
     ppfd->cBlueBits = 4;
+    ppfd->cAlphaBits = 4;
     ppfd->cDepthBits = 16; 
     ppfd->cAccumBits = 0; 
     ppfd->cStencilBits = 0; 

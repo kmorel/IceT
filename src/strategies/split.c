@@ -27,7 +27,7 @@
 static IceTImage splitStrategy(void);
 
 IceTStrategy ICET_STRATEGY_SPLIT
-    = { "Image Split and Delegate", splitStrategy };
+    = { "Image Split and Delegate", ICET_FALSE, splitStrategy };
 
 static IceTImage splitStrategy(void)
 {

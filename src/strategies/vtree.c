@@ -49,7 +49,8 @@ static void do_send_receive(struct node_info *my_info, int tile_held,
 			    IceTImage imageBuffer,
 			    IceTSparseImage inImage, IceTSparseImage outImage);
 
-IceTStrategy ICET_STRATEGY_VTREE = { "Virtual Trees", vtreeCompose };
+IceTStrategy ICET_STRATEGY_VTREE
+    = { "Virtual Trees", ICET_FALSE, vtreeCompose };
 
 static IceTImage vtreeCompose(void)
 {

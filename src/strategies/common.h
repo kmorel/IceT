@@ -82,6 +82,7 @@ typedef void *(*IceTGenerateData)(int id, int dest, int *size);
 typedef void *(*IceTHandleData)(void *, int src);
 void icetSendRecvLargeMessages(int numMessagesSending,
 			       int *messageDestinations,
+			       int messagesInOrder,
 			       IceTGenerateData generateDataFunc,
 			       IceTHandleData handleDataFunc,
 			       void *incomingBuffer,

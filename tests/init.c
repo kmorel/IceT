@@ -83,6 +83,7 @@ static void checkIceTError(void)
 /* Just in case I need to actually print stuff out to the screen in the
    future. */
 static FILE *realstdout;
+#if 0
 static void realprintf(const char *fmt, ...)
 {
     va_list ap;
@@ -94,6 +95,7 @@ static void realprintf(const char *fmt, ...)
 	fflush(realstdout);
     }
 }
+#endif
 
 static IceTContext context;
 

@@ -46,7 +46,9 @@ ICET_EXPORT void icetStateSetInteger(GLenum pname, GLint value);
 ICET_EXPORT void icetStateSetBoolean(GLenum pname, GLboolean value);
 ICET_EXPORT void icetStateSetPointer(GLenum pname, GLvoid *value);
 
-ICET_EXPORT unsigned long icetGetTime(GLenum pname);
+ICET_EXPORT GLenum icetStateGetType(GLenum pname);
+ICET_EXPORT GLint icetStateGetSize(GLenum pname);
+ICET_EXPORT unsigned long icetStateGetTime(GLenum pname);
 
 ICET_EXPORT void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type,
 				    GLvoid *data);

@@ -37,6 +37,8 @@ void icetDrawFunc(IceTCallback func)
 void icetStrategy(IceTStrategy strategy)
 {
     icetStateSetPointer(ICET_STRATEGY_NAME, strategy.name);
+    icetStateSetBoolean(ICET_STRATEGY_SUPPORTS_ORDERING,
+			strategy.supports_ordering);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, (GLvoid *)strategy.compose);
 }
 
@@ -54,8 +56,36 @@ const GLubyte *icetGetStrategyName(void)
 void icetCompositeOrder(const GLint *process_ranks)
 {
     GLint num_proc;
+    GLint i;
+    GLint *process_orders;
+    GLboolean new_process_orders;
+
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+    if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
+	&& (icetStateGetSize(ICET_PROCESS_ORDERS) >= num_proc) ) {
+	process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+	new_process_orders = 0;
+    } else {
+	process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(GLint));
+	new_process_orders = 1;
+    }
+    for (i = 0; i < num_proc; i++) {
+	process_orders[i] = -1;
+    }
+    for (i = 0; i < num_proc; i++) {
+	process_orders[process_ranks[i]] = i;
+    }
+    for (i = 0; i < num_proc; i++) {
+	if (process_orders[i] == -1) {
+	    icetRaiseError("Invalid composit order.", ICET_INVALID_VALUE);
+	    return;
+	}
+    }
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, num_proc, process_ranks);
+    if (new_process_orders) {
+	icetUnsafeStateSet(ICET_PROCESS_ORDERS, num_proc,
+			   GL_INT, process_orders);
+    }
 }
 
 GLubyte *icetGetColorBuffer(void)

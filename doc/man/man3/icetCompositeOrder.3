@@ -6,7 +6,7 @@ Copyright (C) 2000-2003 Sandia National Laboratories
 
 Id
 ..
-.TH icetCompositeOrder 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetCompositeOrder 3 "July 15, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetCompositeOrder
 \- specify the order in which images are composited
@@ -62,14 +62,20 @@ When ordering is on, it is accepted that
 will be called in between every frame since the order of the geometry may
 change with the viewpoint.
 .SH ERRORS
-None.
+.TP 20
+.B ICET_INVALID_VALUE
+Not every entry in the parameter
+.I process_ranks
+was a unique, valid process rank.
 .SH WARNINGS
 None.
 .SH BUGS
-Each entry in the parameter
-.I process_ranks
-should be a unique, valid process rank.  This is not strictly enforced, but
-can cause major problems if not adhered to.
+If an
+.B ICET_INVALID_VALUE
+error is raised, internal arrays pertaining to the ordering of images may
+not be restored properly.  If such an error is raised, the functions should
+be re-invoked with a valid ordering before preceding.  Unpredictable
+results may occur otherwise.
 .SH COPYRIGHT
 Copyright \(co 2003 Sandia Corporation
 .br
