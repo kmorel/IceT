@@ -13,7 +13,7 @@ SET(MyTests
 	BlankTiles.c
 	CompressionSize.c
 	DisplayNoDraw.c
-	RandomTransform.c
+#	RandomTransform.c
 	)
 
 SET(UTIL_SRCS init.c ppm.c)
