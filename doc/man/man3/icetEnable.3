@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetEnable/Disable 3 "August 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetEnable/Disable 3 "February 14, 2005" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .BR icetEnable ", " icetDisable
 \- enable/disable an
@@ -63,6 +63,16 @@ flag is disabled by default.  This option does not affect the images
 returned from
 .BR icetGetColorBuffer " or " icetGetDepthBuffer ;
 it only affects the image in the OpenGL color buffer.
+.TP
+.B ICET_DISPLAY_INFLATE_WITH_HARDWARE
+This option determines how images are inflated.  When enabled (the
+default), images are inflated by creating a texture and allowing the
+hardware the inflate the image.  When disabled, images are inflated on the
+CPU.  This option has no effect unless both
+.B ICET_DISPLAY
+and
+.B ICET_DISPLAY_INFLATE
+are also enabled.
 .TP
 .B ICET_FLOATING_VIEWPORT
 If enabled, the projection will be shifted such that the geometry will be

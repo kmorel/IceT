@@ -30,16 +30,16 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     int idx;
 
     for (idx = 0; idx < num_contexts; idx++) {
-	if (context_list[idx].state == NULL) {
-	    break;
-	}
+        if (context_list[idx].state == NULL) {
+            break;
+        }
     }
 
     if (idx >= num_contexts) {
-	num_contexts += 4;
-	context_list = realloc(context_list,
-			       num_contexts*sizeof(struct IceTContext));
-	memset(context_list + idx, 0, 4 * sizeof(struct IceTContext));
+        num_contexts += 4;
+        context_list = realloc(context_list,
+                               num_contexts*sizeof(struct IceTContext));
+        memset(context_list + idx, 0, 4 * sizeof(struct IceTContext));
     }
 
     context_list[idx].communicator = comm->Duplicate(comm);
@@ -47,6 +47,8 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     context_list[idx].buffer = NULL;
     context_list[idx].buffer_size = 0;
     context_list[idx].buffer_offset = 0;
+
+    context_list[idx].display_inflate_texture = 0;
 
     context_list[idx].state = icetStateCreate();
 
@@ -61,7 +63,7 @@ void icetDestroyContext(IceTContext context)
     struct IceTContext *cp = &(context_list[context]);
 
     if (context == current_context_index) {
-	icetRaiseDebug("Destroying current context.");
+        icetRaiseDebug("Destroying current context.");
     }
 
     icetStateDestroy(cp->state);
@@ -72,6 +74,10 @@ void icetDestroyContext(IceTContext context)
     cp->buffer = NULL;
     cp->buffer_size = 0;
     cp->buffer_offset = 0;
+
+    if (cp->display_inflate_texture != 0) {
+        glDeleteTextures(1, &(cp->display_inflate_texture));
+    }
 }
 
 IceTContext icetGetContext(void)
@@ -82,10 +88,10 @@ IceTContext icetGetContext(void)
 void icetSetContext(IceTContext context)
 {
     if (   (context < 0)
-	|| (context >= num_contexts)
-	|| (context_list[context].state == NULL) ) {
-	icetRaiseError("No such context", ICET_INVALID_VALUE);
-	return;
+        || (context >= num_contexts)
+        || (context_list[context].state == NULL) ) {
+        icetRaiseError("No such context", ICET_INVALID_VALUE);
+        return;
     }
     current_context_index = context;
     icet_current_context = &(context_list[context]);
@@ -94,18 +100,18 @@ void icetSetContext(IceTContext context)
 void *icetReserveBufferMem(int size)
 {
     void *mem = ((GLubyte *)icet_current_context->buffer)
-	+ icet_current_context->buffer_offset;
+        + icet_current_context->buffer_offset;
 
   /* Integer boundries are good. */
     if (size%sizeof(long) != 0) {
-	size += sizeof(long) - size%sizeof(long);
+        size += sizeof(long) - size%sizeof(long);
     }
 
     icet_current_context->buffer_offset += size;
 
     if (icet_current_context->buffer_offset > icet_current_context->buffer_size)
-	icetRaiseError("Reserved more memory then allocated.",
-		       ICET_OUT_OF_MEMORY);
+        icetRaiseError("Reserved more memory then allocated.",
+                       ICET_OUT_OF_MEMORY);
 
     return mem;
 }
@@ -120,22 +126,22 @@ void icetResizeBuffer(int size)
   /* Add some padding in case the user's data does not lie on byte boundries. */
     size += 32*sizeof(long);
     if (icet_current_context->buffer_size < size) {
-	free(icet_current_context->buffer);
-	icet_current_context->buffer = malloc(size);
-	if (icet_current_context->buffer == NULL) {
-	    icetRaiseError("Could not allocate more buffer space",
-			   ICET_OUT_OF_MEMORY);
-	  /* Try to back out of change. */
-	    icet_current_context->buffer
-		= malloc(icet_current_context->buffer_size);
-	    if (icet_current_context->buffer == NULL) {
-		icetRaiseError("Could not back out of memory change",
-			       ICET_OUT_OF_MEMORY);
-		icet_current_context->buffer_size = 0;
-	    }
-	} else {
-	    icet_current_context->buffer_size = size;
-	}
+        free(icet_current_context->buffer);
+        icet_current_context->buffer = malloc(size);
+        if (icet_current_context->buffer == NULL) {
+            icetRaiseError("Could not allocate more buffer space",
+                           ICET_OUT_OF_MEMORY);
+          /* Try to back out of change. */
+            icet_current_context->buffer
+                = malloc(icet_current_context->buffer_size);
+            if (icet_current_context->buffer == NULL) {
+                icetRaiseError("Could not back out of memory change",
+                               ICET_OUT_OF_MEMORY);
+                icet_current_context->buffer_size = 0;
+            }
+        } else {
+            icet_current_context->buffer_size = size;
+        }
     }
 
     icet_current_context->buffer_offset = 0;

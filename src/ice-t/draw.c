@@ -253,8 +253,8 @@ void icetDrawFrame(void)
     total_time = icetWallTime();
 
     color_blending =
-	(GLboolean)(   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
-		    == ICET_COLOR_BUFFER_BIT);
+        (GLboolean)(   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
+                    == ICET_COLOR_BUFFER_BIT);
 
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
@@ -764,54 +764,111 @@ static void inflateBuffer(GLubyte *buffer, GLsizei width, GLsizei height)
 
     icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
 
-    if ((display_width > width) || (display_height > height)) {
+    if ((display_width <= width) && (display_height <= height)) {
+      /* No need to inflate image. */
+        glDrawPixels(width, height, color_format, GL_UNSIGNED_BYTE, buffer);
+    } else {
         GLsizei x, y;
         GLsizei x_div, y_div;
         GLubyte *last_scanline;
+        GLint target_width, target_height;
+        int use_textures = icetIsEnabled(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
+
+      /* If using hardware, resize to the nearest greater power of two.
+         Otherwise, resize to screen size. */
+        if (use_textures) {
+            for (target_width=1; target_width < width; target_width <<= 1);
+            for (target_height=1; target_height < height; target_height <<= 1);
+            if (target_width*target_height >= display_width*display_height) {
+              /* Sizing up to a power of two takes more data than just
+                 sizing up to the screen size. */
+                use_textures = 0;
+                target_width = display_width;
+                target_height = display_height;
+            }
+        } else {
+            target_width = display_width;
+            target_height = display_height;
+        }
 
       /* Make sure buffer is big enough. */
-        if (display_buffer_size < display_width*display_height) {
+        if (display_buffer_size < target_width*target_height) {
             free(display_buffer);
-            display_buffer_size = display_width*display_height;
+            display_buffer_size = target_width*target_height;
             display_buffer = malloc(4*sizeof(GLubyte)*display_buffer_size);
         }
 
       /* This is how we scale the image with integer arithmetic.
        * If a/b = r = a div b + (a mod b)/b then:
        *        c/r = c/(a div b + (a mod b)/b) = c*b/(b*(a div b) + a mod b)
-       * In our case a/b is display_width/width and display_height/height.
+       * In our case a/b is target_width/width and target_height/height.
        * x_div and y_div are the denominators in the equation above.
        */
-        x_div = width*(display_width/width) + display_width%width;
-        y_div = height*(display_height/height) + display_height%height;
+        x_div = width*(target_width/width) + target_width%width;
+        y_div = height*(target_height/height) + target_height%height;
         last_scanline = NULL;
-        for (y = 0; y < display_height; y++) {
+        for (y = 0; y < target_height; y++) {
             GLubyte *src_scanline;
             GLubyte *dest_scanline;
 
             src_scanline = buffer + 4*width*((y*height)/y_div);
-            dest_scanline = display_buffer + 4*display_width*y;
+            dest_scanline = display_buffer + 4*target_width*y;
 
             if (src_scanline == last_scanline) {
               /* Repeating last scanline.  Just copy memory. */
                 memcpy(dest_scanline,
-                       (const GLubyte *)(dest_scanline - 4*display_width),
-                       4*display_width);
+                       (const GLubyte *)(dest_scanline - 4*target_width),
+                       4*target_width);
                 continue;
             }
 
-            for (x = 0; x < display_width; x++) {
+            for (x = 0; x < target_width; x++) {
                 ((GLuint *)dest_scanline)[x] =
                     ((GLuint *)src_scanline)[(x*width)/x_div];
             }
 
             last_scanline = src_scanline;
         }
-        glDrawPixels(display_width, display_height, color_format,
-                     GL_UNSIGNED_BYTE, display_buffer);
-    } else {
-      /* No need to inflate image. */
-        glDrawPixels(width, height, color_format, GL_UNSIGNED_BYTE, buffer);
+
+        if (use_textures) {
+          /* Setup texture. */
+            if (icet_current_context->display_inflate_texture == 0) {
+                glGenTextures(1,
+                              &(icet_current_context->display_inflate_texture));
+            }
+            glBindTexture(GL_TEXTURE_2D,
+                          icet_current_context->display_inflate_texture);
+            glEnable(GL_TEXTURE_2D);
+            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target_width, target_height,
+                         0, color_format, GL_UNSIGNED_BYTE, display_buffer);
+
+          /* Setup geometry. */
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            glMatrixMode(GL_MODELVIEW);
+            glPushMatrix();
+            glLoadIdentity();
+
+          /* Draw texture. */
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glBegin(GL_QUADS);
+              glTexCoord2f(0, 0);  glVertex2f(-1, -1);
+              glTexCoord2f(1, 0);  glVertex2f( 1, -1);
+              glTexCoord2f(1, 1);  glVertex2f( 1,  1);
+              glTexCoord2f(0, 1);  glVertex2f(-1,  1);
+            glEnd();
+
+          /* Clean up. */
+            glPopMatrix();
+        } else {
+            glDrawPixels(target_width, target_height, color_format,
+                         GL_UNSIGNED_BYTE, display_buffer);
+        }
     }
 }
 

@@ -39,9 +39,9 @@ void icetStateDestroy(IceTState state)
     int i;
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
-	if (state[i].type != ICET_NULL) {
-	    free(state[i].data);
-	}
+        if (state[i].type != ICET_NULL) {
+            free(state[i].data);
+        }
     }
     free(state);
 }
@@ -55,31 +55,31 @@ void icetStateCopy(IceTState dest, const IceTState src)
     mod_time = get_usec();
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
-	if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
-	    || (i == ICET_DATA_REPLICATION_GROUP)
-	    || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
-	    || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
-	    || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
-	    || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
-	{
-	    continue;
-	}
+        if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
+            || (i == ICET_DATA_REPLICATION_GROUP)
+            || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
+            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
+            || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
+            || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
+        {
+            continue;
+        }
 
-	if (dest[i].type != ICET_NULL) {
-	    free(dest[i].data);
-	}
+        if (dest[i].type != ICET_NULL) {
+            free(dest[i].data);
+        }
 
-	type_width = typeWidth(src[i].type);
+        type_width = typeWidth(src[i].type);
 
-	dest[i].type = src[i].type;
-	dest[i].size = src[i].size;
-	if (type_width > 0) {
-	    dest[i].data = malloc(type_width * dest[i].size);
-	    memcpy(dest[i].data, src[i].data, src[i].size * type_width);
-	} else {
-	    dest[i].data = NULL;
-	}
-	dest[i].mod_time = mod_time;
+        dest[i].type = src[i].type;
+        dest[i].size = src[i].size;
+        if (type_width > 0) {
+            dest[i].data = malloc(type_width * dest[i].size);
+            memcpy(dest[i].data, src[i].data, src[i].size * type_width);
+        } else {
+            dest[i].data = NULL;
+        }
+        dest[i].mod_time = mod_time;
     }
 }
 
@@ -106,10 +106,10 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-			   ICET_COLOR_BUFFER_BIT);
+                           ICET_COLOR_BUFFER_BIT);
     int_array = malloc(ICET_COMM_SIZE() * sizeof(GLint));
     for (i = 0; i < ICET_COMM_SIZE(); i++) {
-	int_array[i] = i;
+        int_array[i] = i;
     }
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, ICET_COMM_SIZE(), int_array);
     icetStateSetIntegerv(ICET_PROCESS_ORDERS, ICET_COMM_SIZE(), int_array);
@@ -133,6 +133,7 @@ void icetStateSetDefaults(void)
     icetEnable(ICET_DISPLAY);
     icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_DISPLAY_INFLATE);
+    icetEnable(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
@@ -200,37 +201,37 @@ unsigned long icetStateGetTime(GLenum pname)
 }
 
 #define copyArrayGivenCType(type_dest, array_dest, type_src, array_src, size) \
-    for (i = 0; i < (size); i++) {					\
-	((type_dest *)(array_dest))[i]					\
-	    = (type_dest)(((type_src *)(array_src))[i]);		\
+    for (i = 0; i < (size); i++) {                                      \
+        ((type_dest *)(array_dest))[i]                                  \
+            = (type_dest)(((type_src *)(array_src))[i]);                \
     }
-#define copyArray(type_dest, array_dest, type_src, array_src, size)	       \
-    switch (type_src) {							       \
-      case ICET_DOUBLE:							       \
-	  copyArrayGivenCType(type_dest,array_dest, GLdouble,array_src, size); \
-	  break;							       \
-      case ICET_FLOAT:							       \
-	  copyArrayGivenCType(type_dest,array_dest, GLfloat,array_src, size);  \
-	  break;							       \
-      case ICET_BOOLEAN:						       \
-	  copyArrayGivenCType(type_dest,array_dest, GLboolean,array_src, size);\
-	  break;							       \
-      case ICET_INT:							       \
-	  copyArrayGivenCType(type_dest,array_dest, GLint,array_src, size);    \
-	  break;							       \
-      case ICET_NULL:							       \
-	  {								       \
-	      char msg[256];						       \
-	      sprintf(msg, "No such parameter, 0x%x.", (int)pname);	       \
-	      icetRaiseError(msg, ICET_INVALID_ENUM);			       \
-	  }								       \
-	  break;							       \
-      default:								       \
-	  {								       \
-	      char msg[256];						       \
-	      sprintf(msg, "Could not cast value for 0x%x.", (int)pname);      \
-	      icetRaiseError(msg, ICET_BAD_CAST);			       \
-	  }								       \
+#define copyArray(type_dest, array_dest, type_src, array_src, size)            \
+    switch (type_src) {                                                        \
+      case ICET_DOUBLE:                                                        \
+          copyArrayGivenCType(type_dest,array_dest, GLdouble,array_src, size); \
+          break;                                                               \
+      case ICET_FLOAT:                                                         \
+          copyArrayGivenCType(type_dest,array_dest, GLfloat,array_src, size);  \
+          break;                                                               \
+      case ICET_BOOLEAN:                                                       \
+          copyArrayGivenCType(type_dest,array_dest, GLboolean,array_src, size);\
+          break;                                                               \
+      case ICET_INT:                                                           \
+          copyArrayGivenCType(type_dest,array_dest, GLint,array_src, size);    \
+          break;                                                               \
+      case ICET_NULL:                                                          \
+          {                                                                    \
+              char msg[256];                                                   \
+              sprintf(msg, "No such parameter, 0x%x.", (int)pname);            \
+              icetRaiseError(msg, ICET_INVALID_ENUM);                          \
+          }                                                                    \
+          break;                                                               \
+      default:                                                                 \
+          {                                                                    \
+              char msg[256];                                                   \
+              sprintf(msg, "Could not cast value for 0x%x.", (int)pname);      \
+              icetRaiseError(msg, ICET_BAD_CAST);                              \
+          }                                                                    \
     }
 
 void icetGetDoublev(GLenum pname, GLdouble *params)
@@ -263,14 +264,14 @@ void icetGetPointerv(GLenum pname, GLvoid **params)
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
     if (value->type == ICET_NULL) {
-	char msg[256];
-	sprintf(msg, "No such parameter, 0x%x.", (int)pname);
-	icetRaiseError(msg, ICET_INVALID_ENUM);
+        char msg[256];
+        sprintf(msg, "No such parameter, 0x%x.", (int)pname);
+        icetRaiseError(msg, ICET_INVALID_ENUM);
     }
     if (value->type != ICET_POINTER) {
-	char msg[256];
-	sprintf(msg, "Could not cast value for 0x%x.", (int)pname);
-	icetRaiseError(msg, ICET_BAD_CAST);
+        char msg[256];
+        sprintf(msg, "Could not cast value for 0x%x.", (int)pname);
+        icetRaiseError(msg, ICET_BAD_CAST);
     }
     copyArrayGivenCType(GLvoid *, params, GLvoid *, value->data, value->size);
 }
@@ -278,8 +279,8 @@ void icetGetPointerv(GLenum pname, GLvoid **params)
 void icetEnable(GLenum pname)
 {
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
-	icetRaiseError("Bad value to icetEnable", ICET_INVALID_VALUE);
-	return;
+        icetRaiseError("Bad value to icetEnable", ICET_INVALID_VALUE);
+        return;
     }
     icetStateSetBoolean(pname, ICET_TRUE);
 }
@@ -287,8 +288,8 @@ void icetEnable(GLenum pname)
 void icetDisable(GLenum pname)
 {
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
-	icetRaiseError("Bad value to icetDisable", ICET_INVALID_VALUE);
-	return;
+        icetRaiseError("Bad value to icetDisable", ICET_INVALID_VALUE);
+        return;
     }
     icetStateSetBoolean(pname, ICET_FALSE);
 }
@@ -298,8 +299,8 @@ GLboolean icetIsEnabled(GLenum pname)
     GLboolean isEnabled;
 
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
-	icetRaiseError("Bad value to icetIsEnabled", ICET_INVALID_VALUE);
-	return ICET_FALSE;
+        icetRaiseError("Bad value to icetIsEnabled", ICET_INVALID_VALUE);
+        return ICET_FALSE;
     }
     icetGetBooleanv(pname, &isEnabled);
     return isEnabled;
@@ -309,21 +310,21 @@ static int typeWidth(GLenum type)
 {
     switch (type) {
       case ICET_DOUBLE:
-	  return sizeof(GLdouble);
+          return sizeof(GLdouble);
       case ICET_FLOAT:
-	  return sizeof(GLfloat);
+          return sizeof(GLfloat);
       case ICET_BOOLEAN:
-	  return sizeof(GLboolean);
+          return sizeof(GLboolean);
       case ICET_SHORT:
-	  return sizeof(GLshort);
+          return sizeof(GLshort);
       case ICET_INT:
-	  return sizeof(GLint);
+          return sizeof(GLint);
       case ICET_POINTER:
-	  return sizeof(GLvoid *);
+          return sizeof(GLvoid *);
       case ICET_NULL:
-	  return 0;
+          return 0;
       default:
-	  icetRaiseError("Bad type detected in state.", ICET_SANITY_CHECK_FAIL);
+          icetRaiseError("Bad type detected in state.", ICET_SANITY_CHECK_FAIL);
     }
 
     return 0;
@@ -334,7 +335,7 @@ void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type, GLvoid *data)
     IceTState state = icetGetState();
 
     if (state[pname].type != ICET_NULL) {
-	free(state[pname].data);
+        free(state[pname].data);
     }
 
     state[pname].type = type;
@@ -354,13 +355,13 @@ static void stateSet(GLenum pname, GLint size, GLenum type, const GLvoid *data)
 
     if ((size == state[pname].size) && (type == state[pname].type)) {
       /* Save time by just copying data into pre-existing memory. */
-	memcpy(state[pname].data, data, size * type_width);
-	state[pname].mod_time = get_usec();
+        memcpy(state[pname].data, data, size * type_width);
+        state[pname].mod_time = get_usec();
     } else {
-	datacopy = malloc(size * type_width);
-	memcpy(datacopy, data, size * type_width);
+        datacopy = malloc(size * type_width);
+        memcpy(datacopy, data, size * type_width);
 
-	icetUnsafeStateSet(pname, size, type, datacopy);
+        icetUnsafeStateSet(pname, size, type, datacopy);
     }
 }
 
@@ -395,13 +396,13 @@ void icetStateDump(void)
     state = icetGetState();
     printf("State dump:\n");
     for (i = 0; i < ICET_STATE_SIZE; i++) {
-	if (state->type != ICET_NULL) {
-	    printf("param = 0x%x\n", i);
-	    printf("type  = 0x%x\n", (int)state->type);
-	    printf("size  = %d\n", (int)state->size);
-	    printf("data  = %p\n", state->data);
-	    printf("mod   = %d\n", (int)state->mod_time);
-	}
-	state++;
+        if (state->type != ICET_NULL) {
+            printf("param = 0x%x\n", i);
+            printf("type  = 0x%x\n", (int)state->type);
+            printf("size  = %d\n", (int)state->size);
+            printf("data  = %p\n", state->data);
+            printf("mod   = %d\n", (int)state->mod_time);
+        }
+        state++;
     }
 }

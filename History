@@ -25,7 +25,10 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 
 	patch 1: Some changes to compile with Mac OS X and with LAM MPI.
 
-	patch 2: Got rid of some compiler warnings.
+	patch 2: Got rid of some compiler warnings.  Change the image
+	inflation to use the graphics hardware to inflate with textures
+	rather than inflate the image with software and then send more data
+	to the graphics card.
 
 Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	a composite on just the depth buffer.  This is useful when creating
