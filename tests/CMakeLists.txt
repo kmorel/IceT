@@ -31,7 +31,7 @@ CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
 		       FUNCTION init_mpi_comm)
 
 ADD_EXECUTABLE(icetTests_mpi ${Tests} ${UTIL_SRCS})
-TARGET_LINK_LIBRARIES(icetTests_mpi icet icet_strategies icet_mpi)
+TARGET_LINK_LIBRARIES(icetTests_mpi icet icet_strategies icet_mpi ${OPENGL_glu_LIBRARY})
 
 IF (ICET_MPIRUN_EXE)
   SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_PREFLAGS})
