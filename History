@@ -35,6 +35,9 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	processes).  The major consequence (besides obvious linker flags)
 	is that a default strategy is no longer set.
 
+	patch 1: More updates to the build system to actually allow other
+	CMake-built programs use ICE-T.
+
 Revision 0.3: Added the ability to render tiles smaller then the actual
 	display window and then inflate the image back onto the tiles.
 	Also changed the convention of how the projection matrix is set
