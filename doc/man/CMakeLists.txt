@@ -12,9 +12,10 @@ SET(MAN3_FILES
     man3/icetAddTile.3 
     man3/icetBoundingBox.3 
     man3/icetBoundingVertices.3 
+    man3/icetCompositeOrder.3
     man3/icetCopyState.3 
     man3/icetCreateContext.3 
-    man3/icetCreateMPICommunicator.3 
+    man3/icetCreateMPICommunicator.3
     man3/icetDestroyContext.3 
     man3/icetDestroyMPICommunicator.3 
     man3/icetDiagnostics.3 

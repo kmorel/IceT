@@ -1,0 +1,90 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2003 Sandia National Laboratories
+
+Id
+..
+.TH icetCompositeOrder 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
+.SH NAME
+.B icetCompositeOrder
+\- specify the order in which images are composited
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetCompositeOrder(const GLint *" process_ranks ");"
+.fi
+.SH DESCRIPTION
+If
+.B ICET_ORDERED_COMPOSITE
+is enabled and the current strategy supports ordered composition, then the
+order which images are composited are specified with
+.BR icetCompositeOrder .
+If compositing is done with z-buffer comparisons (i.e. the depth buffer is
+selected as an input with
+.BR icetInputOutputBuffers ),
+then the ordering does not matter, and
+.B ICET_ORDERED_COMPOSITE
+should probably be disabled.  However, if compositing is done with color
+blending (i.e. the depth buffer is
+.I not
+selected as in input with
+.BR icetInputOutputBuffers ),
+then the order in which the images are composed can drastically change the
+output.
+.PP
+For ordered image compositing to work, the geometric objects rendered by
+processes must be arranged such that if the geometry of one process is ``in
+front'' of the geometry of another process for any camera ray, that
+ordering holds for all camera rays.  It is the application's responsibility
+to ensure that such an ordering exists and to find that ordering.  The
+easiest way to do this is to ensure that the geometry of each process falls
+cleanly into regions of an octree, k-d tree, or similar structure.
+.PP
+Once the geometry order is determined for a particular rendering viewpoint,
+it is given to
+.B ICE-T
+in the form of an array of ranks.  The parameter
+.I process_ranks
+should have exactly
+.B ICET_NUM_PROCESSES
+entries, each with a unique, valid process rank.  The first process should
+have the geometry that is ``in front'' of all others, the next directly
+behind that, and so on.  It should be noted that the application may
+actually impose only a partial order on the geometry, but that can easily
+be converted to the linear ordering requird by
+.BR ICE-T .
+.PP
+When ordering is on, it is accepted that
+.B icetCompositeOrder
+will be called in between every frame since the order of the geometry may
+change with the viewpoint.
+.SH ERRORS
+None.
+.SH WARNINGS
+None.
+.SH BUGS
+Each entry in the parameter
+.I process_ranks
+should be a unique, valid process rank.  This is not strictly enforced, but
+can cause major problems if not adhered to.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetInputOutputBuffers ", " icetStrategy
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

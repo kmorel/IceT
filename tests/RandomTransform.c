@@ -53,7 +53,7 @@ int RandomTransform(int argc, char *argv[])
     int rank, num_proc;
 
     icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &num_proc);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
   /* Set up OpenGL. */
     glClearColor(0.0, 0.0, 0.0, 0.0);

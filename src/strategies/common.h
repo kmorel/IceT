@@ -95,17 +95,21 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 
    compose_group - A mapping of processors from the MPI ranks to the "group"
 	ranks.  The composed image ends up in the processor with rank
-	compose_group[0].
+	compose_group[image_dest].
    group_size - The number of processors in the group.  The compose_group
 	array should have group_size entries.
+   image_dest - The location of where the final composed image should be
+	placed.  It is an index into compose_group, not the actual rank
+	of the process.
    imageBuffer - The input image colors and/or depth to be used.  If this
-	processor has rank compose_group[0], any output data will be put
-	in this buffer.  If the color or depth value is not to be computed
-	or this processor is not rank compose_group[0], the buffer has
-	undefined partial results when the function returns.
+	processor has rank compose_group[compose_group], any output data
+	will be put in this buffer.  If the color or depth value is not to
+	be computed or this processor is not rank
+	compose_group[compose_group], the buffer has undefined partial
+	results when the function returns.
    inImage/outImage - two buffers for holding sparse image data.
 */
-void icetBswapCompose(int *compose_group, int group_size,
+void icetBswapCompose(int *compose_group, int group_size, int image_dest,
 		      IceTImage imageBuffer,
 		      IceTSparseImage inImage, IceTSparseImage outImage);
 
@@ -116,17 +120,20 @@ void icetBswapCompose(int *compose_group, int group_size,
 
    compose_group - A mapping of processors from the MPI ranks to the "group"
 	ranks.  The composed image ends up in the processor with rank
-	compose_group[0].
+	compose_group[image_dest].
    group_size - The number of processors in the group.  The compose_group
 	array should have group_size entries.
+   image_dest - The location of where the final composed image should be
+	placed.  It is an index into compose_group, not the actual rank
+	of the process.
    imageBuffer - The input image colors and/or depth to be used.  If this
-	processor has rank compose_group[0], any output data will be put
-	in this buffer.  If the color or depth value is not to be computed
-	or this processor is not rank compose_group[0], the buffer has
-	undefined partial results when the function returns.
+	processor has rank compose_group[image_dest], any output data will
+	be put in this buffer.  If the color or depth value is not to be
+	computed or this processor is not rank compose_group[image_dest],
+	the buffer has undefined partial results when the function returns.
    compressedImageBuffer - a buffer for holding sparse image data in transit.
 */
-void icetTreeCompose(int *compose_group, int group_size,
+void icetTreeCompose(int *compose_group, int group_size, int image_dest,
 		     IceTImage imageBuffer,
 		     IceTSparseImage compressedImageBuffer);
 

@@ -51,6 +51,13 @@ const GLubyte *icetGetStrategyName(void)
     return name;
 }
 
+void icetCompositeOrder(const GLint *process_ranks)
+{
+    GLint num_proc;
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+    icetStateSetIntegerv(ICET_COMPOSITE_ORDER, num_proc, process_ranks);
+}
+
 GLubyte *icetGetColorBuffer(void)
 {
     GLint color_buffer_valid;
@@ -117,16 +124,41 @@ void icetDrawFrame(void)
 	return;
     }
 
+    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
+
     icetStateResetTiming();
     total_time = icetWallTime();
 
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
-    ((GLubyte *)&background_color_word)[0] = (GLubyte)(255*background_color[0]);
-    ((GLubyte *)&background_color_word)[1] = (GLubyte)(255*background_color[1]);
-    ((GLubyte *)&background_color_word)[2] = (GLubyte)(255*background_color[2]);
-    ((GLubyte *)&background_color_word)[3] = (GLubyte)(255*background_color[3]);
-    icetStateSetInteger(ICET_BACKGROUND_COLOR, background_color_word);
+    icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, background_color);
+    switch (color_format) {
+      case GL_RGBA:
+	  ((GLubyte *)&background_color_word)[0]
+	      = (GLubyte)(255*background_color[0]);
+	  ((GLubyte *)&background_color_word)[1]
+	      = (GLubyte)(255*background_color[1]);
+	  ((GLubyte *)&background_color_word)[2]
+	      = (GLubyte)(255*background_color[2]);
+	  ((GLubyte *)&background_color_word)[3]
+	      = (GLubyte)(255*background_color[3]);
+	  break;
+#if defined(GL_BGRA)
+      case GL_BGRA:
+#elif defined(GL_BGRA_EXT)
+      case GL_BGRA_EXT:
+#endif
+	  ((GLubyte *)&background_color_word)[0]
+	      = (GLubyte)(255*background_color[2]);
+	  ((GLubyte *)&background_color_word)[1]
+	      = (GLubyte)(255*background_color[1]);
+	  ((GLubyte *)&background_color_word)[2]
+	      = (GLubyte)(255*background_color[0]);
+	  ((GLubyte *)&background_color_word)[3]
+	      = (GLubyte)(255*background_color[3]);
+	  break;
+    }
+    icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, background_color_word);
 
     icetGetIntegerv(ICET_FRAME_COUNT, &frame_count);
     frame_count++;
@@ -152,7 +184,7 @@ void icetDrawFrame(void)
     }
 
     icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &processors);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &processors);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetResizeBuffer(  sizeof(GLint)*num_tiles
 		     + sizeof(GLboolean)*num_tiles*(processors+1)
@@ -390,7 +422,6 @@ void icetDrawFrame(void)
 	    } else {
 		glDisable(GL_BLEND);
 	    }
-	    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
 	    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	    if (icetIsEnabled(ICET_DISPLAY_INFLATE)) {
 		inflateBuffer(colorBuffer,

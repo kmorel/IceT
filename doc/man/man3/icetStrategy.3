@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetStrategy 3 "June 11, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetStrategy 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetStrategy
 \- set the strategy used to composite images.
@@ -38,41 +38,50 @@ but there are several predefined strategies to select from.  They are:
 .TP 8
 .B ICET_STRATEGY_SERIAL
 Basically applies a `traditional' single tile composition (such as binary
-swap) to each tile in the order they were defined.  Because each processor
+swap) to each tile in the order they were defined.  Because each process
 must take part in the composition of each tile regardless of whether they
 draw into it, this strategy is usually very inefficient when compositing
 for more than tile.  It is provided mostly for comparative purposes.
 .TP
 .B ICET_STRATEGY_DIRECT
-As each processor renders an image for a tile, that image is sent directly
-to the processor that will display that tile.  This usually results in a
-few processors receiving and processing the majority of the data, and is
+As each process renders an image for a tile, that image is sent directly
+to the process that will display that tile.  This usually results in a
+few processes receiving and processing the majority of the data, and is
 therefore usually an inefficient strategy.
 .TP
 .B ICET_STRATEGY_SPLIT
 Like
 .BR ICET_STRATEGY_DIRECT ,
-except that the tiles are split up, and each processor is assigned a piece
-of a tile in such a way that each processor receives and processes about
-the same amount of data.  This strategy is often very efficient, but due to
-the large amount of messages passed, it has not proven to be very scalable
-or robust.
+except that the tiles are split up, and each process is assigned a piece of
+a tile in such a way that each process receives and handles about the same
+amount of data.  This strategy is often very efficient, but due to the
+large amount of messages passed, it has not proven to be very scalable or
+robust.
 .TP
 .B ICET_STRATEGY_REDUCE
 A two phase algorithm.  In the first phase, tile images are redistributed
-such that each processor has one image for one tile.  In the second phase,
-a `traditional' single tile composition is performed for each tile.  Since
-each processor contains an image for only one tile, all these compositions
+such that each process has one image for one tile.  In the second phase, a
+`traditional' single tile composition is performed for each tile.  Since
+each process contains an image for only one tile, all these compositions
 may happen simultaneously.  This is a well rounded strategy that seems to
 perform well in a wide variety of applications.
 .TP
 .B ICET_STRATEGY_VTREE
 An extension to the binary tree algorithm for image composition.  Sets up a
-`virtual' composition tree for each tile image.  Processors that belong to
+`virtual' composition tree for each tile image.  Processes that belong to
 multiple trees (because they render to more than one tile) are allowed to
 float between trees.  This strategy is not quite as well load balanced as
 .BR ICET_STRATEGY_REDUCE " or " ICET_STRATEGY_SPLIT ,
 but has very well behaved network communication.
+.PP
+Not all of the strategies support ordered image composition.
+.BR ICET_STRATEGY_SERIAL
+does support ordered image composition.
+.BR ICET_STRATEGY_DIRECT ", " ICET_STRATEGY_SPLIT ", "
+.BR ICET_STRATEGY_REDUCE ", and " ICET_STRATEGY_VTREE
+do not support ordered image composition and will ignore
+.B ICET_ORDERED_COMPOSITE
+if it is enabled.
 .SH ERRORS
 None.
 .SH WARNINGS

@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetGet 3 "June 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetGet 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetGet
 \- get an
@@ -51,6 +51,18 @@ the expected
 However, some systems that use buffer values with
 24 bits or less cast the maximum value to something smaller.
 .TP
+.B ICET_BACKGROUND_COLOR
+The color that ICE-T is currently assuming is the background color.  It is
+an RGBA value that is stored as four floating point values.
+.TP
+.B ICET_BACKGROUND_COLOR_WORD
+The same as
+.B ICET_BACKGROUND_COLOR
+except that each component is stored as 8-bit values and packed in a 4-byte
+integer as specified by
+.BR ICET_COLOR_FORMAT .
+The idea is to rapidly fill the background of color buffers.
+.TP
 .B ICET_BUFFER_READ_TIME
 The total time, in seconds, spent reading from OpenGL buffers during the
 last call to
@@ -64,7 +76,7 @@ call to
 Stored as a double.
 .TP
 .B ICET_BYTES_SENT
-The total number of bytes sent by the calling processor for transferring
+The total number of bytes sent by the calling process for transferring
 image data during the last call to
 .BR icetDrawFrame .
 Stored as an integer.
@@ -86,6 +98,15 @@ The total time, in seconds, spent in performing Z comparisons of images
 during the last call to
 .BR icetDrawFrame .
 Stored as a double.
+.TP
+.B ICET_COMPOSITE_ORDER
+The order in which images are to be composited if
+.B ICET_ORDERED_COMPOSITE
+is enabled and the current startegy supports ordered compositing.  The
+parameter contains
+.B ICET_NUM_PROCESSES
+entries.  The value of this parameter is set with
+.BR icetCompositeOrder .
 .TP
 .B ICET_COMPOSITE_TIME
 The total time, in seconds, spent in compositing during the last call to
@@ -112,12 +133,12 @@ The diagnostics flags set with
 .BR icetDiagnostics .
 .TP
 .B ICET_DISPLAY_NODES
-An array of processor ranks.  The size of the array is equal to the number
+An array of process ranks.  The size of the array is equal to the number
 of tiles
 .RB ( ICET_NUM_TILES ).
 The
 .IR i -th
-entry is the rank of the processor that is displaying the tile described by
+entry is the rank of the process that is displaying the tile described by
 the
 .IR i -th
 entry in
@@ -171,8 +192,8 @@ of times
 was called after the last
 .BR icetResetTiles .
 .TP
-.B ICET_NUM_PROCESSORS
-The number of processors in the parallel job as given by the
+.B ICET_NUM_PROCESSES
+The number of processes in the parallel job as given by the
 .B IceTCommunicator
 object associated with the current context.
 .TP
@@ -184,7 +205,7 @@ will generate from composition.  The value is set with
 See the documentation of that function for valid bit flags.
 .TP
 .B ICET_RANK
-The rank of the processor as given by the
+The rank of the process as given by the
 .B IceTCommunicator
 object associated with the current context.
 .TP
@@ -201,7 +222,7 @@ call to
 Stored as a double.
 .TP
 .B ICET_TILE_DISPLAYED
-The index of the tile the local processor is displaying.  The index will
+The index of the tile the local process is displaying.  The index will
 correspond to the tile entry in the
 .BR ICET_DISPLAY_NODES " and " ICET_TILE_VIEWPORT
 arrays.  If set to
@@ -209,14 +230,14 @@ arrays.  If set to
 <=
 .I i
 <
-.BR ICET_NUM_PROCESSORS ,
+.BR ICET_NUM_PROCESSES ,
 then the
 .IR i -th
 entry of
 .B ICET_DISPLAY_NODES
 is equal to
 .BR ICET_RANK .
-If the local processor is not displaying any tile, then
+If the local process is not displaying any tile, then
 .B ICET_TILE_DISPLAYED
 is set to
 .BR -1 .
@@ -228,9 +249,9 @@ of any tile.
 .TP
 .B ICET_TILE_MAX_PIXELS
 The maximum number of pixels in any tile.  This number is actually set to
-.RB ( ICET_TILE_MAX_WIDTH " * " ICET_TILE_MAX_HEIGHT ") + " ICET_NUM_PROCESSORS .
-The number of processors is added to provide sufficient padding such that
-the max tile image may be divided evenly amongst any group of processors
+.RB ( ICET_TILE_MAX_WIDTH " * " ICET_TILE_MAX_HEIGHT ") + " ICET_NUM_PROCESSES .
+The number of processes is added to provide sufficient padding such that
+the max tile image may be divided evenly amongst any group of processes
 without dropping any real pixels.
 .TP
 .B ICET_TILE_MAX_WIDTH

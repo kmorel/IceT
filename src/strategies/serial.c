@@ -29,6 +29,7 @@ static IceTImage serialCompose(void)
     GLint rank;
     GLint num_proc;
     GLint *display_nodes;
+    GLboolean ordered_composite;
     IceTImage myImage;
     IceTImage imageBuffer;
     IceTSparseImage inImage, outImage;
@@ -38,8 +39,9 @@ static IceTImage serialCompose(void)
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &num_proc);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
     icetResizeBuffer(  icetFullImageSize(max_pixels)*2
 		     + icetSparseImageSize(max_pixels)*2
@@ -50,19 +52,29 @@ static IceTImage serialCompose(void)
     outImage      = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     compose_group = icetReserveBufferMem(sizeof(int)*num_proc);
 
-    for (i = 0; i < num_proc; i++) {
-	compose_group[i] = i;
+    if (ordered_composite) {
+	icetGetIntegerv(ICET_COMPOSITE_ORDER, compose_group);
+    } else {
+	for (i = 0; i < num_proc; i++) {
+	    compose_group[i] = i;
+	}
     }
 
   /* Render and compose every tile. */
     for (i = 0; i < num_tiles; i++) {
 	IceTImage ibuf;
 	int d_node = display_nodes[i];
+	int image_dest;
 
-      /* Put the display node at the beginning of the group so it gets the
-	 image. */
-	compose_group[0] = d_node;
-	compose_group[d_node] = 0;
+      /* Make the image go to the display node. */
+	if (ordered_composite) {
+	    for (image_dest = 0; compose_group[image_dest] != d_node;
+		 image_dest++);
+	} else {
+	  /* Technically, the above computation will work, but this is
+	     faster. */
+	    image_dest = d_node;
+	}
 
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
@@ -74,7 +86,8 @@ static IceTImage serialCompose(void)
 	}
 
 	icetGetTileImage(i, ibuf);
-	icetBswapCompose(compose_group, num_proc, ibuf, inImage, outImage);
+	icetBswapCompose(compose_group, num_proc, image_dest,
+			 ibuf, inImage, outImage);
 
       /* Restore compose_group for next tile. */
 	compose_group[d_node] = d_node;

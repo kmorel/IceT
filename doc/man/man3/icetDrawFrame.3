@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetDrawFrame 3 "April 14, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetDrawFrame 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetDrawFrame
 \- renders and composites a frame
@@ -33,7 +33,7 @@ If
 .B ICET_DISPLAY
 is enabled, then the fully composited image is written back to the OpenGL
 framebuffer for display.  It is the application's responsibility to
-synchronize the processors and swap front and back buffers.  If the OpenGL
+synchronize the processes and swap front and back buffers.  If the OpenGL
 background color is set to something other than black,
 .B ICET_DISPLAY_COLORED_BACKGROUND
 should also be enabled.  Displaying with
@@ -50,7 +50,7 @@ left corner of the display.
 .PP
 The image remaining in the frame buffer is undefined if
 .B ICET_DISPLAY
-is disabled or the processor is not displaying a tile.
+is disabled or the process is not displaying a tile.
 .SH ERRORS
 .TP 20
 .B ICET_INVALID_OPERATION

@@ -55,7 +55,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
     mod_time = get_usec();
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
-	if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSORS)
+	if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
 	    || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
 	    || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
 	{
@@ -80,15 +80,18 @@ void icetStateCopy(IceTState dest, const IceTState src)
     }
 }
 
+static float black[] = {0.0, 0.0, 0.0, 0.0};
+
 void icetStateSetDefaults(void)
 {
     icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_WARNINGS);
 
     icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
-    icetStateSetInteger(ICET_NUM_PROCESSORS, ICET_COMM_SIZE());
+    icetStateSetInteger(ICET_NUM_PROCESSES, ICET_COMM_SIZE());
     icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1);
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
-    icetStateSetInteger(ICET_BACKGROUND_COLOR, 0);
+    icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
+    icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
 
     icetResetTiles();
     icetStateSetIntegerv(ICET_DISPLAY_NODES, 0, NULL);
@@ -109,6 +112,7 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
     icetEnable(ICET_FLOATING_VIEWPORT);
+    icetDisable(ICET_ORDERED_COMPOSITE);
     icetEnable(ICET_DISPLAY);
     icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_DISPLAY_INFLATE);

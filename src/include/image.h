@@ -74,13 +74,16 @@ ICET_EXPORT GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
 				       IceTImage imageBuffer);
 
 ICET_EXPORT void   icetComposite(IceTImage destBuffer,
-				 const IceTImage srcBuffer);
+				 const IceTImage srcBuffer,
+				 int srcOnTop);
 
 ICET_EXPORT void   icetCompressedComposite(IceTImage destBuffer,
-					   const IceTSparseImage srcBuffer);
+					   const IceTSparseImage srcBuffer,
+					   int srcOnTop);
 
 ICET_EXPORT void   icetCompressedSubComposite(IceTImage destBuffer,
 					      GLuint offset, GLuint pixels,
-					      const IceTSparseImage srcBuffer);
+					      const IceTSparseImage srcBuffer,
+					      int srcOnTop);
 
 #endif /* _ICET_IMAGE_H_ */

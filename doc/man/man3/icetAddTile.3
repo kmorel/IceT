@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetAddTile 3 "April 14, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetAddTile 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetAddTile
 \- add a tile to the logical display.
@@ -54,7 +54,7 @@ given tile.  It is assumed that the output of the rendering window of the
 given process is projected onto the space in a tiled display given by
 .IR x ", " y ", " width ", and " height .
 Each tile must have a valid rank (between
-.BR 0 " and " ICET_NUM_PROCESSORS - 1 ).
+.BR 0 " and " ICET_NUM_PROCESSES - 1 ).
 Furthermore, no process may be displaying more than one tile.
 .SH RETURN VALUE
 Returns the index of the tile created.
@@ -63,7 +63,7 @@ Returns the index of the tile created.
 .B ICET_INVALID_VALUE
 Raised if
 .I display_rank
-is not a valid processor rank or
+is not a valid process rank or
 .I display_rank
 is already assigned to another tile.  If this error is raised, nothing is
 done and -1 is returned.

@@ -46,7 +46,7 @@ static IceTImage reduceCompose(void)
 
     icetRaiseDebug("In reduceCompose");
 
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &num_processors);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_processors);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
 
     buffer_size = (  2*icetSparseImageSize(max_pixels)
@@ -65,10 +65,11 @@ static IceTImage reduceCompose(void)
 
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
-	icetBswapCompose(compose_group, group_size, image, inImage, outImage);
+	icetBswapCompose(compose_group, group_size, 0,
+			 image, inImage, outImage);
     } else if (group_size > 0) {
 	icetRaiseDebug("Doing tree compose");
-	icetTreeCompose(compose_group, group_size, image, inImage);
+	icetTreeCompose(compose_group, group_size, 0, image, inImage);
     } else {
 	icetRaiseDebug("Clearing pixels");
 	icetInitializeImage(image, max_pixels);
@@ -120,7 +121,7 @@ static int delegate(int **tile_image_destp,
     tile_display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &num_processors);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_processors);
     icetGetIntegerv(ICET_RANK, &rank);
 
     if (total_image_count < 1) {

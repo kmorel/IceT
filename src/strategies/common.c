@@ -52,7 +52,7 @@ static void *rtfi_handleDataFunc(void *inImage, int src) {
 	if (rtfi_first) {
 	    icetDecompressImage(inImage, rtfi_imageBuffer);
 	} else {
-	    icetCompressedComposite(rtfi_imageBuffer, inImage);
+	    icetCompressedComposite(rtfi_imageBuffer, inImage, 1);
 	}
     }
     rtfi_first = 0;
@@ -136,7 +136,7 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 #define SEND_IDX 1
     IceTCommRequest requests[2];
 
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &comm_size);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &comm_size);
     icetGetIntegerv(ICET_RANK, &rank);
 
   /* Make sure we have big enough arrays.  We should not have to allocate
@@ -258,137 +258,223 @@ void icetSendRecvLargeMessages(int numMessagesSending,
     }
 }
 
-void icetBswapCompose(int *compose_group, int group_size,
+
+static void BswapCollectFinalImages(int *compose_group, int group_size,
+				    int group_rank, IceTImage imageBuffer,
+				    int pixel_count)
+{
+    GLenum output_buffers;
+    IceTCommRequest *requests;
+    int i;
+
+  /* All processors have the same number for pixels and their offset
+   * is group_rank*offset. */
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
+    requests = malloc((group_size)*sizeof(IceTCommRequest));
+
+    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
+	GLubyte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
+	icetRaiseDebug("Collecting image data.");
+	for (i = 0; i < group_size; i++) {
+	    if (i != group_rank) {
+		requests[i] =
+		    ICET_COMM_IRECV(colorBuffer + 4*pixel_count*i,
+				    4*pixel_count, ICET_BYTE, compose_group[i],
+				    SWAP_IMAGE_DATA);
+	    } else {
+		requests[i] = ICET_COMM_REQUEST_NULL;
+	    }
+	}
+	for (i = 0; i < group_size; i++) {
+	    ICET_COMM_WAIT(requests + i);
+	}
+    }
+    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
+	GLuint *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
+	icetRaiseDebug("Collecting depth data.");
+	for (i = 0; i < group_size; i++) {
+	    if (i != group_rank) {
+		requests[i] =
+		    ICET_COMM_IRECV(depthBuffer + pixel_count*i,
+				    pixel_count, ICET_INT,
+				    compose_group[i], SWAP_DEPTH_DATA);
+	    } else {
+		requests[i] = ICET_COMM_REQUEST_NULL;
+	    }
+	}
+	for (i = 0; i < group_size; i++) {
+	    ICET_COMM_WAIT(requests + i);
+	}
+    }
+    free(requests);
+}
+
+static void BswapSendFinalImage(int *compose_group, int image_dest,
+				IceTImage imageBuffer,
+				int pixel_count, int offset)
+{
+    GLenum output_buffers;
+
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
+    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
+	GLubyte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
+	    icetRaiseDebug("Sending image data.");
+	    icetAddSentBytes(4*pixel_count);
+	    ICET_COMM_SEND(colorBuffer + 4*offset, 4*pixel_count, ICET_BYTE,
+			   compose_group[image_dest], SWAP_IMAGE_DATA);
+    }
+    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
+	GLuint *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
+	icetRaiseDebug("Sending depth data.");
+	icetAddSentBytes(4*pixel_count);
+	ICET_COMM_SEND(depthBuffer + offset, pixel_count, ICET_INT,
+		       compose_group[image_dest], SWAP_DEPTH_DATA);
+    }
+}
+
+/* Does binary swap, but does not combine the images in the end.  Instead,
+ * the image is broken into pow2size pieces and stored in the first set of
+ * processes.  pow2size is assumed to be the largest power of 2 <=
+ * group_size.  Each process has the image offset in buffer to its
+ * appropriate location.  If both color and depth buffers are inputs, both
+ * are located in the uncollected images regardless of what buffers are
+ * selected for outputs. */
+static void BswapComposeNoCombine(int *compose_group, int group_size,
+				  int pow2size, int group_rank,
+				  IceTImage imageBuffer, int pixels,
+				  IceTSparseImage inImage,
+				  IceTSparseImage outImage)
+{
+    int extra_proc;	/* group_size - pow2size */
+    int extra_pow2size;	/* extra_proc rounded down to nearest power of 2. */
+
+    extra_proc = group_size - pow2size;
+    for (extra_pow2size = 1; extra_pow2size <= extra_proc; extra_pow2size *= 2);
+    extra_pow2size /= 2;
+
+    if (group_rank >= pow2size) {
+	int upper_group_rank = group_rank - pow2size;
+      /* I am part of the extra stuff.  Recurse to run bswap on my part. */
+	BswapComposeNoCombine(compose_group + pow2size, extra_proc,
+			      extra_pow2size, upper_group_rank,
+			      imageBuffer, pixels, inImage, outImage);
+      /* Now I may have some image data to send to lower group. */
+	if (upper_group_rank < extra_pow2size) {
+	    int num_pieces = pow2size/extra_pow2size;
+	    GLuint offset = (pixels/extra_pow2size)*upper_group_rank;
+	    int i;
+	    pixels = pixels/pow2size;
+	    for (i = 0; i < num_pieces; i++) {
+	      /* Is compression the right thing?  It's currently easier. */
+		int compressedSize = icetCompressSubImage(imageBuffer,
+							  offset + i*pixels,
+							  pixels, outImage);
+		icetAddSentBytes(compressedSize);
+	      /* Send to processor in lower "half" that has same part of
+	       * image. */
+		ICET_COMM_SEND(outImage, compressedSize, ICET_BYTE,
+			       compose_group[upper_group_rank*num_pieces + i],
+			       SWAP_IMAGE_DATA);
+	    }
+	}
+	return;
+    } else {
+      /* I am part of the lower group.  Do the actual binary swap. */
+	int left = 0;
+	int right = pow2size;
+	int offset = 0;
+
+	while ((right-left) > 1) {
+	    int middle   = (right+left)/2;
+	    int sub_size = (right-left)/2;
+	    int pair;
+	    int inOnTop;
+	    int compressedSize;
+
+	    pixels /= 2;
+
+	    if (group_rank < middle) {
+		compressedSize = icetCompressSubImage(imageBuffer,
+						      offset + pixels, pixels,
+						      outImage);
+		pair = compose_group[group_rank + sub_size];
+
+		right = middle;
+
+		inOnTop = 0;
+	    } else {
+		compressedSize = icetCompressSubImage(imageBuffer,
+						      offset, pixels,
+						      outImage);
+		pair = compose_group[group_rank - sub_size];
+
+		offset += pixels;
+
+		left = middle;
+
+		inOnTop = 1;
+	    }
+
+	    icetAddSentBytes(compressedSize);
+	    ICET_COMM_SENDRECV(outImage, compressedSize,
+			       ICET_BYTE, pair, SWAP_IMAGE_DATA,
+			       inImage, icetSparseImageSize(pixels),
+			       ICET_BYTE, pair, SWAP_IMAGE_DATA);
+
+	    icetCompressedSubComposite(imageBuffer, offset, pixels,
+				       inImage, inOnTop);
+	}
+
+      /* Now absorb any image that was part of extra stuff. */
+	if (extra_pow2size > 0) {
+	    int src = pow2size + group_rank/(pow2size/extra_pow2size);
+	    ICET_COMM_RECV(inImage, icetSparseImageSize(pixels),
+			   ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
+	    icetCompressedSubComposite(imageBuffer, offset, pixels,
+				       inImage, 0);
+	}
+    }
+}
+
+void icetBswapCompose(int *compose_group, int group_size, int image_dest,
 		      IceTImage imageBuffer,
 		      IceTSparseImage inImage, IceTSparseImage outImage)
 {
-    int i;
     int group_rank;
-    int left, right;
     GLint rank;
     int pow2size;
-    int compressedSize;
-    GLuint offset;
     GLuint pixels;
-    IceTCommRequest *requests;
-    GLenum output_buffers;
 
     icetRaiseDebug("In icetBswapCompose");
 
     icetGetIntegerv(ICET_RANK, &rank);
     for (group_rank = 0; compose_group[group_rank] != rank; group_rank++);
 
-    pixels = icetGetImagePixelCount(imageBuffer);
-
   /* Make size of group be a power of 2. */
     for (pow2size = 1; pow2size <= group_size; pow2size *= 2);
     pow2size /= 2;
-    if (group_rank >= pow2size) {
-      /* Give up image and drop out of computation. */
-	compressedSize = icetCompressImage(imageBuffer, outImage);
-	icetAddSentBytes(compressedSize);
-	ICET_COMM_SEND(outImage, compressedSize, ICET_BYTE,
-		       compose_group[group_rank - pow2size], SWAP_IMAGE_DATA);
-	return;
-    } else if (group_rank < group_size - pow2size) {
-      /* Absorb image. */
-	ICET_COMM_RECV(inImage, icetSparseImageSize(pixels), ICET_BYTE,
-		 compose_group[group_rank + pow2size], SWAP_IMAGE_DATA);
-	icetCompressedComposite(imageBuffer, inImage);
-    }
-    group_size = pow2size;
 
-    offset = 0;
+    pixels = icetGetImagePixelCount(imageBuffer);
   /* Make sure we can divide pixels evenly amongst processors. */
-    pixels = (pixels/group_size + 1)*group_size;
+    pixels = (pixels/pow2size + 1)*pow2size;
 
-    left = 0;
-    right = group_size;
-    while ((right-left) > 1) {
-	int middle   = (right+left)/2;
-	int sub_size = (right-left)/2;
-	int pair;
+  /* Do actual bswap. */
+    BswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
+			  imageBuffer, pixels, inImage, outImage);
 
-	pixels /= 2;
-
-	if (group_rank < middle) {
-	    compressedSize = icetCompressSubImage(imageBuffer,
-						  offset + pixels, pixels,
-						  outImage);
-	    pair = compose_group[group_rank + sub_size];
-
-	    right = middle;
-	} else {
-	    compressedSize = icetCompressSubImage(imageBuffer,
-						  offset, pixels,
-						  outImage);
-	    pair = compose_group[group_rank - sub_size];
-
-	    offset += pixels;
-
-	    left = middle;
-	}
-
-	icetAddSentBytes(compressedSize);
-	ICET_COMM_SENDRECV(outImage, compressedSize,
-			   ICET_BYTE, pair, SWAP_IMAGE_DATA,
-			   inImage, icetSparseImageSize(pixels),
-			   ICET_BYTE, pair, SWAP_IMAGE_DATA);
-
-	icetCompressedSubComposite(imageBuffer, offset, pixels, inImage);
-    }
-
-  /* Collect pieces */
-  /* All processors have the same number for pixels and their offset
-   * is group_rank*offset. */
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
-    if (group_rank == 0) {
-	requests = malloc((group_size-1)*sizeof(IceTCommRequest));
-    }
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-	GLubyte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
-	if (group_rank == 0) {
-	    icetRaiseDebug("Collecting image data.");
-	    for (i = 1; i < group_size; i++) {
-		requests[i-1] =
-		    ICET_COMM_IRECV(colorBuffer + 4*pixels*i, 4*pixels,
-				    ICET_BYTE, compose_group[i],
-				    SWAP_IMAGE_DATA);
-	    }
-	    for (i = 0; i < group_size-1; i++) {
-		ICET_COMM_WAIT(requests + i);
-	    }
-	} else {
-	    icetRaiseDebug("Sending image data.");
-	    icetAddSentBytes(4*pixels);
-	    ICET_COMM_SEND(colorBuffer + 4*offset, 4*pixels, ICET_BYTE,
-			   compose_group[0], SWAP_IMAGE_DATA);
-	}
-    }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-	GLuint *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
-	if (group_rank == 0) {
-	    icetRaiseDebug("Collecting depth data.");
-	    for (i = 1; i < group_size; i++) {
-		requests[i-1] =
-		    ICET_COMM_IRECV(depthBuffer + pixels*i, pixels, ICET_INT,
-				    compose_group[i], SWAP_DEPTH_DATA);
-	    }
-	    for (i = 0; i < group_size-1; i++) {
-		ICET_COMM_WAIT(requests + i);
-	    }
-	} else {
-	    icetRaiseDebug("Sending depth data.");
-	    icetAddSentBytes(4*pixels);
-	    ICET_COMM_SEND(depthBuffer + offset, pixels, ICET_INT,
-			   compose_group[0], SWAP_DEPTH_DATA);
-	}
-    }
-    if (group_rank == 0) {
-	free(requests);
+    if (group_rank == image_dest) {
+      /* Collect image if I'm the destination. */
+	BswapCollectFinalImages(compose_group, pow2size, group_rank,
+			   imageBuffer, pixels/pow2size);
+    } else if (group_rank < pow2size) {
+      /* Send image to destination. */
+	int sub_image_size = pixels/pow2size;
+	BswapSendFinalImage(compose_group, image_dest, imageBuffer,
+		       sub_image_size, group_rank*sub_image_size);
     }
 }
 
+#if 0
 void icetTreeCompose(int *compose_group, int group_size,
 		     IceTImage imageBuffer,
 		     IceTSparseImage compressedImageBuffer)
@@ -418,8 +504,104 @@ void icetTreeCompose(int *compose_group, int group_size,
 	    ICET_COMM_RECV(compressedImageBuffer, incomingBufferSize, ICET_BYTE,
 			   compose_group[group_rank + half_size],
 			   TREE_IMAGE_DATA);
-	    icetCompressedComposite(imageBuffer, compressedImageBuffer);
+	    icetCompressedComposite(imageBuffer, compressedImageBuffer, 1);
 	}
 	group_size = half_size;
     }
 }
+#else
+static void RecursiveTreeCompose(int *compose_group, int group_size,
+				 int group_rank, int image_dest,
+				 IceTImage imageBuffer,
+				 IceTSparseImage compressedImageBuffer)
+{
+    int middle;
+    enum { NO_IMAGE, SEND_IMAGE, RECV_IMAGE } current_image;
+    int pair_proc;
+
+    if (group_size <= 1) return;
+
+  /* Build composite tree by splitting down middle. */
+  /* If middle is in a group, then the image is sent there, otherwise the
+   * image is sent to the processor of group_rank 0 (for that subgroup). */
+    middle = group_size/2;
+    if (group_rank < middle) {
+	RecursiveTreeCompose(compose_group, middle, group_rank, image_dest,
+			     imageBuffer, compressedImageBuffer);
+	if (group_rank == image_dest) {
+	  /* I'm the destination.  GIMME! */
+	    current_image = RECV_IMAGE;
+	    pair_proc = middle;
+	} else if (   (group_rank == 0)
+		   && ((image_dest < 0) || (image_dest >= middle)) ) {
+	  /* I have an image by default. */
+	    if ((image_dest >= middle) && (image_dest < group_size)) {
+	      /* Opposite subtree has destination.  Hand it over. */
+		current_image = SEND_IMAGE;
+		pair_proc = image_dest;
+	    } else {
+	      /* Opposite subtree does not have destination either.  Give
+		 to me by default. */
+		current_image = RECV_IMAGE;
+		pair_proc = middle;
+	    }
+	} else {
+	  /* I don't even have an image anymore. */
+	    current_image = NO_IMAGE;
+	}
+    } else {
+	RecursiveTreeCompose(compose_group + middle, group_size - middle,
+			     group_rank - middle, image_dest - middle,
+			     imageBuffer, compressedImageBuffer);
+	if (group_rank == image_dest) {
+	  /* I'm the destination.  GIMME! */
+	    current_image = RECV_IMAGE;
+	    pair_proc = 0;
+	} else if (   (group_rank == middle)
+		   && ((image_dest < middle) || (image_dest >= group_size)) ) {
+	  /* I have an image by default. */
+	    current_image = SEND_IMAGE;
+	    if ((image_dest >= 0) && (image_dest < middle)) {
+		pair_proc = image_dest;
+	    } else {
+		pair_proc = 0;
+	    }
+	} else {
+	  /* I don't even have an image anymore. */
+	    current_image = NO_IMAGE;
+	}
+    }
+
+    if (current_image == SEND_IMAGE) {
+      /* Hasta la vista, baby. */
+	int compressedSize;
+	compressedSize = icetCompressImage(imageBuffer,
+					   compressedImageBuffer);
+	icetAddSentBytes(compressedSize);
+	ICET_COMM_SEND(compressedImageBuffer, compressedSize, ICET_BYTE,
+		       compose_group[pair_proc], TREE_IMAGE_DATA);
+    } else if (current_image == RECV_IMAGE) {
+      /* Get my image. */
+	ICET_COMM_RECV(compressedImageBuffer,
+		       icetSparseImageSize(icetGetImagePixelCount(imageBuffer)),
+		       ICET_BYTE,
+		       compose_group[pair_proc], TREE_IMAGE_DATA);
+	icetCompressedComposite(imageBuffer, compressedImageBuffer,
+				pair_proc < group_rank);
+    }
+}
+
+void icetTreeCompose(int *compose_group, int group_size, int image_dest,
+		     IceTImage imageBuffer,
+		     IceTSparseImage compressedImageBuffer)
+{
+    int group_rank;
+    GLint rank;
+
+    icetGetIntegerv(ICET_RANK, &rank);
+    for (group_rank = 0; compose_group[group_rank] != rank; group_rank++);
+
+    RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
+			 imageBuffer, compressedImageBuffer);
+}
+#endif

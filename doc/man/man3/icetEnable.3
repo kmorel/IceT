@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetEnable/Disable 3 "April 14, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetEnable/Disable 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .BR icetEnable ", " icetDisable
 \- enable/disable an
@@ -55,6 +55,19 @@ back to frame buffer.  Disabled by default.
 If enabled, the projection will be shifted such that the geometry will be
 rendered in one shot whenever possible, even if the geometry straddles up
 to four tiles.  Enabled by default.
+.TP
+.B ICET_ORDERED_COMPOSITE
+If enabled, the image composition will be performed in the order specified
+by the last call to
+.BR icetCompositeOrder ,
+assuming the current strategy (specified by a call to
+.BR icetStrategy )
+supports ordered composition.  Generally, you want to enable ordered
+compositing if doing color blending and disable if you are doing z-buffer
+comparisons.  If enabled, you should call
+.B icetCompositeOrder
+between each frame to update the image order as camera angles change.
+Disabled by default.
 .SH ERRORS
 .TP 20
 .B ICET_INVALID_VALUE

@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetCopyState 3 "June 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetCopyState 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetCopyState
 \- copy state machine of one context to another.
@@ -32,7 +32,7 @@ object associated with
 is
 .I not
 changed (nor can it ever be).  Consequently, the state values of
-.BR ICET_RANK " and " ICET_NUM_PROCESSORS
+.BR ICET_RANK " and " ICET_NUM_PROCESSES
 are not copied either, since they are directly tied to the
 .B IceTCommunicator
 object.  However, every other state parameter is copied.

@@ -11,6 +11,13 @@
 **
 *****************************************************************************
 
+Revision 0.5: Introduced the concept of ordered composition, especially
+	with respect to color blending.  Once the image layer order is
+	specified by the user level application, some composition
+	strategies will perform image composition in that order, using the
+	Porter and Duff OVER operator correctly when color blending is
+	enabled.
+
 Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	a composite on just the depth buffer.  This is useful when creating
 	shadow buffers.  This should also make it easier to implement

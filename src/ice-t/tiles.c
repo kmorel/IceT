@@ -61,7 +61,7 @@ int  icetAddTile(GLint x, GLint y, GLsizei width, GLsizei height,
 
   /* Get display node information. */
     icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSORS, &num_processors);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_processors);
     display_nodes = malloc((num_tiles+1)*4*sizeof(GLint));
     icetGetIntegerv(ICET_DISPLAY_NODES, display_nodes);
 

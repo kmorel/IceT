@@ -10,11 +10,17 @@
 
 /* Id */
 
+#define USE_STDARG
 #include <GL/ice-t_mpi.h>
 
 #include <diagnostics.h>
 
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef DEBUG
+#define BREAK_ON_MPI_ERROR
+#endif
 
 static IceTCommunicator Duplicate(IceTCommunicator self);
 static void Destroy(IceTCommunicator self);
@@ -93,9 +99,26 @@ static void destroy_request(IceTCommRequest req)
 #define ICETREQ2MPIREQ(req)						\
     ((req) == ICET_COMM_REQUEST_NULL ? MPI_REQUEST_NULL : *ICETREQ2MPIREQP(req))
 
+#ifdef BREAK_ON_MPI_ERROR
+static void ErrorHandler(MPI_Comm *comm, int *errorno, ...)
+{
+    char error_msg[MPI_MAX_ERROR_STRING+16];
+    int mpi_error_len;
+
+    strcpy(error_msg, "MPI ERROR:\n");
+    MPI_Error_string(*errorno, error_msg + strlen(error_msg), &mpi_error_len);
+
+    icetRaiseError(error_msg, ICET_INVALID_OPERATION);
+    icetDebugBreak();
+}
+#endif
+
 IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
 {
     IceTCommunicator comm = malloc(sizeof(struct IceTCommunicatorStruct));
+#ifdef BREAK_ON_MPI_ERROR
+    MPI_Errhandler eh;
+#endif
 
     comm->Duplicate = Duplicate;
     comm->Destroy = Destroy;
@@ -110,6 +133,12 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Comm_size = Comm_size;
     comm->Comm_rank = Comm_rank;
     MPI_Comm_dup(mpi_comm, (MPI_Comm *)&comm->data);
+
+#ifdef BREAK_ON_MPI_ERROR
+    MPI_Errhandler_create(ErrorHandler, &eh);
+    MPI_Errhandler_set((MPI_Comm)comm->data, eh);
+    MPI_Errhandler_free(&eh);
+#endif
 
     return comm;
 }
