@@ -161,9 +161,13 @@ static int DoCompressionTest(int num_buffers)
     return result;
 }
 
-int CompressionSize(int, char *[])
+int CompressionSize(int argc, char *argv[])
 {
     int result;
+
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
 
     icetStrategy(ICET_STRATEGY_REDUCE);
 

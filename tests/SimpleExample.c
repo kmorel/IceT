@@ -53,9 +53,13 @@ static void draw(void)
     glPopMatrix();
 }
 
-int SimpleExample(int, char *[])
+int SimpleExample(int argc, char * argv[])
 {
     float angle;
+
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
 
   /* Normally, the first thing that you do is set up your communication and
    * then create at least one ICE-T context.  This has already been done in

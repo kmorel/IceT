@@ -33,12 +33,16 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int BlankTiles(int, char *[])
+int BlankTiles(int argc, char *argv[])
 {
     int i, j, x, y;
     GLubyte *cb;
     int result = TEST_PASSED;
     int rank, num_proc;
+
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);

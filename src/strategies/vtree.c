@@ -329,13 +329,16 @@ static void sort_by_contained(struct node_info *info, int size)
 
 static void do_send_receive(struct node_info *my_info, int tile_held,
                             GLint max_pixels, GLint num_tiles,
-                            GLint * /* tile_viewports */,
+                            GLint *  tile_viewports,
                             GLboolean *all_contained_tmasks,
                             IceTImage imageBuffer,
                             IceTSparseImage inImage, IceTSparseImage outImage)
 {
     GLint outImageSize = 0;
 
+    /* To remove warning */
+    (void)tile_viewports;
+    
     if (my_info->tile_sending != -1) {
         icetRaiseDebug2("Sending tile %d to node %d.", my_info->tile_sending,
                         my_info->send_dest);

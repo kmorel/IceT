@@ -43,11 +43,15 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int DisplayNoDraw(int, char *[])
+int DisplayNoDraw(int argc, char *argv[])
 {
     int result = TEST_PASSED;
     int i;
     int rank, num_proc;
+
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
