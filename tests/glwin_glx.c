@@ -40,13 +40,12 @@ int wincreat( int x, int y, int width, int height, char *title)
   GLXContext             glcx;
   XEvent                 event;
   int                    attributes[] = { GLX_RGBA,
-					  GLX_DEPTH_SIZE, 16, 
-					  GLX_RED_SIZE, 8, 
-					  GLX_GREEN_SIZE, 8, 
-					  GLX_BLUE_SIZE, 8,
-					  GLX_ALPHA_SIZE, 8,
-					  GLX_DOUBLEBUFFER,
-					  None }; 
+                                          GLX_DEPTH_SIZE, 16, 
+                                          GLX_RED_SIZE, 1, 
+                                          GLX_GREEN_SIZE, 1, 
+                                          GLX_BLUE_SIZE, 1,
+                                          GLX_DOUBLEBUFFER,
+                                          None }; 
 
     if( !(dpy = XOpenDisplay( NULL )) )    /* defaults to $DISPLAY */
   {
@@ -121,7 +120,7 @@ int wincreat( int x, int y, int width, int height, char *title)
       memset(clear_bits, 0, sizeof(clear_bits));
 
       pixmap = XCreatePixmapFromBitmapData(dpy, glwin, clear_bits,
-					   16, 16, 1, 0, 1);
+                                           16, 16, 1, 0, 1);
       cursor = XCreatePixmapCursor(dpy, pixmap, pixmap, &color, &color, 8, 8);
       XDefineCursor(dpy, glwin, cursor);
 
@@ -143,7 +142,7 @@ int wincreat( int x, int y, int width, int height, char *title)
   return( 1 );
 
 } /* end int APIENTRY pglc_wincreat( ) */
-	
+
 void resize( GLsizei width, GLsizei height ) 
 { 
 
