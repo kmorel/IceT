@@ -357,7 +357,7 @@ void icetDrawFrame(void)
         GLdouble viewport_matrix[16];
         GLdouble tmp_matrix[16];
         GLdouble total_transform[16];
-        GLint left, right, bottom, top;
+        GLdouble left, right, bottom, top;
         GLdouble x, y;
         GLdouble z, invw;
 
@@ -421,15 +421,20 @@ void icetDrawFrame(void)
                     + total_transform[MI(2,3)])
                  * invw);
 
-            if (left   > floor(x)) left   = (GLint)floor(x);
-            if (right  < ceil(x) ) right  = (GLint)ceil(x);
-            if (bottom > floor(y)) bottom = (GLint)floor(y);
-            if (top    < ceil(y) ) top    = (GLint)ceil(y);
+            if (left   > x) left   = x;
+            if (right  < x) right  = x;
+            if (bottom > y) bottom = y;
+            if (top    < y) top    = y;
             if (znear  > z) znear  = z;
             if (zfar   < z) zfar   = z;
 
             bound_vert += 3;
         }
+
+        left = floor(left);
+        right = ceil(right);
+        bottom = floor(bottom);
+        top = ceil(top);
 
       /* Clip bounds to global viewport. */
         if (left   < global_viewport[0]) left = global_viewport[0];
