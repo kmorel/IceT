@@ -298,7 +298,7 @@ int RandomTransform(int argc, char *argv[])
 
   /* Set up OpenGL. */
     glClearColor(background_color[0], background_color[1],
-		 background_color[2], 0.0);
+		 background_color[2], 1.0);
     glDisable(GL_LIGHTING);
 
     glMatrixMode(GL_PROJECTION);
