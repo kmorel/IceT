@@ -35,6 +35,10 @@
 #define MAX(x, y)	((x) < (y) ? (y) : (x))
 #endif
 
+#ifdef _MSC_VER
+#pragma warning(disable:4055)
+#endif
+
 /* Renders the geometry for a tile.  The geometry may not be projected
  * exactly into the tile.  screen_viewport gives the offset and dimensions
  * of the image in the OpenGL framebuffer.  tile_viewport gives the offset

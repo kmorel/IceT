@@ -86,22 +86,22 @@ ICET_EXPORT void   icetCompressedSubComposite(IceTImage destBuffer,
 					      const IceTSparseImage srcBuffer,
 					      int srcOnTop);
 
-#define ICET_OVER(src, dest)				\
-{							\
-    GLuint dfactor = 255 - (src)[3];			\
-    (dest)[0] = ((dest)[0]*dfactor)/255 + (src)[0];	\
-    (dest)[1] = ((dest)[1]*dfactor)/255 + (src)[1];	\
-    (dest)[2] = ((dest)[2]*dfactor)/255 + (src)[2];	\
-    (dest)[3] = ((dest)[3]*dfactor)/255 + (src)[3];	\
+#define ICET_OVER(src, dest)					\
+{								\
+    GLuint dfactor = 255 - (src)[3];				\
+    (dest)[0] = (GLubyte)(((dest)[0]*dfactor)/255 + (src)[0]);	\
+    (dest)[1] = (GLubyte)(((dest)[1]*dfactor)/255 + (src)[1]);	\
+    (dest)[2] = (GLubyte)(((dest)[2]*dfactor)/255 + (src)[2]);	\
+    (dest)[3] = (GLubyte)(((dest)[3]*dfactor)/255 + (src)[3]);	\
 }
 
-#define ICET_UNDER(src, dest)				\
-{							\
-    GLuint sfactor = 255 - (dest)[3];			\
-    (dest)[0] = (dest)[0] + ((src)[0]*sfactor)/255;	\
-    (dest)[1] = (dest)[1] + ((src)[1]*sfactor)/255;	\
-    (dest)[2] = (dest)[2] + ((src)[2]*sfactor)/255;	\
-    (dest)[3] = (dest)[3] + ((src)[3]*sfactor)/255;	\
+#define ICET_UNDER(src, dest)					\
+{								\
+    GLuint sfactor = 255 - (dest)[3];				\
+    (dest)[0] = (GLubyte)((dest)[0] + ((src)[0]*sfactor)/255);	\
+    (dest)[1] = (GLubyte)((dest)[1] + ((src)[1]*sfactor)/255);	\
+    (dest)[2] = (GLubyte)((dest)[2] + ((src)[2]*sfactor)/255);	\
+    (dest)[3] = (GLubyte)((dest)[3] + ((src)[3]*sfactor)/255);	\
 }
 
 #endif /* _ICET_IMAGE_H_ */

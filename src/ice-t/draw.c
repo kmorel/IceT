@@ -22,6 +22,11 @@
 
 #define MI(r,c) ((c)*4+(r))
 
+#ifdef _MSC_VER
+#pragma warning(disable:4054)
+#pragma warning(disable:4055)
+#endif
+
 static void inflateBuffer(GLubyte *buffer, GLsizei width, GLsizei height);
 
 static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B);
@@ -247,13 +252,15 @@ void icetDrawFrame(void)
     icetStateResetTiming();
     total_time = icetWallTime();
 
-    color_blending = (   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
-                      == ICET_COLOR_BUFFER_BIT);
+    color_blending =
+	(GLboolean)(   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
+		    == ICET_COLOR_BUFFER_BIT);
 
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
     switch (color_format) {
       case GL_RGBA:
+      default:
           ((GLubyte *)&background_color_word)[0]
               = (GLubyte)(255*background_color[0]);
           ((GLubyte *)&background_color_word)[1]
@@ -557,7 +564,7 @@ void icetDrawFrame(void)
 
           /* Fix contained_mask. */
             for (i = 0; i < num_tiles; i++) {
-                contained_mask[i] = (i == tile_rendering);
+                contained_mask[i] = (GLboolean)(i == tile_rendering);
             }
         } else {
           /* More tiles than processes.  Split up the contained_viewport as

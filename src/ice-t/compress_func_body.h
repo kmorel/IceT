@@ -53,6 +53,11 @@
 #error Need ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4127)
+#endif
+
 {
     GLuint *_dest;
     GLuint _pixels = PIXEL_COUNT;
@@ -101,7 +106,7 @@
 		    _count -= 0xFFFF;
 		    _runlengths = _dest++;
 		}
-		INACTIVE_RUN_LENGTH(*_runlengths) = _count;
+		INACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
 #ifdef DEBUG
 		_totalcount += _count;
 #endif
@@ -112,7 +117,7 @@
 		    _count++;
 		    _x++;
 		}
-		ACTIVE_RUN_LENGTH(*_runlengths) = _count;
+		ACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
 #ifdef DEBUG
 		_totalcount += _count;
 #endif
@@ -143,7 +148,7 @@
 		_count -= 0xFFFF;
 		_runlengths = _dest++;
 	    }
-	    INACTIVE_RUN_LENGTH(*_runlengths) = _count;
+	    INACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
 #ifdef DEBUG
 	    _totalcount += _count;
 #endif
@@ -156,7 +161,7 @@
 		_count++;
 		_p++;
 	    }
-	    ACTIVE_RUN_LENGTH(*_runlengths) = _count;
+	    ACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
 #ifdef DEBUG
 	    _totalcount += _count;
 #endif
@@ -177,7 +182,7 @@
 #endif /*DEBUG*/
 	    _count -= 0xFFFF;
 	}
-	INACTIVE_RUN_LENGTH(*_dest) = _count;
+	INACTIVE_RUN_LENGTH(*_dest) = (GLushort)_count;
 	ACTIVE_RUN_LENGTH(*_dest) = 0;
 	_dest++;
 #ifdef DEBUG
@@ -202,6 +207,10 @@
     icetRaiseDebug1("Compression: %d%%",
 		    100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8));
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #undef COMPRESSED_BUFFER
 #undef MAGIC_NUMBER

@@ -20,6 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#pragma warning(disable:4127)
+#endif
+
 static IceTImage reduceCompose(void);
 static GLint delegate(GLint **tile_image_destp,
 		      GLint **compose_groupp, GLint *group_sizep,
