@@ -1,0 +1,79 @@
+.\" -*- nroff -*-
+.ig
+Documentation for the Image Composition Engine for Tiles (ICE-T).
+
+Copyright (C) 2000-2003 Sandia National Laboratories
+
+Id
+..
+.TH icetDataReplicationGroup 3 "July 21, 2003" "Sandia National Labs" "ICE-T"
+.SH NAME
+.B icetDataReplicationGroup
+\- define data replication.
+.SH SYNOPSIS
+.nf
+.B #include <GL/ice-t.h>
+.sp
+.BI "void icetDataReplicationGroup(GLint " size ", const GLint *" processes ");"
+.fi
+.SH DESCRIPTION
+.B ICE-T
+has the ability to take advantage of geometric data that is replicated
+amongst processes.  If a group of processes share the same geometry data,
+then
+.B ICE-T
+will split the region of the display that the data projects onto amongst
+the processes, thereby reducing the total amount of image composition work
+that needs to be done.
+.PP
+Each group is declared by calling
+.B icetDataReplicationGroup
+and defining the group of processes that share the geometry with the local
+process.
+.I size
+indicates how many processes belong to the group, and
+.I processes
+is an array of ids of processes that belong to the group.  Each process
+that belongs to a particular group must call
+.B icetDataReplicationGroup
+with the exact same list of processes in the same order.
+.PP
+By default, each process belongs to a group of size one containing just the
+local processes (i.e. there is no data replication).
+.SH ERRORS
+.TP 20
+.B ICET_INVALID_VALUE
+.I processes
+does not contain the local process rank.
+.SH WARNINGS
+None.
+.SH BUGS
+.B ICE-T
+assumes that
+.B icetDataRepliactionGroup
+is called with the exact same parameters on all processes belonging to a
+given group.  Likewise,
+.B ICE-T
+also assumes that all processes have called
+.BR icetBoundingVertices " or " icetBoundingBox*
+with the exact same parameters on all processes belonging to a given
+group.  This requirment is not strictly enforced, but failing to do so may
+cause some of the geometry to not be rendered.
+.SH COPYRIGHT
+Copyright \(co 2003 Sandia Corporation
+.br
+Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+license for use of this work by or on behalf of the U.S. Government.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this Notice and any statement of
+authorship are reproduced on all copies.
+.SH SEE ALSO
+.BR icetDrawFunc ", " icetBoundingVertices
+
+
+\" These are emacs settings that go at the end of the file.
+\" Local Variables:
+\" writestamp-format:"%B %e, %Y"
+\" writestamp-prefix:"3 \""
+\" writestamp-suffix:"\" \"Sandia National Labs\""
+\" End:

@@ -56,6 +56,9 @@ void icetStateCopy(IceTState dest, const IceTState src)
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
 	if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
+	    || (i == ICET_DATA_REPLICATION_GROUP)
+	    || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
+	    || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
 	    || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
 	    || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
 	{
@@ -111,6 +114,9 @@ void icetStateSetDefaults(void)
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, ICET_COMM_SIZE(), int_array);
     icetStateSetIntegerv(ICET_PROCESS_ORDERS, ICET_COMM_SIZE(), int_array);
     free(int_array);
+
+    icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, ICET_COMM_RANK());
+    icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
     icetStateSetInteger(ICET_READ_BUFFER, GL_BACK);

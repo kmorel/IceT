@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetStrategy 3 "July 10, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetStrategy 3 "July 18, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetStrategy
 \- set the strategy used to composite images.
@@ -75,10 +75,10 @@ float between trees.  This strategy is not quite as well load balanced as
 but has very well behaved network communication.
 .PP
 Not all of the strategies support ordered image composition.
-.BR ICET_STRATEGY_SERIAL
-does support ordered image composition.
-.BR ICET_STRATEGY_DIRECT ", " ICET_STRATEGY_SPLIT ", "
-.BR ICET_STRATEGY_REDUCE ", and " ICET_STRATEGY_VTREE
+.BR ICET_STRATEGY_SERIAL ", " ICET_STRATEGY_DIRECT ", and "
+.BR ICET_STRATEGY_REDUCE
+do support ordered image composition.
+.BR ICET_STRATEGY_SPLIT " and " ICET_STRATEGY_VTREE
 do not support ordered image composition and will ignore
 .B ICET_ORDERED_COMPOSITE
 if it is enabled.

@@ -63,12 +63,17 @@ static int compare_color_buffers(int local_width, int local_height,
 #define REFCBUFG(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 1])
 #define REFCBUFB(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 2])
 #define REFCBUFA(x, y) (refcbuf[(y)*SCREEN_WIDTH*4 + (x)*4 + 3])
+/* #define CB_EQUALS_REF(x, y)			\ */
+/*     (   (CBR((x), (y)) == REFCBUFR((x) + ref_off_x, (y) + ref_off_y) )\ */
+/*      && (CBG((x), (y)) == REFCBUFG((x) + ref_off_x, (y) + ref_off_y) )\ */
+/*      && (CBB((x), (y)) == REFCBUFB((x) + ref_off_x, (y) + ref_off_y) )\ */
+/*      && (   CBA((x), (y)) == REFCBUFA((x) + ref_off_x, (y) + ref_off_y)\ */
+/* 	 || CBA((x), (y)) == 0 ) ) */
 #define CB_EQUALS_REF(x, y)			\
-    (   (CBR((x), (y)) == REFCBUFR((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (CBG((x), (y)) == REFCBUFG((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (CBB((x), (y)) == REFCBUFB((x) + ref_off_x, (y) + ref_off_y) )	\
-     && (   CBA((x), (y)) == REFCBUFA((x) + ref_off_x, (y) + ref_off_y)	\
-	 || CBA((x), (y)) == 0 ) )
+    (   (DIFF(CBR((x), (y)), REFCBUFR((x) + ref_off_x, (y) + ref_off_y)) < 5) \
+     && (DIFF(CBG((x), (y)), REFCBUFG((x) + ref_off_x, (y) + ref_off_y)) < 5) \
+     && (DIFF(CBB((x), (y)), REFCBUFB((x) + ref_off_x, (y) + ref_off_y)) < 5) \
+     && (DIFF(CBA((x), (y)), REFCBUFA((x) + ref_off_x, (y) + ref_off_y)) < 5) )
 
     for (y = 0; y < local_height; y++) {
 	for (x = 0; x < local_width; x++) {
@@ -234,6 +239,7 @@ int RandomTransform(int argc, char *argv[])
     GLfloat mat[16];
     int rank, num_proc;
     GLint *image_order;
+    GLfloat color[3];
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -244,11 +250,11 @@ int RandomTransform(int argc, char *argv[])
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glDisable(GL_LIGHTING);
     if ((rank&0x07) == 0) {
-	glColor3f(0.5, 0.5, 0.5);
+	color[0] = 0.5;  color[1] = 0.5;  color[2] = 0.5;
     } else {
-	glColor3f(1.0f*((rank&0x01) == 0x01),
-		  1.0f*((rank&0x02) == 0x02),
-		  1.0f*((rank&0x04) == 0x04));
+	color[0] = 1.0f*((rank&0x01) == 0x01);
+	color[1] = 1.0f*((rank&0x02) == 0x02);
+	color[2] = 1.0f*((rank&0x04) == 0x04);
     }
 
   /* Decide on an image order. */
@@ -311,6 +317,7 @@ int RandomTransform(int argc, char *argv[])
     printf("\nGetting base images for z compare.\n");
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
 			   ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT);
+    glColor4f(color[0], color[1], color[2], 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(mat);
     icetDrawFrame();
@@ -327,6 +334,7 @@ int RandomTransform(int argc, char *argv[])
     printf("Getting base image for color blend.\n");
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT, ICET_COLOR_BUFFER_BIT);
     icetEnable(ICET_ORDERED_COMPOSITE);
+    glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
     icetDrawFrame();
     swap_buffers();
 
@@ -382,6 +390,7 @@ int RandomTransform(int argc, char *argv[])
 	    icetDisable(ICET_ORDERED_COMPOSITE);
 
 	    printf("Rendering frame.\n");
+	    glColor4f(color[0], color[1], color[2], 1.0);
 	    glMatrixMode(GL_PROJECTION);
 	    glLoadIdentity();
 	    glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
@@ -433,6 +442,7 @@ int RandomTransform(int argc, char *argv[])
 		icetEnable(ICET_ORDERED_COMPOSITE);
 
 		printf("Rendering frame.\n");
+		glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,

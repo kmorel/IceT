@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetGet 3 "July 16, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetGet 3 "July 21, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetGet
 \- get an
@@ -129,6 +129,23 @@ The total time, in seconds, spent in compressing image data using active
 pixel encoding during the last call to
 .BR icetDrawFrame .
 Stored as a double.
+.TP
+.B ICET_DATA_REPLICATION_GROUP
+An array of process ids.  There are
+.B ICET_DATA_REPLICATION_GROUP_SIZE
+entries in the array.
+.B ICE-T
+assumes that all processes in the list will create the exact same image
+with their draw functions (set with
+.BR icetDrawFunc ).
+The local process id
+.RB ( ICET_RANK )
+will be part of this list.
+.TP
+.B ICET_DATA_REPLICATION_GROUP_SIZE
+The length of the
+.B ICET_DATA_REPLICATION_GROUP
+array.
 .TP
 .B ICET_DEPTH_BUFFER_VALID
 True if a depth buffer was computed during the last call to

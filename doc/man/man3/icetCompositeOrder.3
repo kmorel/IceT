@@ -6,7 +6,7 @@ Copyright (C) 2000-2003 Sandia National Laboratories
 
 Id
 ..
-.TH icetCompositeOrder 3 "July 15, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetCompositeOrder 3 "July 21, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetCompositeOrder
 \- specify the order in which images are composited
@@ -61,6 +61,14 @@ When ordering is on, it is accepted that
 .B icetCompositeOrder
 will be called in between every frame since the order of the geometry may
 change with the viewpoint.
+.PP
+If data replication is in effect (see
+.BR icetDataReplicationGroup ),
+all processes are still expected to be listed in
+.IR process_ranks .
+Correct ordering can be achieved by ensuring that all processes in each
+group are listed in contiguous entries in
+.IR process_ranks .
 .SH ERRORS
 .TP 20
 .B ICET_INVALID_VALUE

@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH icetBoundingVertices 3 "March 12, 2003" "Sandia National Labs" "ICE-T Reference"
+.TH icetBoundingVertices 3 "July 21, 2003" "Sandia National Labs" "ICE-T Reference"
 .SH NAME
 .B icetBoundingVertices
 \- set bounds of geometry.
@@ -66,6 +66,12 @@ The
 .I pointer
 parameter is an array of vertices with the first vertex starting at the
 first byte.
+.PP
+If data replication is being used, each process in a data replication group
+should register the same bounding vertices that encompass the entire
+geometry.  See
+.B icetDataReplicationGroup
+for more details.
 .SH ERRORS
 .TP 20
 .B ICET_INVALID_VALUE
@@ -86,7 +92,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that this Notice and any statement of
 authorship are reproduced on all copies.
 .SH SEE ALSO
-.BR icetDrawFunc ", " icetBoundingBox*
+.BR icetDrawFunc ", " icetBoundingBox* ", " icetDataReplicationGroup
 
 
 \" These are emacs settings that go at the end of the file.
