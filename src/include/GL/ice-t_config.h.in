@@ -50,4 +50,23 @@
 #define ICET_PATCH_VERSION	@ICET_PATCH_VERSION@
 #define ICET_VERSION		"@ICET_VERSION@"
 
+#define ICET_SIZEOF_CHAR	@CMAKE_SIZEOF_CHAR@
+#define ICET_SIZEOF_SHORT	@CMAKE_SIZEOF_SHORT@
+#define ICET_SIZEOF_INT		@CMAKE_SIZEOF_INT@
+#define ICET_SIZEOF_LONG	@CMAKE_SIZEOF_LONG@
+#define ICET_SIZEOF_LONG_LONG	@CMAKE_SIZEOF_LONG_LONG@
+#define ICET_SIZEOF_FLOAT	@CMAKE_SIZEOF_FLOAT@
+#define ICET_SIZEOF_DOUBLE	@CMAKE_SIZEOF_DOUBLE@
+#define ICET_SIZEOF_VOID_P	@CMAKE_SIZEOF_VOID_P@
+
+#if ICET_SIZEOF_INT == ICET_SIZEOF_VOID_P
+typedef unsigned int IceTPointerArithmetic;
+#elif ICET_SIZEOF_LONG == ICET_SIZEOF_VOID_P
+typedef unsigned long IceTPointerArithmetic;
+#elif ICET_SIZEOF_LONG_LONG == ICET_SIZEOF_VOID_P
+typedef unsigned long long IceTPointerArithmetic;
+#else
+#error "No valid data type for size of pointer found." 
+#endif
+
 #endif /*_ICET_CONFIG_H_*/

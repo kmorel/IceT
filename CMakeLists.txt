@@ -83,13 +83,16 @@ IF (BUILD_TESTING)
   SEPARATE_ARGUMENTS(ICET_MPI_POSTFLAGS)
 ENDIF (BUILD_TESTING)
 
-# Add options to select install directory.
-# IF (WIN32)
-#   SET(ICET_DEFAULT_INSTALL_PREFIX "C:/Program Files/ICE-T")
-# ELSE (WIN32)
-#   SET(ICET_DEFAULT_INSTALL_PREFIX "/usr/local")
-# ENDIF (WIN32)
-# SET(ICET_INSTALL_PREFIX ${ICET_DEFAULT_INSTALL_PREFIX} CACHE PATH "Directory under which all ICE-T files are installed.")
+# Configure data type sizes.
+INCLUDE (${CMAKE_ROOT}/Modules/CheckTypeSize.cmake)
+CHECK_TYPE_SIZE(char        CMAKE_SIZEOF_CHAR)
+CHECK_TYPE_SIZE(short       CMAKE_SIZEOF_SHORT)
+CHECK_TYPE_SIZE(int         CMAKE_SIZEOF_INT)
+CHECK_TYPE_SIZE(long        CMAKE_SIZEOF_LONG)
+CHECK_TYPE_SIZE("long long" CMAKE_SIZEOF_LONG_LONG)
+CHECK_TYPE_SIZE(float       CMAKE_SIZEOF_FLOAT)
+CHECK_TYPE_SIZE(double      CMAKE_SIZEOF_DOUBLE)
+CHECK_TYPE_SIZE("void*"     CMAKE_SIZEOF_VOID_P)
 
 # Configure files with settings for use by the build.
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/GL/ice-t_config.h.in

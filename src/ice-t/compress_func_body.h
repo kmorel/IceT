@@ -197,7 +197,8 @@
 
     *_compress_time += icetWallTime() - _timer;
 
-    COMPRESSED_SIZE = (GLuint)_dest - (GLuint)COMPRESSED_BUFFER;
+    COMPRESSED_SIZE = (GLuint)(  (IceTPointerArithmetic)_dest
+			       - (IceTPointerArithmetic)COMPRESSED_BUFFER);
     icetRaiseDebug1("Compression: %d%%",
 		    100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8));
 }
