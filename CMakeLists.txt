@@ -19,9 +19,9 @@ SET(ICET_VERSION "${ICET_MAJOR_VERSION}.${ICET_MINOR_VERSION}.${ICET_PATCH_VERSI
 
 # Set output paths.
 SET(LIBRARY_OUTPUT_PATH ${ICET_BINARY_DIR}/bin CACHE PATH
-	"Output directory for building all libraries.")
+  "Output directory for building all libraries.")
 SET(EXECUTABLE_OUTPUT_PATH ${ICET_BINARY_DIR}/bin CACHE PATH
-	"Output directory for building all executable.")
+  "Output directory for building all executable.")
 MARK_AS_ADVANCED(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 SET(ICET_LIBRARY_DIR ${LIBRARY_OUTPUT_PATH})
 SET(ICET_EXECUTABLE_DIR ${EXECUTABLE_OUTPUT_PATH})
@@ -93,16 +93,18 @@ ENDIF (BUILD_TESTING)
 
 # Configure files with settings for use by the build.
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/GL/ice-t_config.h.in
-	       ${ICET_BINARY_DIR}/src/include/GL/ice-t_config.h)
+               ${ICET_BINARY_DIR}/src/include/GL/ice-t_config.h)
 
 # Point to ICE-T include files.
 INCLUDE_DIRECTORIES(${ICET_SOURCE_DIR}/src/include)
 INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
 
 SUBDIRS(src)
-IF(NOT WIN32)
-  SUBDIRS(doc)
-ENDIF(NOT WIN32)
+IF(BUILD_DOCUMENTATION)
+  IF(NOT WIN32)
+    SUBDIRS(doc)
+  ENDIF(NOT WIN32)
+ENDIF(BUILD_DOCUMENTATION)
 
 IF (ICET_BUILD_TESTING)
   SUBDIRS(tests)
@@ -127,7 +129,7 @@ SET(ICET_USE_FILE_CONFIG ${ICET_SOURCE_DIR}/UseICET.cmake)
 SET(ICET_BUILD_SETTINGS_FILE_CONFIG ${ICET_BINARY_DIR}/ICETBuildSettings.cmake)
 SET(ICET_LIBRARY_DEPENDS_FILE ${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
-	       ${ICET_BINARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
+               ${ICET_BINARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
 #Second, configuration for install directory.
 SET(ICET_INCLUDE_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}/include)
 SET(ICET_LIBRARY_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}/lib)
@@ -137,9 +139,9 @@ SET(ICET_BUILD_SETTINGS_FILE_CONFIG
 SET(ICET_LIBRARY_DEPENDS_FILE
     ${CMAKE_INSTALL_PREFIX}/lib/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
-	       ${ICET_LIBRARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
+               ${ICET_LIBRARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
 INSTALL_FILES(/lib .cmake ${ICET_SOURCE_DIR}/UseICET
-			  ${ICET_LIBRARY_DIR}/ICETConfig)
+               ${ICET_LIBRARY_DIR}/ICETConfig)
 
 # Allow local additions to this file without CVS conflicts.
 INCLUDE(${ICET_BINARY_DIR}/LocalUserOptions.cmake OPTIONAL)
