@@ -31,9 +31,9 @@ static void draw(void)
     static GLUquadricObj *sphere = NULL;
 
     if (sphere == NULL) {
-	sphere = gluNewQuadric();
-	gluQuadricDrawStyle(sphere, GLU_FILL);
-	gluQuadricNormals(sphere, GLU_SMOOTH);
+        sphere = gluNewQuadric();
+        gluQuadricDrawStyle(sphere, GLU_FILL);
+        gluQuadricNormals(sphere, GLU_SMOOTH);
     }
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -48,7 +48,7 @@ static void draw(void)
    * matrix in the draw function. */
     glPushMatrix();
       glMatrixMode(GL_MODELVIEW);
-      glTranslatef(rank, 0, 0);
+      glTranslatef((float)rank, 0, 0);
       gluSphere(sphere, 0.5, 10, 30);
     glPopMatrix();
 }
@@ -73,7 +73,7 @@ int SimpleExample(int argc, char *argv[])
    * icetDrawFrame() is called, not in the callback drawing function.
    * There may also be limitations on the background color when performing
    * color blending. */
-    glClearColor(0.2, 0.5, 0.1, 1.0);
+    glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
 
   /* Give ICE-T a function that will issue the OpenGL drawing commands. */
     icetDrawFunc(draw);
@@ -90,8 +90,8 @@ int SimpleExample(int argc, char *argv[])
     if (num_proc < 4) {
       /* Here is an example of a "1 tile" case.  This is functionally
        * identical to a traditional sort last algorithm. */
-	icetResetTiles();
-	icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        icetResetTiles();
+        icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     } else {
       /* Here is an example of a 4x4 tile layout.  The tiles are displayed
        * with the following ranks:
@@ -110,11 +110,11 @@ int SimpleExample(int argc, char *argv[])
        * Mullions and overlaps can be implemented by simply shifting tiles
        * on top of or away from each other.
        */
-	icetResetTiles();
-	icetAddTile(0,           SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
-	icetAddTile(SCREEN_WIDTH,SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
-	icetAddTile(0,           0,             SCREEN_WIDTH, SCREEN_HEIGHT, 2);
-	icetAddTile(SCREEN_WIDTH,0,             SCREEN_WIDTH, SCREEN_HEIGHT, 3);
+        icetResetTiles();
+        icetAddTile(0,           SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        icetAddTile(SCREEN_WIDTH,SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
+        icetAddTile(0,           0,             SCREEN_WIDTH, SCREEN_HEIGHT, 2);
+        icetAddTile(SCREEN_WIDTH,0,             SCREEN_WIDTH, SCREEN_HEIGHT, 3);
     }
 
   /* Tell ICE-T what strategy to use.  The REDUCE strategy is an all-around
@@ -131,12 +131,12 @@ int SimpleExample(int argc, char *argv[])
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     if (rank%8 != 0) {
-	GLfloat color[4];
-	color[0] = rank%2;
-	color[1] = (rank/2)%2;
-	color[2] = (rank/4)%2;
-	color[3] = 1.0;
-	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
+        GLfloat color[4];
+        color[0] = (float)(rank%2);
+        color[1] = (float)((rank/2)%2);
+        color[2] = (float)((rank/4)%2);
+        color[3] = 1.0;
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
     }
 
   /* Here is an example of an animation loop. */
@@ -147,22 +147,22 @@ int SimpleExample(int argc, char *argv[])
        * cannot take into account.  That transformation is handled in the
        * application by deforming the bounds before giving them to
        * ICE-T. */
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glRotatef(angle, 0.0, 1.0, 0.0);
-	glScalef(1.0f/num_proc, 1.0, 1.0);
-	glTranslatef(-(num_proc-1)/2.0f, 0.0, 0.0);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glRotatef(angle, 0.0, 1.0, 0.0);
+        glScalef(1.0f/num_proc, 1.0, 1.0);
+        glTranslatef(-(num_proc-1)/2.0f, 0.0, 0.0);
 
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  ICE-T will automatically handle image
        * compositing. */
-	icetDrawFrame();
+        icetDrawFrame();
 
       /* For obvious reasons, ICE-T should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a
        * synchronize (a barrier is often about as good as you can do) and
        * then a swap buffers. */
-	swap_buffers();
+        swap_buffers();
     }
 
     finalize_test();
