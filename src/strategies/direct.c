@@ -33,9 +33,9 @@ static IceTImage directCompose(void)
     GLint max_pixels;
     GLint num_tiles;
     GLint num_contributors;
-    int display_tile;
-    int tile;
-    int *tile_image_dest;
+    GLint display_tile;
+    GLint tile;
+    GLint *tile_image_dest;
     icetRaiseDebug("In Direct Compose");
 
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
@@ -43,11 +43,11 @@ static IceTImage directCompose(void)
 
     icetResizeBuffer(  2*icetSparseImageSize(max_pixels)
 		     + icetFullImageSize(max_pixels)
-		     + num_tiles*sizeof(int));
+		     + num_tiles*sizeof(GLint));
     inImage     = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     outImage    = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     image	= icetReserveBufferMem(icetFullImageSize(max_pixels));
-    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(int));
+    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(GLint));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {

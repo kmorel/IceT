@@ -200,7 +200,7 @@ static GLfloat black[] = {0.0, 0.0, 0.0, 0.0};
 
 void icetDrawFrame(void)
 {
-    int rank, num_proc;
+    GLint rank, num_proc;
     GLboolean isDrawing;
     GLint frame_count;
     GLdouble projection_matrix[16];
@@ -209,8 +209,8 @@ void icetDrawFrame(void)
     GLdouble znear, zfar;
     IceTStrategy strategy;
     GLvoid *value;
-    int num_tiles;
-    int num_bounding_verts;
+    GLint num_tiles;
+    GLint num_bounding_verts;
     GLint *tile_viewports;
     GLint *contained_list;
     GLint num_contained;

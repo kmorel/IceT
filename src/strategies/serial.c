@@ -33,7 +33,7 @@ static IceTImage serialCompose(void)
     IceTImage myImage;
     IceTImage imageBuffer;
     IceTSparseImage inImage, outImage;
-    int *compose_group;
+    GLint *compose_group;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
@@ -50,7 +50,7 @@ static IceTImage serialCompose(void)
     imageBuffer   = icetReserveBufferMem(icetFullImageSize(max_pixels));
     inImage       = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     outImage      = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    compose_group = icetReserveBufferMem(sizeof(int)*num_proc);
+    compose_group = icetReserveBufferMem(sizeof(GLint)*num_proc);
 
     if (ordered_composite) {
 	icetGetIntegerv(ICET_COMPOSITE_ORDER, compose_group);

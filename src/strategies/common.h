@@ -38,7 +38,7 @@
 void icetRenderTransferFullImages(IceTImage imageBuffer,
 				  IceTSparseImage inImage,
 				  IceTSparseImage outImage,
-				  int num_receiving, int *tile_image_dest);
+				  GLint num_receiving, GLint *tile_image_dest);
 
 
 /* icetSendRecvLargeMessages
@@ -78,15 +78,15 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
    bufferSize - The maximum size of a message.
    
 */
-typedef void *(*IceTGenerateData)(int id, int dest, int *size);
-typedef void *(*IceTHandleData)(void *, int src);
-void icetSendRecvLargeMessages(int numMessagesSending,
-			       int *messageDestinations,
-			       int messagesInOrder,
+typedef void *(*IceTGenerateData)(GLint id, GLint dest, GLint *size);
+typedef void *(*IceTHandleData)(void *, GLint src);
+void icetSendRecvLargeMessages(GLint numMessagesSending,
+			       GLint *messageDestinations,
+			       GLint messagesInOrder,
 			       IceTGenerateData generateDataFunc,
 			       IceTHandleData handleDataFunc,
 			       void *incomingBuffer,
-			       int bufferSize);
+			       GLint bufferSize);
 
 
 /* icetBswapCompose
@@ -110,7 +110,7 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	results when the function returns.
    inImage/outImage - two buffers for holding sparse image data.
 */
-void icetBswapCompose(int *compose_group, int group_size, int image_dest,
+void icetBswapCompose(GLint *compose_group, GLint group_size, GLint image_dest,
 		      IceTImage imageBuffer,
 		      IceTSparseImage inImage, IceTSparseImage outImage);
 
@@ -134,7 +134,7 @@ void icetBswapCompose(int *compose_group, int group_size, int image_dest,
 	the buffer has undefined partial results when the function returns.
    compressedImageBuffer - a buffer for holding sparse image data in transit.
 */
-void icetTreeCompose(int *compose_group, int group_size, int image_dest,
+void icetTreeCompose(GLint *compose_group, GLint group_size, GLint image_dest,
 		     IceTImage imageBuffer,
 		     IceTSparseImage compressedImageBuffer);
 
@@ -156,7 +156,8 @@ void icetTreeCompose(int *compose_group, int group_size, int image_dest,
 	undefined partial results when the function returns.
    inImage/outImage - two buffers for holding sparse image data.
 */
-void icetCascadedCompose(int *compose_group, int group_size, int compose_tile,
+void icetCascadedCompose(GLint *compose_group, GLint group_size,
+			 GLint compose_tile,
 			 IceTImage imageBuffer,
 			 IceTSparseImage inImage, IceTSparseImage outImage);
 

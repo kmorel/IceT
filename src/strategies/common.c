@@ -29,8 +29,8 @@
 static IceTImage rtfi_imageBuffer;
 static IceTSparseImage rtfi_inImage;
 static IceTSparseImage rtfi_outImage;
-static int rtfi_first;
-static void *rtfi_generateDataFunc(int id, int dest, int *size) {
+static GLint rtfi_first;
+static void *rtfi_generateDataFunc(GLint id, GLint dest, GLint *size) {
     GLint rank;
     GLint *tile_list = icetUnsafeStateGet(ICET_CONTAINED_TILES_LIST);
 
@@ -45,7 +45,7 @@ static void *rtfi_generateDataFunc(int id, int dest, int *size) {
     *size = icetGetCompressedTileImage(tile_list[id], rtfi_outImage);
     return rtfi_outImage;
 }
-static void *rtfi_handleDataFunc(void *inImage, int src) {
+static void *rtfi_handleDataFunc(void *inImage, GLint src) {
     if (inImage == NULL) {
       /* Superfluous call from send to self. */
     } else {
@@ -63,19 +63,19 @@ static void *rtfi_handleDataFunc(void *inImage, int src) {
     rtfi_first = 0;
     return rtfi_inImage;
 }
-static int *imageDestinations = NULL;
-static int allocatedTileSize = 0;
+static GLint *imageDestinations = NULL;
+static GLint allocatedTileSize = 0;
 void icetRenderTransferFullImages(IceTImage imageBuffer,
 				  IceTSparseImage inImage,
 				  IceTSparseImage outImage,
-				  int num_receiving, int *tile_image_dest)
+				  GLint num_receiving, GLint *tile_image_dest)
 {
     GLint num_sending;
     GLint *tile_list;
     GLint max_pixels;
     GLint num_tiles;
 
-    int i;
+    GLint i;
 
     rtfi_imageBuffer = imageBuffer;
     rtfi_inImage = inImage;
@@ -89,7 +89,7 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
 
     if (allocatedTileSize < num_tiles) {
 	free(imageDestinations);
-	imageDestinations = malloc(num_tiles * sizeof(int));
+	imageDestinations = malloc(num_tiles * sizeof(GLint));
 	allocatedTileSize = num_tiles;
     }
 
@@ -105,40 +105,41 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
 			      inImage, icetSparseImageSize(max_pixels));
 }
 
-static void startLargeRecv(void *buf, int size, int src, IceTCommRequest *req) {
+static void startLargeRecv(void *buf, GLint size, GLint src,
+			   IceTCommRequest *req) {
     *req = ICET_COMM_IRECV(buf, size, ICET_BYTE, src, LARGE_MESSAGE);
 }
-static void startLargeSend(int dest, IceTCommRequest *req,
-			   IceTGenerateData callback, int *sendIds) {
-    int data_size;
+static void startLargeSend(GLint dest, IceTCommRequest *req,
+			   IceTGenerateData callback, GLint *sendIds) {
+    GLint data_size;
     void *data;
     data = (*callback)(sendIds[dest], dest, &data_size);
     icetAddSentBytes(data_size);
     *req = ICET_COMM_ISEND(data, data_size, ICET_BYTE, dest, LARGE_MESSAGE);
 }
-static int *sendIds = NULL;
+static GLint *sendIds = NULL;
 static char *myDests = NULL;
 static char *allDests = NULL;
-static int *sendQueue = NULL;
-static int *recvQueue = NULL;
-static int *recvFrom = NULL;
-static int allocatedCommSize = 0;
-void icetSendRecvLargeMessages(int numMessagesSending,
-			       int *messageDestinations,
-			       int messagesInOrder,
+static GLint *sendQueue = NULL;
+static GLint *recvQueue = NULL;
+static GLint *recvFrom = NULL;
+static GLint allocatedCommSize = 0;
+void icetSendRecvLargeMessages(GLint numMessagesSending,
+			       GLint *messageDestinations,
+			       GLint messagesInOrder,
 			       IceTGenerateData generateDataFunc,
 			       IceTHandleData handleDataFunc,
 			       void *incomingBuffer,
-			       int bufferSize)
+			       GLint bufferSize)
 {
-    int comm_size;
-    int rank;
-    int i;
-    int sender;
-    int numSend, numRecv;
-    int someoneSends;
-    int sendToSelf;
-    int sqi, rqi;	/* Send/Recv queue index. */
+    GLint comm_size;
+    GLint rank;
+    GLint i;
+    GLint sender;
+    GLint numSend, numRecv;
+    GLint someoneSends;
+    GLint sendToSelf;
+    GLint sqi, rqi;	/* Send/Recv queue index. */
     GLint *composite_order;
     GLint *process_orders;
 
@@ -161,12 +162,12 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	free(sendQueue);
 	free(recvQueue);
 	free(recvFrom);
-	sendIds = malloc(comm_size * sizeof(int));
+	sendIds = malloc(comm_size * sizeof(GLint));
 	myDests = malloc(comm_size);
 	allDests = malloc(comm_size * comm_size);
-	sendQueue = malloc(comm_size * sizeof(int));
-	recvQueue = malloc(comm_size * sizeof(int));
-	recvFrom = malloc(comm_size * sizeof(int));
+	sendQueue = malloc(comm_size * sizeof(GLint));
+	recvQueue = malloc(comm_size * sizeof(GLint));
+	recvFrom = malloc(comm_size * sizeof(GLint));
 	allocatedCommSize = comm_size;
     }
 
@@ -201,13 +202,13 @@ void icetSendRecvLargeMessages(int numMessagesSending,
       /* Try to find a destination for each sender. */
 	for (sender = 0; sender < comm_size; sender++) {
 	    char *localDests = allDests + sender*comm_size;
-	    int receiver;
+	    GLint receiver;
 	    for (receiver = 0; receiver < comm_size; receiver++) {
 		if (localDests[receiver] && (recvFrom[receiver] < 0)) {
 		    if (messagesInOrder) {
 		      /* Make sure there is not another message that must
 			 be sent first. */
-			int left, right;
+			GLint left, right;
 			if (process_orders[sender] < process_orders[receiver]) {
 			    left = process_orders[sender];
 			    right = process_orders[receiver];
@@ -216,7 +217,7 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 			    right = process_orders[sender];
 			}
 			for (left++; left < right; left++) {
-			    int p = composite_order[left];
+			    GLint p = composite_order[left];
 			    if (allDests[p*comm_size + receiver]) break;
 			}
 			if (left != right) {
@@ -266,7 +267,7 @@ void icetSendRecvLargeMessages(int numMessagesSending,
 	requests[RECV_IDX] = ICET_COMM_REQUEST_NULL;
     }
     if (sendToSelf) {
-	int data_size;
+	GLint data_size;
 	void *data;
 	icetRaiseDebug("Sending to self.");
 	data = (*generateDataFunc)(sendIds[rank], rank, &data_size);
@@ -320,9 +321,9 @@ void icetSendRecvLargeMessages(int numMessagesSending,
     }									      \
 }
 
-static void BswapCollectFinalImages(int *compose_group, int group_size,
-				    int group_rank, IceTImage imageBuffer,
-				    int pixel_count)
+static void BswapCollectFinalImages(GLint *compose_group, GLint group_size,
+				    GLint group_rank, IceTImage imageBuffer,
+				    GLint pixel_count)
 {
     GLenum output_buffers;
     IceTCommRequest *requests;
@@ -337,7 +338,7 @@ static void BswapCollectFinalImages(int *compose_group, int group_size,
 	GLubyte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
 	icetRaiseDebug("Collecting image data.");
 	for (i = 0; i < group_size; i++) {
-	    int src;
+	    GLint src;
 	  /* Actual peice is located at the bit reversal of i. */
 	    BIT_REVERSE(src, i, group_size);
 	    if (src != group_rank) {
@@ -357,7 +358,7 @@ static void BswapCollectFinalImages(int *compose_group, int group_size,
 	GLuint *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
 	icetRaiseDebug("Collecting depth data.");
 	for (i = 0; i < group_size; i++) {
-	    int src;
+	    GLint src;
 	  /* Actual peice is located at the bit reversal of i. */
 	    BIT_REVERSE(src, i, group_size);
 	    if (src != group_rank) {
@@ -376,9 +377,9 @@ static void BswapCollectFinalImages(int *compose_group, int group_size,
     free(requests);
 }
 
-static void BswapSendFinalImage(int *compose_group, int image_dest,
+static void BswapSendFinalImage(GLint *compose_group, GLint image_dest,
 				IceTImage imageBuffer,
-				int pixel_count, int offset)
+				GLint pixel_count, GLint offset)
 {
     GLenum output_buffers;
 
@@ -408,28 +409,28 @@ static void BswapSendFinalImage(int *compose_group, int image_dest,
  * ordering correct).  If both color and depth buffers are inputs, both are
  * located in the uncollected images regardless of what buffers are
  * selected for outputs. */
-static void BswapComposeNoCombine(int *compose_group, int group_size,
-				  int pow2size, int group_rank,
-				  IceTImage imageBuffer, int pixels,
+static void BswapComposeNoCombine(GLint *compose_group, GLint group_size,
+				  GLint pow2size, GLint group_rank,
+				  IceTImage imageBuffer, GLint pixels,
 				  IceTSparseImage inImage,
 				  IceTSparseImage outImage)
 {
-    int extra_proc;	/* group_size - pow2size */
-    int extra_pow2size;	/* extra_proc rounded down to nearest power of 2. */
+    GLint extra_proc;	/* group_size - pow2size */
+    GLint extra_pow2size;	/* extra_proc rounded down to nearest power of 2. */
 
     extra_proc = group_size - pow2size;
     for (extra_pow2size = 1; extra_pow2size <= extra_proc; extra_pow2size *= 2);
     extra_pow2size /= 2;
 
     if (group_rank >= pow2size) {
-	int upper_group_rank = group_rank - pow2size;
+	GLint upper_group_rank = group_rank - pow2size;
       /* I am part of the extra stuff.  Recurse to run bswap on my part. */
 	BswapComposeNoCombine(compose_group + pow2size, extra_proc,
 			      extra_pow2size, upper_group_rank,
 			      imageBuffer, pixels, inImage, outImage);
       /* Now I may have some image data to send to lower group. */
 	if (upper_group_rank < extra_pow2size) {
-	    int num_pieces = pow2size/extra_pow2size;
+	    GLint num_pieces = pow2size/extra_pow2size;
 	    GLuint offset;
 	    int i;
 
@@ -447,8 +448,8 @@ static void BswapComposeNoCombine(int *compose_group, int group_size,
 	   * location. */
 	    pixels = pixels/pow2size;
 	    for (i = 0; i < num_pieces; i++) {
-		int compressedSize;
-		int dest_rank;
+		GLint compressedSize;
+		GLint dest_rank;
 
 		BIT_REVERSE(dest_rank, i, num_pieces);
 		dest_rank = dest_rank*extra_pow2size + upper_group_rank;
@@ -477,9 +478,9 @@ static void BswapComposeNoCombine(int *compose_group, int group_size,
 	int offset = 0;
 
 	for (bitmask = 0x0001; bitmask < pow2size; bitmask <<= 1) {
-	    int pair;
-	    int inOnTop;
-	    int compressedSize;
+	    GLint pair;
+	    GLint inOnTop;
+	    GLint compressedSize;
 
 	    pair = group_rank ^ bitmask;
 
@@ -514,7 +515,7 @@ static void BswapComposeNoCombine(int *compose_group, int group_size,
        * amount, and reverse the bits again.  However, the equivalent to
        * this is just clearing out the upper bits. */
 	if (extra_pow2size > 0) {
-	    int src = pow2size + (group_rank & (extra_pow2size-1));
+	    GLint src = pow2size + (group_rank & (extra_pow2size-1));
 	    icetRaiseDebug1("Absorbing image from %d", src);
 	    ICET_COMM_RECV(inImage, icetSparseImageSize(pixels),
 			   ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
@@ -524,13 +525,13 @@ static void BswapComposeNoCombine(int *compose_group, int group_size,
     }
 }
 
-void icetBswapCompose(int *compose_group, int group_size, int image_dest,
+void icetBswapCompose(GLint *compose_group, GLint group_size, GLint image_dest,
 		      IceTImage imageBuffer,
 		      IceTSparseImage inImage, IceTSparseImage outImage)
 {
-    int group_rank;
+    GLint group_rank;
     GLint rank;
-    int pow2size;
+    GLint pow2size;
     GLuint pixels;
 
     icetRaiseDebug("In icetBswapCompose");
@@ -557,22 +558,22 @@ void icetBswapCompose(int *compose_group, int group_size, int image_dest,
 				imageBuffer, pixels/pow2size);
     } else if (group_rank < pow2size) {
       /* Send image to destination. */
-	int sub_image_size = pixels/pow2size;
-	int piece_num;
+	GLint sub_image_size = pixels/pow2size;
+	GLint piece_num;
 	BIT_REVERSE(piece_num, group_rank, pow2size);
 	BswapSendFinalImage(compose_group, image_dest, imageBuffer,
 			    sub_image_size, piece_num*sub_image_size);
     }
 }
 
-static void RecursiveTreeCompose(int *compose_group, int group_size,
-				 int group_rank, int image_dest,
+static void RecursiveTreeCompose(GLint *compose_group, GLint group_size,
+				 GLint group_rank, GLint image_dest,
 				 IceTImage imageBuffer,
 				 IceTSparseImage compressedImageBuffer)
 {
-    int middle;
+    GLint middle;
     enum { NO_IMAGE, SEND_IMAGE, RECV_IMAGE } current_image;
-    int pair_proc;
+    GLint pair_proc;
 
     if (group_size <= 1) return;
 
@@ -629,7 +630,7 @@ static void RecursiveTreeCompose(int *compose_group, int group_size,
 
     if (current_image == SEND_IMAGE) {
       /* Hasta la vista, baby. */
-	int compressedSize;
+	GLint compressedSize;
 	icetRaiseDebug1("Sending image to %d", compose_group[pair_proc]);
 	compressedSize = icetCompressImage(imageBuffer,
 					   compressedImageBuffer);
@@ -648,11 +649,11 @@ static void RecursiveTreeCompose(int *compose_group, int group_size,
     }
 }
 
-void icetTreeCompose(int *compose_group, int group_size, int image_dest,
+void icetTreeCompose(GLint *compose_group, GLint group_size, GLint image_dest,
 		     IceTImage imageBuffer,
 		     IceTSparseImage compressedImageBuffer)
 {
-    int group_rank;
+    GLint group_rank;
     GLint rank;
 
     icetGetIntegerv(ICET_RANK, &rank);

@@ -21,11 +21,11 @@
 #include <string.h>
 
 static IceTImage reduceCompose(void);
-static int delegate(int **tile_image_destp,
-		    int **compose_groupp, int *group_sizep,
-		    int *group_image_destp,
-		    int *num_receivingp,
-		    int buffer_size);
+static GLint delegate(GLint **tile_image_destp,
+		      GLint **compose_groupp, GLint *group_sizep,
+		      GLint *group_image_destp,
+		      GLint *num_receivingp,
+		      GLint buffer_size);
 
 
 IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
@@ -38,12 +38,12 @@ static IceTImage reduceCompose(void)
     GLint max_pixels;
     GLint num_processes;
     GLint tile_displayed;
-    int buffer_size;
+    GLint buffer_size;
 
-    int *tile_image_dest;
-    int *compose_group, group_size, group_image_dest;
-    int num_receiving;
-    int compose_tile;
+    GLint *tile_image_dest;
+    GLint *compose_group, group_size, group_image_dest;
+    GLint num_receiving;
+    GLint compose_tile;
 
     icetRaiseDebug("In reduceCompose");
 
@@ -89,11 +89,11 @@ static IceTImage reduceCompose(void)
     return image;
 }
 
-static int delegate(int **tile_image_destp,
-		    int **compose_groupp, int *group_sizep,
-		    int *group_image_destp,
-		    int *num_receivingp,
-		    int buffer_size)
+static GLint delegate(GLint **tile_image_destp,
+		      GLint **compose_groupp, GLint *group_sizep,
+		      GLint *group_image_destp,
+		      GLint *num_receivingp,
+		      GLint buffer_size)
 {
     GLboolean *all_contained_tiles_masks;
     GLint *contrib_counts;
@@ -105,21 +105,21 @@ static int delegate(int **tile_image_destp,
     GLint *tile_display_nodes;
     GLint *composite_order;
 
-    int *num_proc_for_tile;
-    int *node_assignment;
-    int *tile_proc_groups;
-    int *group_sizes;
-    int *tile_image_dest;
-    int group_image_dest = 0;
-    int *contributors;
+    GLint *num_proc_for_tile;
+    GLint *node_assignment;
+    GLint *tile_proc_groups;
+    GLint *group_sizes;
+    GLint *tile_image_dest;
+    GLint group_image_dest = 0;
+    GLint *contributors;
 
-    int pcount;
+    GLint pcount;
 
-    int tile, node;
-    int snode, rnode, dest;
-    int piece;
-    int first_loop;
-    int num_receiving;
+    GLint tile, node;
+    GLint snode, rnode, dest;
+    GLint piece;
+    GLint first_loop;
+    GLint num_receiving;
 
     all_contained_tiles_masks
 	= icetUnsafeStateGet(ICET_ALL_CONTAINED_TILES_MASKS);
@@ -140,26 +140,26 @@ static int delegate(int **tile_image_destp,
 	return -1;
     }
 
-    icetResizeBuffer(  num_tiles*sizeof(int)
-		     + num_processes*sizeof(int)
-		     + num_tiles*num_processes*sizeof(int)
-		     + num_tiles*sizeof(int)
-		     + num_tiles*sizeof(int)
-		     + num_processes*sizeof(int)
+    icetResizeBuffer(  num_tiles*sizeof(GLint)
+		     + num_processes*sizeof(GLint)
+		     + num_tiles*num_processes*sizeof(GLint)
+		     + num_tiles*sizeof(GLint)
+		     + num_tiles*sizeof(GLint)
+		     + num_processes*sizeof(GLint)
 		     + buffer_size);
-    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(int));
-    node_assignment   = icetReserveBufferMem(num_processes * sizeof(int));
+    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(GLint));
+    node_assignment   = icetReserveBufferMem(num_processes * sizeof(GLint));
     tile_proc_groups  = icetReserveBufferMem(  num_tiles * num_processes
-					     * sizeof(int));
-    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(int));
-    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(int));
-    contributors      = icetReserveBufferMem(num_processes * sizeof(int));
+					     * sizeof(GLint));
+    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(GLint));
+    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(GLint));
+    contributors      = icetReserveBufferMem(num_processes * sizeof(GLint));
 
   /* Decide the minimum amount of processes that should be added to each
      tile. */
     pcount = 0;
     for (tile = 0; tile < num_tiles; tile++) {
-	int allocate = (contrib_counts[tile]*num_processes)/total_image_count;
+	GLint allocate = (contrib_counts[tile]*num_processes)/total_image_count;
       /* Make sure at least one process is assigned to tiles that have at
 	 least one image. */
 	if ((allocate < 1) && (contrib_counts[tile] > 0)) allocate = 1;
@@ -177,7 +177,7 @@ static int delegate(int **tile_image_destp,
     while (num_processes > pcount) {
       /* Find the tile with the largest image to process ratio that
 	 can still have a process added to it. */
-	int max = 0;
+	GLint max = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] < contrib_counts[tile])
 		&& (   (num_proc_for_tile[max] == contrib_counts[max])
@@ -200,7 +200,7 @@ static int delegate(int **tile_image_destp,
     while (num_processes < pcount) {
       /* Find tile with the smallest image to process ratio that can still
 	 have a process removed. */
-	int min = 0;
+	GLint min = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] > 1)
 		&& (   (num_proc_for_tile[min] < 2)
@@ -215,7 +215,7 @@ static int delegate(int **tile_image_destp,
     }
 
   /* Clear out arrays. */
-    memset(group_sizes, 0, num_tiles*sizeof(int));
+    memset(group_sizes, 0, num_tiles*sizeof(GLint));
     for (node = 0; node < num_processes; node++) {
 	node_assignment[node] = -1;
     }
@@ -260,7 +260,7 @@ group_sizes[(tile)]++;
 
   /* Now figure out who I am sending to and how many I am receiving. */
     for (tile = 0; tile < num_tiles; tile++) {
-	int *proc_group = tile_proc_groups + tile*num_processes;
+	GLint *proc_group = tile_proc_groups + tile*num_processes;
 
 	if (   (node_assignment[rank] != tile)
 	    && !all_contained_tiles_masks[rank*num_tiles + tile]) {
@@ -325,7 +325,7 @@ group_sizes[(tile)]++;
 	   * gets images that are consecutive in the ordering.  Communication
 	   * costs come second. */
 
-	    int num_contributors = 0;
+	    GLint num_contributors = 0;
 	    int i;
 	  /* First, we make a list of all processes contributing to this
 	   * tile in the order in which the images need to be composed.

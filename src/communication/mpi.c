@@ -179,7 +179,7 @@ static void Destroy(IceTCommunicator self)
 static void Send(IceTCommunicator self,
 		 const void *buf, int count, GLenum datatype, int dest, int tag)
 {
-    int mpidatatype;
+    MPI_Datatype mpidatatype;
     CONVERT_DATATYPE(datatype, mpidatatype);
     MPI_Send((void *)buf, count, mpidatatype, dest, tag, MPI_COMM);
 }
@@ -188,7 +188,7 @@ static void Recv(IceTCommunicator self,
 		 void *buf, int count, GLenum datatype, int src, int tag)
 {
     MPI_Status status;
-    int mpidatatype;
+    MPI_Datatype mpidatatype;
     CONVERT_DATATYPE(datatype, mpidatatype);
     MPI_Recv(buf, count, mpidatatype, src, tag, MPI_COMM, &status);
 }
@@ -200,8 +200,8 @@ static void Sendrecv(IceTCommunicator self,
 		     int src, int recvtag)
 {
     MPI_Status status;
-    int mpisendtype;
-    int mpirecvtype;
+    MPI_Datatype mpisendtype;
+    MPI_Datatype mpirecvtype;
     CONVERT_DATATYPE(sendtype, mpisendtype);
     CONVERT_DATATYPE(recvtype, mpirecvtype);
 
@@ -213,7 +213,7 @@ static void Allgather(IceTCommunicator self,
 		      const void *sendbuf, int sendcount, int type,
 		      void *recvbuf)
 {
-    int mpitype;
+    MPI_Datatype mpitype;
     CONVERT_DATATYPE(type, mpitype);
 
     MPI_Allgather((void *)sendbuf, sendcount, mpitype,
@@ -226,7 +226,7 @@ static IceTCommRequest Isend(IceTCommunicator self,
 			     int dest, int tag)
 {
     IceTCommRequest icet_request;
-    int mpidatatype;
+    MPI_Datatype mpidatatype;
 
     icet_request = create_request();
     CONVERT_DATATYPE(datatype, mpidatatype);
@@ -241,7 +241,7 @@ static IceTCommRequest Irecv(IceTCommunicator self,
 			     int src, int tag)
 {
     IceTCommRequest icet_request;
-    int mpidatatype;
+    MPI_Datatype mpidatatype;
 
     icet_request = create_request();
     CONVERT_DATATYPE(datatype, mpidatatype);
