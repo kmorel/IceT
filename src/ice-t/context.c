@@ -27,33 +27,33 @@ struct IceTContext *icet_current_context = NULL;
 
 IceTContext icetCreateContext(IceTCommunicator comm)
 {
-    int index;
+    int idx;
 
-    for (index = 0; index < num_contexts; index++) {
-	if (context_list[index].state == NULL) {
+    for (idx = 0; idx < num_contexts; idx++) {
+	if (context_list[idx].state == NULL) {
 	    break;
 	}
     }
 
-    if (index >= num_contexts) {
+    if (idx >= num_contexts) {
 	num_contexts += 4;
 	context_list = realloc(context_list,
 			       num_contexts*sizeof(struct IceTContext));
-	memset(context_list + index, 0, 4 * sizeof(struct IceTContext));
+	memset(context_list + idx, 0, 4 * sizeof(struct IceTContext));
     }
 
-    context_list[index].communicator = comm->Duplicate(comm);
+    context_list[idx].communicator = comm->Duplicate(comm);
 
-    context_list[index].buffer = NULL;
-    context_list[index].buffer_size = 0;
-    context_list[index].buffer_offset = 0;
+    context_list[idx].buffer = NULL;
+    context_list[idx].buffer_size = 0;
+    context_list[idx].buffer_offset = 0;
 
-    context_list[index].state = icetStateCreate();
+    context_list[idx].state = icetStateCreate();
 
-    icetSetContext(index);
+    icetSetContext(idx);
     icetStateSetDefaults();
 
-    return index;
+    return idx;
 }
 
 void icetDestroyContext(IceTContext context)

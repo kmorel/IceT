@@ -181,7 +181,7 @@ void icetStateSetBoolean(GLenum pname, GLboolean value)
 {
     stateSet(pname, 1, ICET_BOOLEAN, &value);
 }
-void icetStateSetPointer(GLenum pname, GLvoid *value)
+void icetStateSetPointer(GLenum pname, const GLvoid *value)
 {
     stateSet(pname, 1, ICET_POINTER, &value);
 }
@@ -206,7 +206,6 @@ unsigned long icetStateGetTime(GLenum pname)
     }
 #define copyArray(type_dest, array_dest, type_src, array_src, size)	       \
     switch (type_src) {							       \
-REAL_SUPPRESSOR(							       \
       case ICET_DOUBLE:							       \
 	  copyArrayGivenCType(type_dest,array_dest, GLdouble,array_src, size); \
 	  break;							       \
@@ -216,15 +215,9 @@ REAL_SUPPRESSOR(							       \
       case ICET_BOOLEAN:						       \
 	  copyArrayGivenCType(type_dest,array_dest, GLboolean,array_src, size);\
 	  break;							       \
-)									       \
       case ICET_INT:							       \
 	  copyArrayGivenCType(type_dest,array_dest, GLint,array_src, size);    \
 	  break;							       \
-POINTER_SUPPRESSOR(							       \
-      case ICET_POINTER:						       \
-	  copyArrayGivenCType(type_dest,array_dest, GLvoid *,array_src, size); \
-	  break;							       \
-)									       \
       case ICET_NULL:							       \
 	  {								       \
 	      char msg[256];						       \
@@ -240,8 +233,6 @@ POINTER_SUPPRESSOR(							       \
 	  }								       \
     }
 
-#define POINTER_SUPPRESSOR(code)
-#define REAL_SUPPRESSOR(code) code
 void icetGetDoublev(GLenum pname, GLdouble *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
@@ -260,21 +251,28 @@ void icetGetBooleanv(GLenum pname, GLboolean *params)
     int i;
     copyArray(GLboolean, params, value->type, value->data, value->size);
 }
-#undef POINTER_SUPPRESSOR
-#define POINTER_SUPPRESSOR(code) code
 void icetGetIntegerv(GLenum pname, GLint *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
     copyArray(GLint, params, value->type, value->data, value->size);
 }
-#undef REAL_SUPPRESSOR
-#define REAL_SUPPRESSOR(code)
+
 void icetGetPointerv(GLenum pname, GLvoid **params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
-    copyArray(GLvoid *, params, value->type, value->data, value->size);
+    if (value->type == ICET_NULL) {
+	char msg[256];
+	sprintf(msg, "No such parameter, 0x%x.", pname);
+	icetRaiseError(msg, ICET_INVALID_ENUM);
+    }
+    if (value->type != ICET_POINTER) {
+	char msg[256];
+	sprintf(msg, "Could not cast value for 0x%x.", pname);
+	icetRaiseError(msg, ICET_BAD_CAST);
+    }
+    copyArrayGivenCType(GLvoid *, params, GLvoid *, value->data, value->size);
 }
 
 void icetEnable(GLenum pname)

@@ -647,11 +647,11 @@ void icetDrawFrame(void)
         GLubyte *color = icetGetImageColorBuffer(image);
         GLubyte *bc = (GLubyte *)(&background_color_word);
         GLuint pixels = icetGetImagePixelCount(image);
-        GLuint i;
+        GLuint ui;
         GLdouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
         blend_time = icetWallTime() - blend_time;
-        for (i = 0; i < pixels; i++, color += 4) {
+        for (ui = 0; ui < pixels; ui++, color += 4) {
             ICET_UNDER(bc, color);
         }
         blend_time = icetWallTime() - blend_time;

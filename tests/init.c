@@ -179,7 +179,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 
   /* Create a renderable window. */
     putenv(strdup(display));
-    wincreat(0, 0, width, height, "ICE-T test");
+    wincreat(0, 0, width, height, (char *)"ICE-T test");
     glEnable(GL_DEPTH_TEST);
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);

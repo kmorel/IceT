@@ -44,7 +44,7 @@ ICET_EXPORT void icetStateSetDouble(GLenum pname, GLdouble value);
 ICET_EXPORT void icetStateSetFloat(GLenum pname, GLfloat value);
 ICET_EXPORT void icetStateSetInteger(GLenum pname, GLint value);
 ICET_EXPORT void icetStateSetBoolean(GLenum pname, GLboolean value);
-ICET_EXPORT void icetStateSetPointer(GLenum pname, GLvoid *value);
+ICET_EXPORT void icetStateSetPointer(GLenum pname, const GLvoid *value);
 
 ICET_EXPORT GLenum icetStateGetType(GLenum pname);
 ICET_EXPORT GLint icetStateGetSize(GLenum pname);

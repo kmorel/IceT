@@ -50,4 +50,11 @@
 #define ICET_PATCH_VERSION	@ICET_PATCH_VERSION@
 #define ICET_VERSION		"@ICET_VERSION@"
 
+/* Used to prevent compiler warnings about unused parameters. */
+#ifdef __GNUC__
+#define icetNotUsed(x)	x __attribute__((unused))
+#else
+#define icetNotUsed(x)
+#endif
+
 #endif /*_ICET_CONFIG_H_*/

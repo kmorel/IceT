@@ -118,7 +118,7 @@ ICET_EXPORT GLuint  *icetGetDepthBuffer(void);
 
 typedef GLuint *IceTImage;
 typedef struct _IceTStrategy {
-    char *name;
+    const char *name;
     GLboolean supports_ordering;
     IceTImage (*compose)(void);
 } IceTStrategy;

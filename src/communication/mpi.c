@@ -100,7 +100,7 @@ static void destroy_request(IceTCommRequest req)
     ((req) == ICET_COMM_REQUEST_NULL ? MPI_REQUEST_NULL : *ICETREQ2MPIREQP(req))
 
 #ifdef BREAK_ON_MPI_ERROR
-static void ErrorHandler(MPI_Comm *comm, int *errorno, ...)
+static void ErrorHandler(MPI_Comm *icetNotUsed(comm), int *errorno, ...)
 {
     char error_msg[MPI_MAX_ERROR_STRING+16];
     int mpi_error_len;
@@ -270,21 +270,21 @@ static int  Waitany(IceTCommunicator  self,
 {
     MPI_Status status;
     MPI_Request *requests;
-    int index;
+    int idx;
 
     /* To remove warning */
     (void)self;
     requests = malloc(sizeof(MPI_Request)*count);
-    for (index = 0; index < count; index++) {
-        requests[index] = ICETREQ2MPIREQ(array_of_requests[index]);
+    for (idx = 0; idx < count; idx++) {
+        requests[idx] = ICETREQ2MPIREQ(array_of_requests[idx]);
     }
 
-    MPI_Waitany(count, requests, &index, &status);
-    destroy_request(array_of_requests[index]);
-    array_of_requests[index] = ICET_COMM_REQUEST_NULL;
+    MPI_Waitany(count, requests, &idx, &status);
+    destroy_request(array_of_requests[idx]);
+    array_of_requests[idx] = ICET_COMM_REQUEST_NULL;
     free(requests);
 
-    return index;
+    return idx;
 }
 
 static int Comm_size(IceTCommunicator self)
