@@ -74,7 +74,7 @@ ENDIF (MPI_EXTRA_LIBRARY)
 # Configure MPI testing support.
 IF (BUILD_TESTING)
   FIND_PROGRAM(ICET_MPIRUN_EXE NAMES mpirun lamexec)
-  SET(ICET_MPI_PREFLAGS "-np 2" CACHE STRING "Flags used by MPI start program.")
+  SET(ICET_MPI_PREFLAGS "-np;2" CACHE STRING "Flags used by MPI start program.")
   SET(ICET_MPI_POSTFLAGS "" CACHE STRING "Flags used by MPI start program.")
   SET(ICET_MPI_MAX_NUMPROCS "2" CACHE STRING "Maximum number of processors available to run parallel applications.")
   MARK_AS_ADVANCED(ICET_MPIRUN_EXE ICET_MPI_PREFLAGS ICET_MPI_POSTFLAGS ICET_MPI_MAX_NUMPROCS)
