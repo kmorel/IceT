@@ -6,15 +6,15 @@ Copyright (C) 2000-2003 Sandia National Laboratories
 
 Id
 ..
-.TH icetDataReplicationGroup 3 "July 23, 2003" "Sandia National Labs" "ICE-T"
+.TH icetDataReplicationGroupColor 3 "July 23, 2003" "Sandia National Labs" ""
 .SH NAME
-.B icetDataReplicationGroup
+.B icetDataReplicationGroupColor
 \- define data replication.
 .SH SYNOPSIS
 .nf
 .B #include <GL/ice-t.h>
 .sp
-.BI "void icetDataReplicationGroup(GLint " size ", const GLint *" processes ");"
+.BI "void icetDataReplicationGroupColor(GLint " color ");"
 .fi
 .SH DESCRIPTION
 .B ICE-T
@@ -26,42 +26,27 @@ will split the region of the display that the data projects onto among
 the processes, thereby reducing the total amount of image composition work
 that needs to be done.
 .PP
-Each group can be declared by calling
-.B icetDataReplicationGroup
-and defining the group of processes that share the geometry with the local
-process.
-.I size
-indicates how many processes belong to the group, and
-.I processes
-is an array of ids of processes that belong to the group.  Each process
-that belongs to a particular group must call
-.B icetDataReplicationGroup
-with the exact same list of processes in the same order.
-.PP
-You can alternately use
+Despite the name of the function,
 .B icetDataReplicationGroupColor
-to select data replication groups.
+has nothing to do the color of the data being replicated.  Instead,
+.I color
+is used to mark the local process as part of a given group.  When
+.B icetDataReplicationGroupColor
+is called, it finds all other processes that have the same color and builds
+a group based on this information.
 .PP
-By default, each process belongs to a group of size one containing just the
-local processes (i.e. there is no data replication).
+.B icetDataReplicationGroupColor
+must be called on every processes before the function will return.
 .SH ERRORS
-.TP 20
-.B ICET_INVALID_VALUE
-.I processes
-does not contain the local process rank.
+None.
 .SH WARNINGS
 None.
 .SH BUGS
 .B ICE-T
-assumes that
-.B icetDataReplicationGroup
-is called with the exact same parameters on all processes belonging to a
-given group.  Likewise,
-.B ICE-T
-also assumes that all processes have called
+assumes that all processes have called
 .BR icetBoundingVertices " or " icetBoundingBox*
 with the exact same parameters on all processes belonging to a given group.
-These requirements are not strictly enforced, but failing to do so may cause
+This requirement is not strictly enforced, but failing to do so may cause
 some of the geometry to not be rendered.
 .SH COPYRIGHT
 Copyright \(co 2003 Sandia Corporation
@@ -72,7 +57,7 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that this Notice and any statement of
 authorship are reproduced on all copies.
 .SH SEE ALSO
-.BR icetDataReplicationGroupColor ", " icetDrawFunc ", " icetBoundingVertices
+.BR icetDataReplicationGroup ", " icetDrawFunc ", " icetBoundingVertices
 
 
 \" These are emacs settings that go at the end of the file.

@@ -90,14 +90,14 @@ void icetCompositeOrder(const GLint *process_ranks)
 
 void icetDataReplicationGroup(GLint size, const GLint *processes)
 {
-    int rank;
-    int found_myself = 0;
-    int i;
+    GLint rank;
+    GLboolean found_myself = ICET_FALSE;
+    GLint i;
 
     icetGetIntegerv(ICET_RANK, &rank);
     for (i = 0; i < size; i++) {
 	if (processes[i] == rank) {
-	    found_myself = 1;
+	    found_myself = ICET_TRUE;
 	    break;
 	}
     }
@@ -110,6 +110,32 @@ void icetDataReplicationGroup(GLint size, const GLint *processes)
 
     icetStateSetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE, 1, &size);
     icetStateSetIntegerv(ICET_DATA_REPLICATION_GROUP, size, processes);
+}
+
+void icetDataReplicationGroupColor(GLint color)
+{
+    GLint *allcolors;
+    GLint *mygroup;
+    GLint num_proc;
+    GLint i;
+    GLint size;
+
+    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+    icetResizeBuffer(2*sizeof(GLint)*num_proc);
+    allcolors = icetReserveBufferMem(sizeof(GLint)*num_proc);
+    mygroup = icetReserveBufferMem(sizeof(GLint)*num_proc);
+
+    ICET_COMM_ALLGATHER(&color, 1, ICET_INT, allcolors);
+
+    size = 0;
+    for (i = 0; i < num_proc; i++) {
+	if (allcolors[i] == color) {
+	    mygroup[size] = i;
+	    size++;
+	}
+    }
+
+    icetDataReplicationGroup(size, mygroup);
 }
 
 GLubyte *icetGetColorBuffer(void)
@@ -151,6 +177,7 @@ static void determine_contained_tiles(const GLint contained_viewport[4],
 {
     int i;
     *num_contained = 0;
+    memset(contained_mask, 0, sizeof(GLboolean)*num_tiles);
     for (i = 0; i < num_tiles; i++) {
 	if (   (znear  <= 1.0)
 	    && (zfar   >= -1.0)
@@ -281,7 +308,6 @@ void icetDrawFrame(void)
 		     + sizeof(GLint)*num_proc);
     contained_list = icetReserveBufferMem(sizeof(GLint) * num_tiles);
     contained_mask = icetReserveBufferMem(sizeof(GLboolean)*num_tiles);
-    memset(contained_mask, 0, sizeof(GLboolean)*num_tiles);
 
     icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
     tile_viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
@@ -414,10 +440,15 @@ void icetDrawFrame(void)
 				  &num_contained);
     }
 
+    icetRaiseDebug4("contained_viewport = %d %d %d %d",
+		    contained_viewport[0], contained_viewport[1],
+		    contained_viewport[2], contained_viewport[3]);
+
   /* If we are doing data replication, reduced the amount of screen space
      we are responsible for. */
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE,
 		    &data_replication_group_size);
+icetRaiseDebug1("data_replication_group_size=%d", data_replication_group_size);
     if (data_replication_group_size > 1) {
 	data_replication_group = icetReserveBufferMem(sizeof(GLint)*num_proc);
 	icetGetIntegerv(ICET_DATA_REPLICATION_GROUP, data_replication_group);
@@ -435,7 +466,9 @@ void icetDrawFrame(void)
 		for (group_id = 0; group_id < data_replication_group_size;
 		     group_id++) {
 		    if (display_nodes[tile]==data_replication_group[group_id]) {
+icetRaiseDebug1("Someone in this group is displaying tile %d", tile);
 			if (data_replication_group[group_id] == rank) {
+icetRaiseDebug("And it's me");
 			  /* I'm displaying this tile, let's render it. */
 			    tile_rendering = tile;
 			    num_rendering_tile = 1;
@@ -457,6 +490,7 @@ void icetDrawFrame(void)
 	    }
 
 	  /* Assign the rest of the processes to tiles. */
+icetRaiseDebug2("Assigning %d more tiles to %d processes", num_contained, data_replication_group_size);
 	    if (num_contained > 0) {
 		int proc_to_tiles = 0;
 		int group_id;
@@ -483,43 +517,75 @@ void icetDrawFrame(void)
 	  /* Record a new viewport covering only my portion of the tile. */
 	    if (tile_rendering >= 0) {
 		GLint *tv = tile_viewports + 4*tile_rendering;
+		int new_length = tv[2]/num_rendering_tile;
+icetRaiseDebug2("Rendering tile %d with %d others", tile_rendering, num_rendering_tile);
 		num_contained = 1;
 		contained_list[0] = tile_rendering;
 		contained_viewport[1] = tv[1];
 		contained_viewport[3] = tv[3];
-		contained_viewport[2] = tv[2]/num_rendering_tile;
-		contained_viewport[0]
-		    = tv[0] + tile_allocation_num*contained_viewport[2];
+		contained_viewport[0] = tv[0] + tile_allocation_num*new_length;
+		if (tile_allocation_num == num_rendering_tile-1) {
+		  /* Make sure last piece does not drop pixels due to rounding
+		     errors. */
+		    contained_viewport[2]
+			= tv[2] - tile_allocation_num*new_length;
+		} else {
+		    contained_viewport[2] = new_length;
+		}
 	    } else {
+icetRaiseDebug("I ain't rendering nothin'.");
 		num_contained = 0;
+		contained_viewport[0] = global_viewport[0]-1;
+		contained_viewport[1] = global_viewport[1]-1;
+		contained_viewport[2] = 0;
+		contained_viewport[3] = 0;
+	    }
+
+	  /* Fix contained_mask. */
+	    for (i = 0; i < num_tiles; i++) {
+		contained_mask[i] = (i == tile_rendering);
 	    }
 	} else {
 	  /* More tiles than processes.  Split up the contained_viewport as
 	     best as possible. */
 	    int factor = 2;
-	    while (factor < data_replication_group_size) {
+	    while (factor <= data_replication_group_size) {
 		int split_axis = contained_viewport[2] < contained_viewport[3];
 		int new_length;
+icetRaiseDebug1("Spliting on axis %d", split_axis);
 		while (data_replication_group_size%factor != 0) factor++;
+icetRaiseDebug1("Making %d pieces.", factor);
 	      /* Split the viewport along the axis factor times.  Also
 		 split the group into factor pieces. */
-		new_length /= factor;
+		new_length = contained_viewport[2+split_axis]/factor;
+icetRaiseDebug1("new_length=%d", new_length);
 		for (i = 0; data_replication_group[i] != rank; i++);
+icetRaiseDebug1("I'm at index %d in the data replication group", i);
 		data_replication_group_size /= factor;	/* New subgroup. */
 		i /= data_replication_group_size;	/* i = piece I'm in. */
+icetRaiseDebug1("I'm in piece %d", i);
 		data_replication_group += i*data_replication_group_size;
-		if (i == data_replication_group_size-1) {
-		  /* Make sure last peice does not drop pixels due to
+		if (i == factor-1) {
+		  /* Make sure last piece does not drop pixels due to
 		     rounding errors. */
-		    contained_viewport[2*split_axis] -= i*new_length;
+		    contained_viewport[2+split_axis] -= i*new_length;
+icetRaiseDebug("I'm the last piece.");
 		} else {
-		    contained_viewport[2*split_axis] = new_length;
+		    contained_viewport[2+split_axis] = new_length;
 		}
 		contained_viewport[split_axis] += i*new_length;
+icetRaiseDebug4("New contained_viewport %d %d %d %d", contained_viewport[0], contained_viewport[1], contained_viewport[2], contained_viewport[3]);
 	    }
+	    determine_contained_tiles(contained_viewport, znear, zfar,
+				      tile_viewports, num_tiles,
+				      contained_list, contained_mask,
+				      &num_contained);
 	}
     }
 
+    icetRaiseDebug4("new contained_viewport = %d %d %d %d",
+		    contained_viewport[0], contained_viewport[1],
+		    contained_viewport[2], contained_viewport[3]);
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, contained_viewport);
     icetStateSetDoublev(ICET_NEAR_DEPTH, 1, &znear);
     icetStateSetDoublev(ICET_FAR_DEPTH, 1, &zfar);

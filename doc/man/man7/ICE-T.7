@@ -6,7 +6,7 @@ Copyright (C) 2000-2002 Sandia National Laboratories
 
 Id
 ..
-.TH ICE-T 7 "June 11, 2003" "Sandia National Labs" "ICE-T User's Guide"
+.TH ICE-T 7 "July 23, 2003" "Sandia National Labs" "ICE-T User's Guide"
 .SH NAME
 .B ICE-T
 \- Image Composition Engine for Tiles
@@ -22,8 +22,9 @@ parallel rendering on very large displays.  The displays are assumed to be
 tile displays.  The overall resolution of the display may be several times
 larger than any viewport that may be rendered by a single machine.  It is
 also assumed that several processes in the parallel application are
-"display" processes.  That is, their entire display window makes up part of
-the display.
+.I display
+processes.  That is, their entire display window makes up part of the
+display.
 .PP
 The design philosophy behind
 .B ICE-T
@@ -36,16 +37,19 @@ approaches offering potentially higher frame rates such as Wire-GL or
 Chromium.
 .PP
 .B ICE-T
-is designed to take advantage of "spatial decomposition" of the geometry
-being rendered.  That is, it works best if all the geometry on each
-process is located in as small a region of space as possible.  When this
-is true, each process usually projects geometry on only a small section of
-the screen.  This results in less work for the compositing engine.
+is designed to take advantage of
+.I spatial decomposition
+of the geometry being rendered.  That is, it works best if all the geometry
+on each process is located in as small a region of space as possible.  When
+this is true, each process usually projects geometry on only a small
+section of the screen.  This results in less work for the compositing
+engine.
 .PP
 .B ICE-T
 can also be used to perform sort-last parallel rendering to a single
-display.  Such "single-tile" rendering is simply a special case of the
-multi-tile display
+display.  Such
+.I single-tile
+rendering is simply a special case of the multi-tile display
 .B ICE-T
 was designed for.  Many of the optimizations done by
 .B ICE-T
@@ -62,15 +66,15 @@ described here.  For more details on
 .BR ICE-T 's
 algorithms, see:
 .HP 4
-Moreland, Wylie, and Pavlakos.  "Sort-last parallel rendering for viewing
-extremely large data sets on tile displays,"
+Moreland, Wylie, and Pavlakos.  ``Sort-last parallel rendering for viewing
+extremely large data sets on tile displays,'' In
 .IR "Proceedings of IEEE Symposium on Parallel and Large-Data Visualization and Graphics" ,
-October, 2001, pp. 85-154.
+October 2001, pp. 85-154.
 .SH COMMUNICATORS
 Before
 .B ICE-T
 can function, it must have a communicator.  A communicator is described by
-an "object" of type
+an ``object'' of type
 .BR IceTCommunicator .
 (Here we are using the term object loosely since it is actually implemented
 as a C struct.)
@@ -112,8 +116,10 @@ composition can begin.  A strategy, tile layout, and drawing function must
 all be set.  See the following sections for more details.
 .SH STRATEGIES
 .B ICE-T
-provides several different "strategies" for composing multiple tile images
-in an efficient manner.  The strategy used must be set with
+provides several different
+.I strategies
+for composing multiple tile images in an efficient manner.  The strategy
+used must be set with
 .B icetStrategy
 before any rendering and image composition may be performed with
 .BR ICE-T .
@@ -215,6 +221,46 @@ functions can be used to change the part of the state that controls how
 behaves.  The
 .B icetIsEnabled
 function will return the current state of one of these flags.
+.SH IMAGE COMPOSITION
+.B ICE-T
+supports two image composition operations.  The first is the
+.I Z-compare
+operation.  In this operation, the OpenGL depth buffer is read as part of
+the pixels.  When two pixels are compared, the one with that is closest
+(that is, has the minimum depth value) is selected for the output.
+.PP
+The second operation is the
+.I color blend
+operation.  In this operation, the pixel colors are blended with the Porter
+and Duff OVER operator (or equivocally the UNDER operator depending on
+which is on top).  See Porter and Duff, SIGGRAPH 1984 for more information
+on how this color blending operation works.  This composition operation is
+not commutative; that is, order matters.  Therefore, when using the
+.I color blend
+operation, it is wise to enable
+.B ICET_ORDERED_COMPOSITE
+and specify a composite order.  See
+.B icetCompositeOrder
+for more details.
+.PP
+The image composition method is chosen implicitly by which buffers
+.B ICE-T
+is asked to compose.  If a depth buffer is selected as an input buffer,
+then Z-compare is used.  If a depth buffer is not selected as an input
+buffer, then color blending is used.  This scheme was chosen because color
+blending makes no sense on a depth buffer, and Z comparison makes no sense
+without a depth buffer.  The input (and output) buffer may be selected with
+.BR icetInputOutputBuffers .
+.SH DATA REPLICATION
+.B ICE-T
+supports K-way data replication.  That is, if two or more processors draw
+exactly the same geometry,
+.B ICE-T
+can use this to its advantage to reduce the amount of image composition
+work that is required.  Groups of processors that share data can be
+specified with the
+.BR icetDataReplicationGroup " and " icetDataReplicationGroupColor
+functions.
 .SH TIMING
 .B ICE-T
 keeps several timing statistics for testing purposes and for monitoring by

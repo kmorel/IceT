@@ -239,6 +239,8 @@ int RandomTransform(int argc, char *argv[])
     GLfloat mat[16];
     int rank, num_proc;
     GLint *image_order;
+    GLint rep_group_size;
+    GLint *rep_group;
     GLfloat color[3];
 
     icetGetIntegerv(ICET_RANK, &rank);
@@ -249,15 +251,8 @@ int RandomTransform(int argc, char *argv[])
   /* Set up OpenGL. */
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glDisable(GL_LIGHTING);
-    if ((rank&0x07) == 0) {
-	color[0] = 0.5;  color[1] = 0.5;  color[2] = 0.5;
-    } else {
-	color[0] = 1.0f*((rank&0x01) == 0x01);
-	color[1] = 1.0f*((rank&0x02) == 0x02);
-	color[2] = 1.0f*((rank&0x04) == 0x04);
-    }
 
-  /* Decide on an image order. */
+  /* Decide on an image order and data replication group size. */
     image_order = malloc(num_proc * sizeof(GLint));
     if (rank == 0) {
 	for (i = 0; i < num_proc; i++) image_order[i] = i;
@@ -270,14 +265,22 @@ int RandomTransform(int argc, char *argv[])
 	    printf("%4d", image_order[i]);
 	}
 	printf("\n");
+	if (rand()%2) {
+	  /* No data replication. */
+	    rep_group_size = 1;
+	} else {
+	    rep_group_size = rand()%num_proc + 1;
+	}
+	printf("Data replication group sizes: %d\n", rep_group_size);
 	for (i = 1; i < num_proc; i++) {
-	    ICET_COMM_SEND(image_order, num_proc, ICET_INT, i, 34);
+	    ICET_COMM_SEND(image_order, num_proc, ICET_INT, i, 30);
+	    ICET_COMM_SEND(&rep_group_size, 1, ICET_INT, i, 31);
 	}
     } else {
-	ICET_COMM_RECV(image_order, num_proc, ICET_INT, 0, 34);
+	ICET_COMM_RECV(image_order, num_proc, ICET_INT, 0, 30);
+	ICET_COMM_RECV(&rep_group_size, 1, ICET_INT, 0, 31);
     }
     icetCompositeOrder(image_order);
-    free(image_order);
 
   /* Set up ICE-T. */
     icetDrawFunc(draw);
@@ -299,6 +302,31 @@ int RandomTransform(int argc, char *argv[])
 	     (float)(1.0/sqrt(num_proc) - 1.0)*(float)rand()/RAND_MAX + 1.0f,
 	     1.0f);
     glGetFloatv(GL_MODELVIEW_MATRIX, mat);
+
+  /* Set up data replication groups and ensure that they all share the same
+   * transformation. */
+  /* Pick a color based on my index into the object ordering. */
+    for (i = 0; image_order[i] != rank; i++);
+    i /= rep_group_size;
+    printf("My data replication group: %d\n", i);
+    icetDataReplicationGroupColor(i);
+    if ((i&0x07) == 0) {
+	color[0] = 0.5;  color[1] = 0.5;  color[2] = 0.5;
+    } else {
+	color[0] = 1.0f*((i&0x01) == 0x01);
+	color[1] = 1.0f*((i&0x02) == 0x02);
+	color[2] = 1.0f*((i&0x04) == 0x04);
+    }
+  /* Get the true group size. */
+    icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE, &rep_group_size);
+    rep_group = icetUnsafeStateGet(ICET_DATA_REPLICATION_GROUP);
+    if (rep_group[0] == rank) {
+	for (i = 1; i < rep_group_size; i++) {
+	    ICET_COMM_SEND(mat, 16, ICET_FLOAT, rep_group[i], 40);
+	}
+    } else {
+	ICET_COMM_RECV(mat, 16, ICET_FLOAT, rep_group[0], 40);
+    }
 
     printf("Transformation:\n");
     printf("    %f %f %f %f\n", mat[0], mat[4], mat[8], mat[12]);
@@ -470,6 +498,7 @@ int RandomTransform(int argc, char *argv[])
     }
 
     printf("Cleaning up.\n");
+    free(image_order);
     free(refcbuf);
     free(refdbuf);
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);

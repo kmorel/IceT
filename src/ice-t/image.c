@@ -609,6 +609,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
 {
     GLint *contained_viewport;
     GLint *tile_viewport;
+    GLboolean *contained_mask;
     GLint physical_viewport[4];
     GLint max_width, max_height;
     GLboolean use_floating_viewport;
@@ -622,6 +623,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
     icetRaiseDebug1("Rendering tile %d", tile);
     contained_viewport = icetUnsafeStateGet(ICET_CONTAINED_VIEWPORT);
     tile_viewport = ((GLint *)icetUnsafeStateGet(ICET_TILE_VIEWPORTS)) + 4*tile;
+    contained_mask = icetUnsafeStateGet(ICET_CONTAINED_TILES_MASK);
     use_floating_viewport = icetIsEnabled(ICET_FLOATING_VIEWPORT);
 
     glGetIntegerv(GL_VIEWPORT, physical_viewport);
@@ -633,7 +635,15 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    if (   (contained_viewport[0] + contained_viewport[2] < tile_viewport[0])
+    icetRaiseDebug4("contained viewport: %d %d %d %d",
+		    contained_viewport[0], contained_viewport[1],
+		    contained_viewport[2], contained_viewport[3]);
+    icetRaiseDebug4("tile viewport: %d %d %d %d",
+		    tile_viewport[0], tile_viewport[1],
+		    tile_viewport[2], tile_viewport[3]);
+
+    if (   !contained_mask[tile]
+	|| (contained_viewport[0] + contained_viewport[2] < tile_viewport[0])
 	|| (contained_viewport[1] + contained_viewport[3] < tile_viewport[1])
 	|| (contained_viewport[0] > tile_viewport[0] + tile_viewport[2])
 	|| (contained_viewport[1] > tile_viewport[1] + tile_viewport[3]) ) {

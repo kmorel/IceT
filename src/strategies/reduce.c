@@ -384,13 +384,13 @@ group_sizes[(tile)]++;
 			break;
 		    }
 		}
-	    }
 #ifdef DEBUG
-	    if (i == group_sizes[tile]) {
-		icetRaiseError("Display process not participating in tile?",
-			       ICET_SANITY_CHECK_FAIL);
-	    }
+		if (i == group_sizes[tile]) {
+		    icetRaiseError("Display process not participating in tile?",
+				   ICET_SANITY_CHECK_FAIL);
+		}
 #endif
+	    }
 
 	  /* Assign nodes in the order they appear in proc_group. */
 	    for (i = 0; i < num_contributors; i++) {

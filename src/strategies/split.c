@@ -50,7 +50,6 @@ static IceTImage splitStrategy(void)
     GLint *contained_tiles_list;
     GLboolean *all_contained_tiles_masks;
 
-    int max;
     int tile, image, node;
     int num_allocated;
 
@@ -96,27 +95,61 @@ static IceTImage splitStrategy(void)
     tile_groups = malloc(sizeof(int)*(num_tiles+1));
 
     num_allocated = 0;
-    max = 0;
     tile_groups[0] = 0;
-  /* Set entry of tile_groups[i+1] to the number of processors to help
+  /* Set entry of tile_groups[i+1] to the number of processes to help
      compose the image in tile i. */
     for (tile = 0; tile < num_tiles; tile++) {
 	int allocate = (tile_contribs[tile]*num_proc)/total_image_count;
 	if ((allocate < 1) && (tile_contribs[tile] > 0)) {
 	    allocate = 1;
 	}
-	if (tile_groups[max] < allocate) max = tile+1;
 	tile_groups[tile+1] = allocate;
 	num_allocated += allocate;
     }
 
-  /* Make the number of processors allocated equal exactly the number of
-     processors available. */
-    tile_groups[max] -= num_allocated - num_proc;
+  /* Make the number of processes allocated equal exactly the number of
+     processes available. */
+    while (num_allocated < num_proc) {
+      /* Add processes to the tile with the lowest process:image ratio. */
+	int min_id = 0;
+	float min_ratio = 1;
+	for (tile = 0; tile < num_tiles; tile++) {
+	    float ratio;
+	  /* Don't even consider tiles with no contributors. */
+	    if (tile_contribs[tile] == 0) continue;
+	    ratio = (float)tile_groups[tile+1]/tile_contribs[tile];
+	    if (ratio < min_ratio) {
+		min_ratio = ratio;
+		min_id = tile;
+	    }
+	}
+icetRaiseDebug2("Adding proc to %d, which has ratio %f", min_id, min_ratio);
+	tile_groups[min_id+1]++;
+	num_allocated++;
+    }
+    while (num_allocated < num_proc) {
+      /* Remove processes from the tile with the highest process:image
+	 ratio. */
+	int max_id = 0;
+	float max_ratio = 1;
+	for (tile = 0; tile < num_tiles; tile++) {
+	    float ratio;
+	  /* Don't even consider tiles with a minimum allocation. */
+	    if (tile_groups[tile+1] <= 1) continue;
+	    ratio = (float)tile_groups[tile+1]/tile_contribs[tile];
+	    if (ratio > max_ratio) {
+		max_ratio = ratio;
+		max_id = tile;
+	    }
+	}
+icetRaiseDebug2("Removing proc from %d, which has ratio %f", max_id, max_ratio);
+	tile_groups[max_id+1]--;
+	num_allocated--;
+    }
 
-  /* Processors are assigned sequentially from 0 to N to each tile as
+  /* Processes are assigned sequentially from 0 to N to each tile as
      needed.  Change each tile_groups[i] entry to be the lowest rank of the
-     processors assigned to tile i.  Thus the processors assigned to tile i
+     processes assigned to tile i.  Thus the processes assigned to tile i
      are tile_groups[i] through tile_groups[i+1]-1. */
     for (tile = 1; tile < num_tiles; tile++) {
 	tile_groups[tile] += tile_groups[tile-1];
@@ -203,7 +236,7 @@ static IceTImage splitStrategy(void)
 	}
     }
 
-  /* Send composited fragment to display processor. */
+  /* Send composited fragment to display process. */
     icetGetIntegerv(ICET_OUTPUT_BUFFERS, &output_buffers);
     if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
 	icetAddSentBytes(4*fragment_size);
