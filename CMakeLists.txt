@@ -116,7 +116,7 @@ INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
 
 # Save the library dependency graph for external projects.
 EXPORT_LIBRARY_DEPENDENCIES(${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
-INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
+INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETLibraryDepends)
 
 # Save ICE-T specific configuration options.
 #First, configuration for build directory.
