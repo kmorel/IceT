@@ -102,9 +102,9 @@ static void destroy_request(IceTCommRequest req)
 #ifdef BREAK_ON_MPI_ERROR
 static void ErrorHandler(MPI_Comm *comm, int *errorno, ...)
 {
-    (void)comm;
     char error_msg[MPI_MAX_ERROR_STRING+16];
     int mpi_error_len;
+    (void)comm;
 
     strcpy(error_msg, "MPI ERROR:\n");
     MPI_Error_string(*errorno, error_msg + strlen(error_msg), &mpi_error_len);
