@@ -643,7 +643,7 @@ void icetDrawFrame(void)
   /* Correct background color where applicable. */
     glClearColor(background_color[0], background_color[1],
 		 background_color[2], background_color[3]);
-    if (   color_blending && (display_tile >= 0)
+    if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
 	&& icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
 	GLubyte *color = icetGetImageColorBuffer(image);
 	GLubyte *bc = (GLubyte *)(&background_color_word);
