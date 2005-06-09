@@ -13,6 +13,6 @@
 #ifndef _ICET_PORTING_H_
 #define _ICET_PORTING_H_
 
-unsigned long get_usec(void);
+/* Currently, everything defined in porting.c is declared in ice-t.h. */
 
 #endif /*_ICET_PORTING_H_*/

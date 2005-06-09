@@ -15,7 +15,6 @@
 #include <GL/ice-t.h>
 #include <context.h>
 #include <diagnostics.h>
-#include <porting.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,9 +49,9 @@ void icetStateCopy(IceTState dest, const IceTState src)
 {
     int i;
     int type_width;
-    unsigned long mod_time;
+    IceTTimeStamp mod_time;
 
-    mod_time = get_usec();
+    mod_time = icetGetTimeStamp();
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
         if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
@@ -195,7 +194,7 @@ GLint icetStateGetSize(GLenum pname)
 {
     return icetGetState()[pname].size;
 }
-unsigned long icetStateGetTime(GLenum pname)
+IceTTimeStamp icetStateGetTime(GLenum pname)
 {
     return icetGetState()[pname].mod_time;
 }
@@ -340,7 +339,7 @@ void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type, GLvoid *data)
 
     state[pname].type = type;
     state[pname].size = size;
-    state[pname].mod_time = get_usec();
+    state[pname].mod_time = icetGetTimeStamp();
     state[pname].data = data;
 }
 
@@ -356,7 +355,7 @@ static void stateSet(GLenum pname, GLint size, GLenum type, const GLvoid *data)
     if ((size == state[pname].size) && (type == state[pname].type)) {
       /* Save time by just copying data into pre-existing memory. */
         memcpy(state[pname].data, data, size * type_width);
-        state[pname].mod_time = get_usec();
+        state[pname].mod_time = icetGetTimeStamp();
     } else {
         datacopy = malloc(size * type_width);
         memcpy(datacopy, data, size * type_width);
@@ -373,6 +372,13 @@ void *icetUnsafeStateGet(GLenum pname)
 GLenum icetStateType(GLenum pname)
 {
     return icetGetState()[pname].type;
+}
+
+IceTTimeStamp icetGetTimeStamp(void)
+{
+    static IceTTimeStamp current_time = 0;
+
+    return current_time++;
 }
 
 void icetStateResetTiming(void)

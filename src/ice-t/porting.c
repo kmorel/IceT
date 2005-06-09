@@ -21,22 +21,35 @@
 #endif
 
 #ifndef WIN32
-unsigned long get_usec(void)
-{
-    struct timeval tp;
-
-    gettimeofday(&tp, NULL);
-
-    return (((unsigned long)tp.tv_sec) * 1000000) + (unsigned long)tp.tv_usec;
-}
-#else /*WIN32*/
-unsigned long get_usec(void)
-{
-    return ((unsigned long)GetTickCount() * 1000);
-}
-#endif /*WIN32*/
-
 double icetWallTime(void)
 {
-    return 0.000001*get_usec();
+    static struct timeval start = { 0, 0 };
+    struct timeval now;
+    struct timeval *tp;
+
+  /* Make the first call to icetWallTime happen at second 0.  This should
+     allow for more significant bits in the microseconds. */
+    if (start.tv_sec == 0) {
+        tp = &start;
+    } else {
+        tp = &now;
+    }
+
+    gettimeofday(tp, NULL);
+
+    return 1000000.0*(tp->tv_sec - start.tv_sec) + (double)tp->tv_usec;
 }
+#else /*WIN32*/
+double icetWallTime(void)
+{
+    static DWORD start = 0;
+
+    if (start == 0) {
+        start = GetTickCount();
+        return 0.0;
+    } else {
+        DWORD now = GetTickCount();
+        return 0.001*(now-start);
+    }
+}
+#endif /*WIN32*/

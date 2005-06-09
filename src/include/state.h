@@ -15,11 +15,13 @@
 
 #include <GL/ice-t.h>
 
+typedef unsigned long long IceTTimeStamp;
+
 struct IceTStateValue {
     GLenum type;
     GLint size;
     void *data;
-    unsigned long mod_time;
+    IceTTimeStamp mod_time;
 };
 
 typedef struct IceTStateValue *IceTState;
@@ -30,15 +32,15 @@ void      icetStateCopy(IceTState dest, const IceTState src);
 void      icetStateSetDefaults(void);
 
 ICET_EXPORT void icetStateSetDoublev(GLenum pname, GLint size,
-				     const GLdouble *data);
+                                     const GLdouble *data);
 ICET_EXPORT void icetStateSetFloatv(GLenum pname, GLint size,
-				    const GLfloat *data);
+                                    const GLfloat *data);
 ICET_EXPORT void icetStateSetIntegerv(GLenum pname, GLint size,
-				      const GLint *data);
+                                      const GLint *data);
 ICET_EXPORT void icetStateSetBooleanv(GLenum pname, GLint size,
-				      const GLboolean *data);
+                                      const GLboolean *data);
 ICET_EXPORT void icetStateSetPointerv(GLenum pname, GLint size,
-				      const GLvoid **data);
+                                      const GLvoid **data);
 
 ICET_EXPORT void icetStateSetDouble(GLenum pname, GLdouble value);
 ICET_EXPORT void icetStateSetFloat(GLenum pname, GLfloat value);
@@ -48,12 +50,14 @@ ICET_EXPORT void icetStateSetPointer(GLenum pname, const GLvoid *value);
 
 ICET_EXPORT GLenum icetStateGetType(GLenum pname);
 ICET_EXPORT GLint icetStateGetSize(GLenum pname);
-ICET_EXPORT unsigned long icetStateGetTime(GLenum pname);
+ICET_EXPORT IceTTimeStamp icetStateGetTime(GLenum pname);
 
 ICET_EXPORT void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type,
-				    GLvoid *data);
+                                    GLvoid *data);
 ICET_EXPORT void *icetUnsafeStateGet(GLenum pname);
 ICET_EXPORT GLenum icetStateType(GLenum pname);
+
+ICET_EXPORT IceTTimeStamp icetGetTimeStamp(void);
 
 void icetStateResetTiming(void);
 

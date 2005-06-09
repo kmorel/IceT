@@ -30,6 +30,8 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 	rather than inflate the image with software and then send more data
 	to the graphics card.
 
+	patch 3: Fixed the "demo bug."
+
 Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	a composite on just the depth buffer.  This is useful when creating
 	shadow buffers.  This should also make it easier to implement
