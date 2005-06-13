@@ -45,28 +45,56 @@
 #  define ICET_MPI_EXPORT
 #endif /* WIN32 && SHARED_LIBS */
 
-#define ICET_MAJOR_VERSION	@ICET_MAJOR_VERSION@
-#define ICET_MINOR_VERSION	@ICET_MINOR_VERSION@
-#define ICET_PATCH_VERSION	@ICET_PATCH_VERSION@
-#define ICET_VERSION		"@ICET_VERSION@"
+#define ICET_MAJOR_VERSION      @ICET_MAJOR_VERSION@
+#define ICET_MINOR_VERSION      @ICET_MINOR_VERSION@
+#define ICET_PATCH_VERSION      @ICET_PATCH_VERSION@
+#define ICET_VERSION            "@ICET_VERSION@"
 
-#define ICET_SIZEOF_CHAR	@CMAKE_SIZEOF_CHAR@
-#define ICET_SIZEOF_SHORT	@CMAKE_SIZEOF_SHORT@
-#define ICET_SIZEOF_INT		@CMAKE_SIZEOF_INT@
-#define ICET_SIZEOF_LONG	@CMAKE_SIZEOF_LONG@
-#define ICET_SIZEOF_LONG_LONG	@CMAKE_SIZEOF_LONG_LONG@
-#define ICET_SIZEOF_FLOAT	@CMAKE_SIZEOF_FLOAT@
-#define ICET_SIZEOF_DOUBLE	@CMAKE_SIZEOF_DOUBLE@
-#define ICET_SIZEOF_VOID_P	@CMAKE_SIZEOF_VOID_P@
+#cmakedefine ICET_SIZEOF_CHAR           @ICET_SIZEOF_CHAR@
+#cmakedefine ICET_SIZEOF_SHORT          @ICET_SIZEOF_SHORT@
+#cmakedefine ICET_SIZEOF_INT            @ICET_SIZEOF_INT@
+#cmakedefine ICET_SIZEOF_LONG           @ICET_SIZEOF_LONG@
+#cmakedefine ICET_SIZEOF_LONG_LONG      @ICET_SIZEOF_LONG_LONG@
+#cmakedefine ICET_SIZEOF___INT64        @ICET_SIZEOF___INT64@
+#cmakedefine ICET_SIZEOF_FLOAT          @ICET_SIZEOF_FLOAT@
+#cmakedefine ICET_SIZEOF_DOUBLE         @ICET_SIZEOF_DOUBLE@
+#cmakedefine ICET_SIZEOF_VOID_P         @ICET_SIZEOF_VOID_P@
 
-#if ICET_SIZEOF_INT == ICET_SIZEOF_VOID_P
-typedef unsigned int IceTPointerArithmetic;
-#elif ICET_SIZEOF_LONG == ICET_SIZEOF_VOID_P
-typedef unsigned long IceTPointerArithmetic;
-#elif ICET_SIZEOF_LONG_LONG == ICET_SIZEOF_VOID_P
-typedef unsigned long long IceTPointerArithmetic;
+#if ICET_SIZEOF_INT == 4
+typedef int IceTInt32;
+typedef unsigned int IceTUnsignedInt32;
+#elif ICET_SIZEOF_LONG == 4
+typedef long IceTInt32;
+typedef unsigned long IceTUnsignedInt32;
+#elif ICET_SIZEOF_SHORT == 4
+typedef short IceTInt32;
+typedef unsigned short IceTUnsignedInt32;
 #else
-#error "No valid data type for size of pointer found." 
+#error "No valid data type for 32 bit integers found."
+#endif
+
+#if ICET_SIZEOF_INT == 8
+typedef int IceTInt64;
+typedef unsigned int IceTUnsignedInt64;
+#elif ICET_SIZEOF_LONG == 8
+typedef long IceTInt64;
+typedef unsigned long IceTUnsignedInt64;
+#elif defined(ICET_SIZEOF_LONG_LONG) && (ICET_SIZEOF_LONG_LONG == 8)
+typedef long long IceTInt64;
+typedef unsigned long long IceTUnsignedInt64;
+#elif defined(ICET_SIZEOF___INT64) && (ICET_SIZEOF___INT64 == 8)
+typedef __int64 IceTInt64;
+typedef unsigned __int64 IceTUnsignedInt64;
+#else
+#error "No valid data type for 64 bit integers found."
+#endif
+
+#if ICET_SIZEOF_VOID_P == 4
+typedef IceTUnsignedInt32 IceTPointerArithmetic;
+#elif ICET_SIZEOF_VOID_P == 8
+typedef IceTUnsignedInt64 IceTPointerArithmetic;
+#else
+#error "Unexpected pointer size."
 #endif
 
 #endif /*_ICET_CONFIG_H_*/

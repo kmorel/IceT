@@ -15,7 +15,7 @@
 
 #include <GL/ice-t.h>
 
-typedef unsigned long long IceTTimeStamp;
+typedef IceTUnsignedInt64 IceTTimeStamp;
 
 struct IceTStateValue {
     GLenum type;
