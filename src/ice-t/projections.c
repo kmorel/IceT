@@ -20,10 +20,10 @@
 
 static GLint num_tiles = 0;
 static GLdouble *tile_projections = NULL;
-static unsigned long viewport_time = (unsigned long)-1;
+static IceTTimeStamp viewport_time = (IceTTimeStamp)-1;
 
 static GLdouble global_projection[16];
-static unsigned long projection_time = (unsigned long)-1;
+static IceTTimeStamp projection_time = (IceTTimeStamp)-1;
 
 static void update_tile_projections(void);
 
@@ -38,14 +38,14 @@ void icetProjectTile(GLint tile)
 
   /* Update tile projections. */
     if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
-	update_tile_projections();
-	viewport_time = icetStateGetTime(ICET_TILE_VIEWPORTS);
+        update_tile_projections();
+        viewport_time = icetStateGetTime(ICET_TILE_VIEWPORTS);
     }
 
     if ((tile < 0) || (tile >= num_tiles)) {
-	icetRaiseError("Bad tile passed to icetProjectTile.",
-		       ICET_INVALID_VALUE);
-	return;
+        icetRaiseError("Bad tile passed to icetProjectTile.",
+                       ICET_INVALID_VALUE);
+        return;
     }
 
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
@@ -57,23 +57,23 @@ void icetProjectTile(GLint tile)
 
     if ((renderable_width != tile_width) || (renderable_height != tile_height)){
       /* Compensate for fact that tile is smaller than actual window. */
-	glOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
-		-1.0, 2.0*renderable_height/tile_height - 1.0,
-		1.0, -1.0);
+        glOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
+                -1.0, 2.0*renderable_height/tile_height - 1.0,
+                1.0, -1.0);
     }
 
     glMultMatrixd(tile_projections + 16*tile);
 
     if (projection_time != icetStateGetTime(ICET_PROJECTION_MATRIX)) {
-	icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection);
-	projection_time = icetStateGetTime(ICET_PROJECTION_MATRIX);
+        icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection);
+        projection_time = icetStateGetTime(ICET_PROJECTION_MATRIX);
     }
 
     glMultMatrixd(global_projection);
 }
 
 void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
-			    GLdouble *mat_out)
+                            GLdouble *mat_out)
 {
     GLint global_viewport[4];
 /*     GLdouble viewport_transform[16]; */
@@ -139,9 +139,9 @@ void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
     mat_out[11] = 0.0;
 
     mat_out[12] = (GLdouble)(  global_viewport[2] + 2*global_viewport[0]
-			     - 2*x - width)/width;
+                             - 2*x - width)/width;
     mat_out[13] = (GLdouble)(  global_viewport[3] + 2*global_viewport[1]
-			     - 2*y - height)/height;
+                             - 2*y - height)/height;
     mat_out[14] = 0.0;
     mat_out[15] = 1.0;
 }
@@ -157,23 +157,23 @@ static void update_tile_projections(void)
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
 
     for (i = 0; i < num_tiles; i++) {
-	icetGetViewportProject(viewports[i*4+0], viewports[i*4+1],
-			       viewports[i*4+2], viewports[i*4+3],
-			       tile_projections + 16*i);
+        icetGetViewportProject(viewports[i*4+0], viewports[i*4+1],
+                               viewports[i*4+2], viewports[i*4+3],
+                               tile_projections + 16*i);
     }
 }
 
-/* #define MI(r,c)	((c)*4+(r)) */
+/* #define MI(r,c)      ((c)*4+(r)) */
 /* static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B) */
 /* { */
 /*     int i, j, k; */
 
 /*     for (i = 0; i < 4; i++) { */
-/* 	for (j = 0; j < 4; j++) { */
-/* 	    C[MI(i,j)] = 0.0; */
-/* 	    for (k = 0; k < 4; k++) { */
-/* 		C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)]; */
-/* 	    } */
-/* 	} */
+/*      for (j = 0; j < 4; j++) { */
+/*          C[MI(i,j)] = 0.0; */
+/*          for (k = 0; k < 4; k++) { */
+/*              C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)]; */
+/*          } */
+/*      } */
 /*     } */
 /* } */
