@@ -95,6 +95,34 @@ CHECK_TYPE_SIZE(float       ICET_SIZEOF_FLOAT)
 CHECK_TYPE_SIZE(double      ICET_SIZEOF_DOUBLE)
 CHECK_TYPE_SIZE("void*"     ICET_SIZEOF_VOID_P)
 
+#-----------------------------------------------------------------------------
+# Configure install locations.  This allows parent projects to modify
+# the install location.
+IF(NOT ICET_INSTALL_BIN_DIR)
+  SET(ICET_INSTALL_BIN_DIR /bin)
+ENDIF(NOT ICET_INSTALL_BIN_DIR)
+IF(NOT ICET_INSTALL_INCLUDE_DIR)
+  SET(ICET_INSTALL_INCLUDE_DIR /include)
+ENDIF(NOT ICET_INSTALL_INCLUDE_DIR)
+IF(NOT ICET_INSTALL_LIB_DIR)
+  SET(ICET_INSTALL_LIB_DIR /lib)
+ENDIF(NOT ICET_INSTALL_LIB_DIR)
+
+# Shared libraries are considered both runtime and development and
+# static libraries are considered development only.  In order to
+# switch library installation on and off correctly we make the
+# decision here.
+SET(ICET_INSTALL_NO_LIBRARIES)
+IF(BUILD_SHARED_LIBS)
+  IF(ICET_INSTALL_NO_RUNTIME AND ICET_INSTALL_NO_DEVELOPMENT)
+    SET(ICET_INSTALL_NO_LIBRARIES 1)
+  ENDIF(ICET_INSTALL_NO_RUNTIME AND ICET_INSTALL_NO_DEVELOPMENT)
+ELSE(BUILD_SHARED_LIBS)
+  IF(ICET_INSTALL_NO_DEVELOPMENT)
+    SET(ICET_INSTALL_NO_LIBRARIES 1)
+  ENDIF(ICET_INSTALL_NO_DEVELOPMENT)
+ENDIF(BUILD_SHARED_LIBS)
+
 # Configure files with settings for use by the build.
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/GL/ice-t_config.h.in
                ${ICET_BINARY_DIR}/src/include/GL/ice-t_config.h)
@@ -119,11 +147,11 @@ ENDIF (ICET_BUILD_TESTING)
 #  CMAKE_IMPORT_BUILD_SETTINGS(<build_file>)
 INCLUDE(${CMAKE_ROOT}/Modules/CMakeExportBuildSettings.cmake)
 CMAKE_EXPORT_BUILD_SETTINGS(${ICET_BINARY_DIR}/ICETBuildSettings.cmake)
-INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
+INSTALL_FILES(${ICET_INSTALL_LIB_DIR} .cmake ${ICET_BINARY_DIR}/ICETBuildSettings)
 
 # Save the library dependency graph for external projects.
 EXPORT_LIBRARY_DEPENDENCIES(${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
-INSTALL_FILES(/lib .cmake ${ICET_BINARY_DIR}/ICETLibraryDepends)
+INSTALL_FILES(${ICET_INSTALL_LIB_DIR} .cmake ${ICET_BINARY_DIR}/ICETLibraryDepends)
 
 # Save ICE-T specific configuration options.
 #First, configuration for build directory.
@@ -135,16 +163,16 @@ SET(ICET_LIBRARY_DEPENDS_FILE ${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
                ${ICET_BINARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
 #Second, configuration for install directory.
-SET(ICET_INCLUDE_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}/include)
-SET(ICET_LIBRARY_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}/lib)
-SET(ICET_USE_FILE_CONFIG ${CMAKE_INSTALL_PREFIX}/lib/UseICET.cmake)
+SET(ICET_INCLUDE_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}${ICET_INSTALL_INCLUDE_DIR})
+SET(ICET_LIBRARY_DIRS_CONFIG ${CMAKE_INSTALL_PREFIX}${ICET_INSTALL_LIB_DIR})
+SET(ICET_USE_FILE_CONFIG ${CMAKE_INSTALL_PREFIX}${ICET_INSTALL_LIB_DIR}/UseICET.cmake)
 SET(ICET_BUILD_SETTINGS_FILE_CONFIG
-    ${CMAKE_INSTALL_PREFIX}/lib/ICETBuildSettings.cmake)
+    ${CMAKE_INSTALL_PREFIX}${ICET_INSTALL_LIB_DIR}/ICETBuildSettings.cmake)
 SET(ICET_LIBRARY_DEPENDS_FILE
-    ${CMAKE_INSTALL_PREFIX}/lib/ICETLibraryDepends.cmake)
+    ${CMAKE_INSTALL_PREFIX}${ICET_INSTALL_LIB_DIR}/ICETLibraryDepends.cmake)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/ICETConfig.cmake.in
                ${ICET_LIBRARY_DIR}/ICETConfig.cmake @ONLY IMMEDIATE)
-INSTALL_FILES(/lib .cmake ${ICET_SOURCE_DIR}/UseICET
+INSTALL_FILES(${ICET_INSTALL_LIB_DIR} .cmake ${ICET_SOURCE_DIR}/UseICET
                ${ICET_LIBRARY_DIR}/ICETConfig)
 
 # Allow local additions to this file without CVS conflicts.

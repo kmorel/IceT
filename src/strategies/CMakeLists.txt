@@ -9,16 +9,18 @@
 #
 
 SET(ICET_STRATEGIES_SRCS
-	common.c
-	direct.c
-	serial.c
-	split.c
-	reduce.c
-	vtree.c
+        common.c
+        direct.c
+        serial.c
+        split.c
+        reduce.c
+        vtree.c
 )
 
 ADD_LIBRARY(icet_strategies ${ICET_STRATEGIES_SRCS})
 
 TARGET_LINK_LIBRARIES(icet_strategies icet)
 
-INSTALL_TARGETS(/lib icet_strategies)
+IF(NOT ICET_INSTALL_NO_LIBRARIES)
+  INSTALL_TARGETS(${ICET_INSTALL_LIB_DIR} icet_strategies)
+ENDIF(NOT ICET_INSTALL_NO_LIBRARIES)
