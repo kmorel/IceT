@@ -637,6 +637,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
 	screen_viewport[3] = target_viewport[3] = 0;
       /* Don't bother to render. */
 	return;
+#if 0
     } else if (   (contained_viewport[0] >= tile_viewport[0])
 	       && (contained_viewport[1] >= tile_viewport[1])
 	       && (   contained_viewport[2]+contained_viewport[0]
@@ -653,6 +654,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
 	    = contained_viewport[1] - tile_viewport[1];
 	screen_viewport[2] = target_viewport[2] = contained_viewport[2];
 	screen_viewport[3] = target_viewport[3] = contained_viewport[3];
+#endif
     } else if (   !use_floating_viewport
 	       || (contained_viewport[2] > max_width)
 	       || (contained_viewport[3] > max_height) ) {
