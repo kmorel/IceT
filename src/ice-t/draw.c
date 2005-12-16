@@ -172,6 +172,169 @@ GLuint *icetGetDepthBuffer(void)
     }
 }
 
+static void find_contained_viewport(const GLdouble projection_matrix[16],
+                                    const GLint global_viewport[4],
+                                    GLint contained_viewport[4],
+                                    GLdouble *znear, GLdouble *zfar)
+{
+    GLdouble *bound_vert;
+    GLdouble modelview_matrix[16];
+    GLdouble viewport_matrix[16];
+    GLdouble tmp_matrix[16];
+    GLdouble total_transform[16];
+    GLdouble left, right, bottom, top;
+    GLdouble *transformed_verts;
+    GLint num_bounding_verts;
+    int i;
+
+  /* Strange projection matrix that transforms the x and y of normalized
+     screen coordinates into viewport coordinates that may be cast to
+     integers. */
+    viewport_matrix[ 0] = global_viewport[2];
+    viewport_matrix[ 1] = 0.0;
+    viewport_matrix[ 2] = 0.0;
+    viewport_matrix[ 3] = 0.0;
+
+    viewport_matrix[ 4] = 0.0;
+    viewport_matrix[ 5] = global_viewport[3];
+    viewport_matrix[ 6] = 0.0;
+    viewport_matrix[ 7] = 0.0;
+
+    viewport_matrix[ 8] = 0.0;
+    viewport_matrix[ 9] = 0.0;
+    viewport_matrix[10] = 2.0;
+    viewport_matrix[11] = 0.0;
+
+    viewport_matrix[12] = global_viewport[2] + global_viewport[0]*2.0;
+    viewport_matrix[13] = global_viewport[3] + global_viewport[1]*2.0;
+    viewport_matrix[14] = 0.0;
+    viewport_matrix[15] = 2.0;
+
+    glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
+
+    multMatrix(tmp_matrix, projection_matrix, modelview_matrix);
+    multMatrix(total_transform, viewport_matrix, tmp_matrix);
+
+  /* Set absolute mins and maxes. */
+    left   = global_viewport[0] + global_viewport[2];
+    right  = global_viewport[0];
+    bottom = global_viewport[1] + global_viewport[3];
+    top    = global_viewport[1];
+    *znear = 1.0;
+    *zfar  = -1.0;
+
+  /* Transform each vertex to find where it lies in the global viewport and
+     normalized z.  Leave the results in homogeneous coordinates for now. */
+    bound_vert = icetUnsafeStateGet(ICET_GEOMETRY_BOUNDS);
+    icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
+    transformed_verts
+        = icetReserveBufferMem(sizeof(GLdouble)*num_bounding_verts*4);
+    for (i = 0; i < num_bounding_verts; i++) {
+        transformed_verts[4*i + 0]
+            = (  total_transform[MI(0,0)]*bound_vert[3*i+0]
+               + total_transform[MI(0,1)]*bound_vert[3*i+1]
+               + total_transform[MI(0,2)]*bound_vert[3*i+2]
+               + total_transform[MI(0,3)] );
+        transformed_verts[4*i + 1]
+            = (  total_transform[MI(1,0)]*bound_vert[3*i+0]
+               + total_transform[MI(1,1)]*bound_vert[3*i+1]
+               + total_transform[MI(1,2)]*bound_vert[3*i+2]
+               + total_transform[MI(1,3)] );
+        transformed_verts[4*i + 2]
+            = (  total_transform[MI(2,0)]*bound_vert[3*i+0]
+               + total_transform[MI(2,1)]*bound_vert[3*i+1]
+               + total_transform[MI(2,2)]*bound_vert[3*i+2]
+               + total_transform[MI(2,3)] );
+        transformed_verts[4*i + 3]
+            = (  total_transform[MI(3,0)]*bound_vert[3*i+0]
+               + total_transform[MI(3,1)]*bound_vert[3*i+1]
+               + total_transform[MI(3,2)]*bound_vert[3*i+2]
+               + total_transform[MI(3,3)] );
+    }
+
+  /* Now iterate over all the transformed verts and adjust the absolute mins
+     and maxs to include them all. */
+    for (i = 0; i < num_bounding_verts; i++)
+    {
+        GLdouble *vert = transformed_verts + 4*i;
+
+      /* Check to see if the vertex is in front of the near cut plane.  This
+         is true when z/w >= -1 or z + w >= 0.  The second form is better
+         just in case w is 0. */
+        if (vert[2] + vert[3] >= 0.0) {
+          /* Normalize homogeneous coordinates. */
+            GLdouble invw = 1.0/vert[3];
+            GLdouble x = vert[0]*invw;
+            GLdouble y = vert[1]*invw;
+            GLdouble z = vert[2]*invw;
+
+          /* Update contained region. */
+            if (left   > x) left   = x;
+            if (right  < x) right  = x;
+            if (bottom > y) bottom = y;
+            if (top    < y) top    = y;
+            if (*znear > z) *znear = z;
+            if (*zfar  < z) *zfar  = z;
+        } else {
+          /* The vertex is being clipped by the near plane.  In perspective
+             mode, vertices behind the near clipping plane can sometimes give
+             missleading projections.  Instead, find all the other vertices on
+             the other side of the near plane, compute the intersection of the
+             segment between the two points and the near plane (in homogeneous
+             coordinates) and use that as the projection. */
+            int j;
+            for (j = 0; j < num_bounding_verts; j++) {
+                GLdouble *vert2 = transformed_verts + 4*j;
+                double t;
+                GLdouble x, y, invw;
+                if (vert2[2] + vert2[3] < 0.0) {
+                  /* Ignore other points behind near plane. */
+                    continue;
+                }
+              /* Let the two points in question be v_i and v_j.  Define the
+                 segment between them with the parametric equation
+                 p(t) = (vert - vert2)t + vert2.  First, find t where the z and
+                 w coordinates of p(t) sum to zero. */
+                t = (vert2[2]+vert2[3])/(vert2[2]-vert[2] + vert2[3]-vert[3]);
+              /* Use t to find the intersection point.  While we are at it,
+                 normalize the resulting coordinates.  We don't need z because
+                 we know it is going to be -1. */
+                invw = 1.0/((vert[3] - vert2[3])*t + vert2[3] );
+                x = ((vert[0] - vert2[0])*t + vert2[0] ) * invw;
+                y = ((vert[1] - vert2[1])*t + vert2[1] ) * invw;
+
+              /* Update contained region. */
+                if (left   > x) left   = x;
+                if (right  < x) right  = x;
+                if (bottom > y) bottom = y;
+                if (top    < y) top    = y;
+                *znear = -1.0;
+            }
+        }
+    }
+
+    left = floor(left);
+    right = ceil(right);
+    bottom = floor(bottom);
+    top = ceil(top);
+
+  /* Clip bounds to global viewport. */
+    if (left   < global_viewport[0]) left = global_viewport[0];
+    if (right  > global_viewport[0] + global_viewport[2])
+        right  = global_viewport[0] + global_viewport[2];
+    if (bottom < global_viewport[1]) bottom = global_viewport[1];
+    if (top    > global_viewport[1] + global_viewport[3])
+        top    = global_viewport[1] + global_viewport[3];
+    if (*znear < -1.0) *znear = -1.0;
+    if (*zfar  >  1.0) *zfar = 1.0;
+
+  /* Use this information to build a containing viewport. */
+    contained_viewport[0] = (int)left;
+    contained_viewport[1] = (int)bottom;
+    contained_viewport[2] = (int)(right - left);
+    contained_viewport[3] = (int)(top - bottom);
+}
+
 static void determine_contained_tiles(const GLint contained_viewport[4],
                                       GLdouble znear, GLdouble zfar,
                                       const GLint *tile_viewports,
@@ -323,11 +486,13 @@ void icetDrawFrame(void)
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
+    icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
     icetResizeBuffer(  sizeof(GLint)*num_tiles
                      + sizeof(GLboolean)*num_tiles*(num_proc+1)
                      + sizeof(int)    /* So stuff can land on byte boundries.*/
                      + sizeof(GLint)*num_tiles*num_proc
-                     + sizeof(GLint)*num_proc);
+                     + sizeof(GLint)*num_proc
+                     + sizeof(GLdouble)*num_bounding_verts*4 );
     contained_list = icetReserveBufferMem(sizeof(GLint) * num_tiles);
     contained_mask = icetReserveBufferMem(sizeof(GLboolean)*num_tiles);
 
@@ -342,7 +507,6 @@ void icetDrawFrame(void)
     glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
     icetStateSetDoublev(ICET_PROJECTION_MATRIX, 16, projection_matrix);
 
-    icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
     if (num_bounding_verts < 1) {
       /* User never set bounding vertices.  Assume image covers all
          tiles. */
@@ -358,106 +522,9 @@ void icetDrawFrame(void)
         zfar = 1.0;
         num_contained = num_tiles;
     } else {
-      /* Figure out which tiles the geometry may lie in. */
-        GLdouble *bound_vert;
-        GLdouble modelview_matrix[16];
-        GLdouble viewport_matrix[16];
-        GLdouble tmp_matrix[16];
-        GLdouble total_transform[16];
-        GLdouble left, right, bottom, top;
-        GLdouble x, y;
-        GLdouble z, invw;
-
-      /* Strange projection matrix that transforms the x and y of normalized
-         screen coordinates into viewport coordinates that may be cast to
-         integers. */
-        viewport_matrix[ 0] = global_viewport[2];
-        viewport_matrix[ 1] = 0.0;
-        viewport_matrix[ 2] = 0.0;
-        viewport_matrix[ 3] = 0.0;
-
-        viewport_matrix[ 4] = 0.0;
-        viewport_matrix[ 5] = global_viewport[3];
-        viewport_matrix[ 6] = 0.0;
-        viewport_matrix[ 7] = 0.0;
-
-        viewport_matrix[ 8] = 0.0;
-        viewport_matrix[ 9] = 0.0;
-        viewport_matrix[10] = 2.0;
-        viewport_matrix[11] = 0.0;
-
-        viewport_matrix[12] = global_viewport[2] + global_viewport[0]*2.0;
-        viewport_matrix[13] = global_viewport[3] + global_viewport[1]*2.0;
-        viewport_matrix[14] = 0.0;
-        viewport_matrix[15] = 2.0;
-
-        glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
-
-        multMatrix(tmp_matrix, projection_matrix, modelview_matrix);
-        multMatrix(total_transform, viewport_matrix, tmp_matrix);
-
-      /* Set absolute mins and maxes. */
-        left   = global_viewport[0] + global_viewport[2];
-        right  = global_viewport[0];
-        bottom = global_viewport[1] + global_viewport[3];
-        top    = global_viewport[1];
-        znear  = 1.0;
-        zfar   = -1.0;
-
-      /* Transform each vertex to find where it lies in the global
-         viewport and normalized z. */
-        bound_vert = icetUnsafeStateGet(ICET_GEOMETRY_BOUNDS);
-        for (i = 0; i < num_bounding_verts; i++) {
-            invw = 1.0/(  total_transform[MI(3,0)]*bound_vert[0]
-                        + total_transform[MI(3,1)]*bound_vert[1]
-                        + total_transform[MI(3,2)]*bound_vert[2]
-                        + total_transform[MI(3,3)]);
-            x = (  (  total_transform[MI(0,0)]*bound_vert[0]
-                    + total_transform[MI(0,1)]*bound_vert[1]
-                    + total_transform[MI(0,2)]*bound_vert[2]
-                    + total_transform[MI(0,3)])
-                 * invw);
-            y = (  (  total_transform[MI(1,0)]*bound_vert[0]
-                    + total_transform[MI(1,1)]*bound_vert[1]
-                    + total_transform[MI(1,2)]*bound_vert[2]
-                    + total_transform[MI(1,3)])
-                 * invw);
-            z = (  (  total_transform[MI(2,0)]*bound_vert[0]
-                    + total_transform[MI(2,1)]*bound_vert[1]
-                    + total_transform[MI(2,2)]*bound_vert[2]
-                    + total_transform[MI(2,3)])
-                 * invw);
-
-            if (left   > x) left   = x;
-            if (right  < x) right  = x;
-            if (bottom > y) bottom = y;
-            if (top    < y) top    = y;
-            if (znear  > z) znear  = z;
-            if (zfar   < z) zfar   = z;
-
-            bound_vert += 3;
-        }
-
-        left = floor(left);
-        right = ceil(right);
-        bottom = floor(bottom);
-        top = ceil(top);
-
-      /* Clip bounds to global viewport. */
-        if (left   < global_viewport[0]) left = global_viewport[0];
-        if (right  > global_viewport[0] + global_viewport[2])
-            right  = global_viewport[0] + global_viewport[2];
-        if (bottom < global_viewport[1]) bottom = global_viewport[1];
-        if (top    > global_viewport[1] + global_viewport[3])
-            top    = global_viewport[1] + global_viewport[3];
-        if (znear  < -1.0) znear = -1.0;
-        if (zfar   >  1.0) zfar = 1.0;
-
-      /* Use this information to build a containing viewport. */
-        contained_viewport[0] = (int)left;
-        contained_viewport[1] = (int)bottom;
-        contained_viewport[2] = (int)(right - left);
-        contained_viewport[3] = (int)(top - bottom);
+      /* Figure out how the geometry projects onto the display. */
+        find_contained_viewport(projection_matrix, global_viewport,
+                                contained_viewport, &znear, &zfar);
 
       /* Now use this information to figure out which tiles need to be
          drawn. */
