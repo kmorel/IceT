@@ -11,6 +11,7 @@
 /* Id */
 
 #include "test-util.h"
+#include "test_codes.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,8 +28,8 @@
 #include <unistd.h>
 #else
 #include <io.h>
-#define dup(fildes)		_dup(fildes)
-#define dup2(fildes, fildes2)	_dup2(fildes, fildes2)
+#define dup(fildes)             _dup(fildes)
+#define dup2(fildes, fildes2)   _dup2(fildes, fildes2)
 #endif
 
 IceTStrategy strategy_list[5];
@@ -41,10 +42,10 @@ int SCREEN_HEIGHT;
 static void checkOglError(void)
 {
     GLenum error = glGetError();
-#define TRY_ERROR(ename)						\
-    if (error == ename) {						\
-	printf("## Current OpenGL error = " #ename "\n");		\
-	return;								\
+#define TRY_ERROR(ename)                                                \
+    if (error == ename) {                                               \
+        printf("## Current OpenGL error = " #ename "\n");               \
+        return;                                                         \
     }
     
     TRY_ERROR(GL_NO_ERROR);
@@ -64,10 +65,10 @@ static void checkOglError(void)
 static void checkIceTError(void)
 {
     GLenum error = icetGetError();
-#define TRY_ERROR(ename)						\
-    if (error == ename) {						\
-	printf("## Current Ice-T error = " #ename "\n");		\
-	return;								\
+#define TRY_ERROR(ename)                                                \
+    if (error == ename) {                                               \
+        printf("## Current Ice-T error = " #ename "\n");                \
+        return;                                                         \
     }
     TRY_ERROR(ICET_NO_ERROR);
     TRY_ERROR(ICET_SANITY_CHECK_FAIL);
@@ -89,10 +90,10 @@ static void realprintf(const char *fmt, ...)
     va_list ap;
 
     if (realstdout != NULL) {
-	va_start(ap, fmt);
-	vfprintf(realstdout, fmt, ap);
-	va_end(ap);
-	fflush(realstdout);
+        va_start(ap, fmt);
+        vfprintf(realstdout, fmt, ap);
+        va_end(ap);
+        fflush(realstdout);
     }
 }
 #endif
@@ -133,48 +134,48 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 
   /* Parse my arguments. */
     for (arg = 1; arg < argc; arg++) {
-	if (strcmp(argv[arg], "-width") == 0) {
-	    width = atoi(argv[++arg]);
-	} else if (strcmp(argv[arg], "-height") == 0) {
-	    height = atoi(argv[++arg]);
-	} else if (strcmp(argv[arg], "-display") == 0) {
-	    sprintf(display, "DISPLAY=%s", argv[++arg]);
-	} else if (strcmp(argv[arg], "-nologdebug") == 0) {
-	    diag_level &= ICET_DIAG_WARNINGS | ICET_DIAG_ALL_NODES;
-	} else if (strcmp(argv[arg], "-redirect") == 0) {
-	    redirect = 1;
-	} else if (strcmp(argv[arg], "-h") == 0) {
-	    usage(argv);
-	    exit(0);
-	} else if (   (strcmp(argv[arg], "-R") == 0)
-		   || (strncmp(argv[arg], "-", 1) != 0) ) {
-	    break;
-	} else if (strcmp(argv[arg], "--") == 0) {
-	    arg++;
-	    break;
-	} else {
-	    printf("Unknown options `%s'.  Try -h for help.\n", argv[arg]);
-	    exit(1);
-	}
+        if (strcmp(argv[arg], "-width") == 0) {
+            width = atoi(argv[++arg]);
+        } else if (strcmp(argv[arg], "-height") == 0) {
+            height = atoi(argv[++arg]);
+        } else if (strcmp(argv[arg], "-display") == 0) {
+            sprintf(display, "DISPLAY=%s", argv[++arg]);
+        } else if (strcmp(argv[arg], "-nologdebug") == 0) {
+            diag_level &= ICET_DIAG_WARNINGS | ICET_DIAG_ALL_NODES;
+        } else if (strcmp(argv[arg], "-redirect") == 0) {
+            redirect = 1;
+        } else if (strcmp(argv[arg], "-h") == 0) {
+            usage(argv);
+            exit(0);
+        } else if (   (strcmp(argv[arg], "-R") == 0)
+                   || (strncmp(argv[arg], "-", 1) != 0) ) {
+            break;
+        } else if (strcmp(argv[arg], "--") == 0) {
+            arg++;
+            break;
+        } else {
+            printf("Unknown options `%s'.  Try -h for help.\n", argv[arg]);
+            exit(1);
+        }
     }
 
   /* Fix arguments for next bout of parsing. */
     *argcp = 1;
     for ( ; arg < argc; arg++, (*argcp)++) {
-	argv[*argcp] = argv[arg];
+        argv[*argcp] = argv[arg];
     }
     argc = *argcp;
 
   /* Make sure selected options are consistent. */
     if ((num_proc > 1) && (argc < 2)) {
-	printf("You must select a test on the command line when using more than one process.\n");
-	printf("Try -h for help.\n");
-	exit(1);
+        printf("You must select a test on the command line when using more than one process.\n");
+        printf("Try -h for help.\n");
+        exit(1);
     }
     if (redirect && (argc < 2)) {
-	printf("You must select a test on the command line when redirecting the output.\n");
-	printf("Try -h for help.\n");
-	exit(1);
+        printf("You must select a test on the command line when redirecting the output.\n");
+        printf("Try -h for help.\n");
+        exit(1);
     }
 
   /* Create a renderable window. */
@@ -194,22 +195,22 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 
   /* Redirect standard output on demand. */
     if (redirect) {
-	char filename[64];
-	int outfd;
-	if (rank == 0) {
-	    realstdout = fdopen(dup(1), "wt");
-	} else {
-	    realstdout = NULL;
-	}
-	sprintf(filename, "log.%04d", rank);
-	outfd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
-	if (outfd < 0) {
-	    printf("Could not open %s for writing.\n", filename);
-	    exit(1);
-	}
-	dup2(outfd, 1);
+        char filename[64];
+        int outfd;
+        if (rank == 0) {
+            realstdout = fdopen(dup(1), "wt");
+        } else {
+            realstdout = NULL;
+        }
+        sprintf(filename, "log.%04d", rank);
+        outfd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (outfd < 0) {
+            printf("Could not open %s for writing.\n", filename);
+            exit(1);
+        }
+        dup2(outfd, 1);
     } else {
-	realstdout = stdout;
+        realstdout = stdout;
     }
 
     strategy_list[0] = ICET_STRATEGY_DIRECT;
@@ -220,10 +221,30 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 }
 
 extern void finalize_communication(void);
-void finalize_test(void)
+void finalize_test(int result)
 {
+    GLint rank;
+
     checkOglError();
     checkIceTError();
+
+    icetGetIntegerv(ICET_RANK, &rank);
+    if (rank == 0) {
+        switch (result) {
+          case TEST_PASSED:
+              printf("***Test Passed***\n");
+              break;
+          case TEST_NOT_RUN:
+              printf("***TEST NOT RUN***\n");
+              break;
+          case TEST_NOT_PASSED:
+              printf("***TEST NOT PASSED***\n");
+              break;
+          case TEST_FAILED:
+              printf("***TEST FAILED***\n");
+              break;
+        }
+    }
 
     icetDestroyContext(context);
     finalize_communication();

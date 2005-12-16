@@ -169,6 +169,6 @@ int SimpleExample(int argc, char * argv[])
         swap_buffers();
     }
 
-    finalize_test();
+    finalize_test(TEST_PASSED);
     return TEST_PASSED;
 }

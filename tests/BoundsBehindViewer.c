@@ -104,11 +104,11 @@ int BoundsBehindViewer(int argc, char * argv[])
         GLuint *cb = (GLuint *)icetGetColorBuffer();
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
-            finalize_test();
+            finalize_test(TEST_FAILED);
             return TEST_FAILED;
         }
     }
 
-    finalize_test();
+    finalize_test(TEST_PASSED);
     return TEST_PASSED;
 }

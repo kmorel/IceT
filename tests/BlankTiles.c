@@ -97,6 +97,6 @@ int BlankTiles(int argc, char *argv[])
 
     printf("Cleaning up.\n");
 
-    finalize_test();
+    finalize_test(result);
     return result;
 }

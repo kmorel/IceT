@@ -190,6 +190,6 @@ int CompressionSize(int argc, char *argv[])
         DoCompressionTest(2);
     }
 
-    finalize_test();
+    finalize_test(result);
     return result;
 }

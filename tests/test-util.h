@@ -30,11 +30,11 @@ extern int SCREEN_HEIGHT;
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
 
-void finalize_test(void);
+void finalize_test(int result);
 
 void write_ppm(const char *filename,
-	       const GLubyte *image,
-	       int width, int height);
+               const GLubyte *image,
+               int width, int height);
 
 #ifdef __cplusplus
 }

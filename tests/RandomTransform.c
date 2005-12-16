@@ -223,6 +223,7 @@ static void check_results(int result)
     }
 
     if (fail) {
+        finalize_test(TEST_FAILED);
         exit(TEST_FAILED);
     }
 }
@@ -523,6 +524,6 @@ int RandomTransform(int argc, char *argv[])
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
                            ICET_COLOR_BUFFER_BIT);
 
-    finalize_test();
+    finalize_test(result);
     return result;
 }

@@ -124,6 +124,6 @@ int DisplayNoDraw(int argc, char *argv[])
         }
     }
 
-    finalize_test();
+    finalize_test(result);
     return result;
 }
