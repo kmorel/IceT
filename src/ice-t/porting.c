@@ -37,7 +37,7 @@ double icetWallTime(void)
 
     gettimeofday(tp, NULL);
 
-    return 1000000.0*(tp->tv_sec - start.tv_sec) + (double)tp->tv_usec;
+    return (tp->tv_sec - start.tv_sec) + 0.000001*(double)tp->tv_usec;
 }
 #else /*WIN32*/
 double icetWallTime(void)
