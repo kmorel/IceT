@@ -759,7 +759,7 @@ void icetDrawFrame(void)
             icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
             glDrawBuffer(readBuffer);
 
-          // Place raster position in lower left corner.
+          /* Place raster position in lower left corner. */
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
             glMatrixMode(GL_MODELVIEW);
