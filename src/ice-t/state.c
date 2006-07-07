@@ -35,7 +35,7 @@ IceTState icetStateCreate(void)
 
 void icetStateDestroy(IceTState state)
 {
-    int i;
+    GLenum i;
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
         if (state[i].type != ICET_NULL) {
@@ -47,7 +47,7 @@ void icetStateDestroy(IceTState state)
 
 void icetStateCopy(IceTState dest, const IceTState src)
 {
-    int i;
+    GLenum i;
     int type_width;
     IceTTimeStamp mod_time;
 
@@ -396,7 +396,7 @@ void icetStateResetTiming(void)
 
 void icetStateDump(void)
 {
-    int i;
+    GLenum i;
     IceTState state;
 
     state = icetGetState();
