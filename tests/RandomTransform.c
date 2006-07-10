@@ -228,7 +228,7 @@ static void check_results(int result)
     }
 }
 
-int RandomTransform(int argc, char *argv[])
+int RandomTransform()
 {
     int i, x, y;
     GLubyte *cb;
