@@ -9,13 +9,6 @@
 #
 
 SUBDIRS(ice-t
-	communication
-	strategies)
-
-# Decide whether to build tilecomp application.
-OPTION(BUILD_TILECOMP "Build the antiquated tilecomp example." OFF)
-MARK_AS_ADVANCED(BUILD_TILECOMP)
-
-IF (BUILD_TILECOMP)
-  SUBDIRS(tilecomp)
-ENDIF (BUILD_TILECOMP)
+  communication
+  strategies
+  )
