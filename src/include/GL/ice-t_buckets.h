@@ -15,7 +15,11 @@
 
 #include "GL/ice-t_config.h"
 
-#include <GL/gl.h>
+#ifdef __APPLE__
+#  include <OpenGL/gl.h>
+#else
+#  include <GL/gl.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,23 +37,23 @@ ICET_EXPORT IceTBucket icetCreateBucket(void);
 ICET_EXPORT void       icetDestroyBucket(IceTBucket bucket);
 
 ICET_EXPORT void icetBucketVertices(IceTBucket bucket,
-				    GLint size, GLenum type, GLsizei stride,
-				    GLsizei count, const GLvoid *pointer);
+                                    GLint size, GLenum type, GLsizei stride,
+                                    GLsizei count, const GLvoid *pointer);
 ICET_EXPORT void icetBucketBoxd(IceTBucket bucket,
-				GLdouble x_min, GLdouble x_max,
-				GLdouble y_min, GLdouble y_max,
-				GLdouble z_min, GLdouble z_max);
+                                GLdouble x_min, GLdouble x_max,
+                                GLdouble y_min, GLdouble y_max,
+                                GLdouble z_min, GLdouble z_max);
 ICET_EXPORT void icetBucketBoxf(IceTBucket bucket,
-				GLfloat x_min, GLfloat x_max,
-				GLfloat y_min, GLfloat y_max,
-				GLfloat z_min, GLfloat z_max);
+                                GLfloat x_min, GLfloat x_max,
+                                GLfloat y_min, GLfloat y_max,
+                                GLfloat z_min, GLfloat z_max);
 
 ICET_EXPORT GLboolean icetBucketInView(IceTBucket bucket, GLdouble *transform);
 
 ICET_EXPORT void icetSetBoundsFromBuckets(IceTBucket *buckets, int num_buckets);
 
 ICET_EXPORT void icetBucketsDraw(const IceTBucket *buckets, int num_buckets,
-				 void (*draw_func)(int));
+                                 void (*draw_func)(int));
 
 #ifdef __cplusplus
 }
