@@ -8,7 +8,6 @@
 ## of authorship are reproduced on all copies.
 #
 
-SUBDIRS(ice-t
-  communication
-  strategies
-  )
+ADD_SUBDIRECTORY(ice-t)
+ADD_SUBDIRECTORY(communication)
+ADD_SUBDIRECTORY(strategies)

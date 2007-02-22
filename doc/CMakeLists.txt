@@ -8,4 +8,4 @@
 ## of authorship are reproduced on all copies.
 #
 
-SUBDIRS(man)
+ADD_SUBDIRECTORY(man)
