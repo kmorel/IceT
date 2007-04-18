@@ -149,9 +149,9 @@ GLubyte *icetGetColorBuffer(void)
 
     icetGetIntegerv(ICET_COLOR_BUFFER_VALID, &color_buffer_valid);
     if (color_buffer_valid) {
-        GLubyte *color_buffer;
-        icetGetPointerv(ICET_COLOR_BUFFER, (GLvoid **)&color_buffer);
-        return color_buffer;
+        GLvoid *color_buffer;
+        icetGetPointerv(ICET_COLOR_BUFFER, &color_buffer);
+        return (GLubyte *)color_buffer;
     } else {
         icetRaiseError("Color buffer not available.", ICET_INVALID_OPERATION);
         return NULL;
@@ -163,9 +163,9 @@ GLuint *icetGetDepthBuffer(void)
 
     icetGetIntegerv(ICET_DEPTH_BUFFER_VALID, &depth_buffer_valid);
     if (depth_buffer_valid) {
-        GLuint *depth_buffer;
-        icetGetPointerv(ICET_DEPTH_BUFFER, (GLvoid **)&depth_buffer);
-        return depth_buffer;
+        GLvoid *depth_buffer;
+        icetGetPointerv(ICET_DEPTH_BUFFER, &depth_buffer);
+        return (GLuint *)depth_buffer;
     } else {
         icetRaiseError("Depth buffer not available.", ICET_INVALID_OPERATION);
         return NULL;
