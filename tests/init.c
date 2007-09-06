@@ -130,7 +130,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     rank = (*comm->Comm_rank)(comm);
     num_proc = (*comm->Comm_size)(comm);
 
-    strcpy(display, "DISPLAY=localhost:0");
+    display[0] = '\0';
 
   /* Parse my arguments. */
     for (arg = 1; arg < argc; arg++) {
@@ -179,7 +179,9 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     }
 
   /* Create a renderable window. */
-    putenv(strdup(display));
+    if (display[0] != '\0') {
+        putenv(strdup(display));
+    }
     wincreat(0, 0, width, height, (char *)"ICE-T test");
     glEnable(GL_DEPTH_TEST);
     glViewport(0, 0, width, height);
