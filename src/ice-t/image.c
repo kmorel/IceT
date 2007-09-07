@@ -813,6 +813,19 @@ static void readSubImage(GLint fb_x, GLint fb_y,
                     (int)full_width, (int)full_height);
 
 #ifdef DEBUG
+    {
+        GLint alpha_bits;
+        GLfloat alpha_bias, alpha_scale;
+        glGetIntegerv(GL_ALPHA_BITS, &alpha_bits);
+        glGetFloatv(GL_ALPHA_BIAS, &alpha_bias);
+        glGetFloatv(GL_ALPHA_SCALE, &alpha_scale);
+        icetRaiseDebug1("Alpha bits %d", (int)alpha_bits);
+        icetRaiseDebug2("Alpha bias/scale %f/%f",
+                        (float)alpha_bias, (float)alpha_scale);
+    }
+#endif
+
+#ifdef DEBUG
     if (   (GET_MAGIC_NUM(buffer) & FULL_IMAGE_BASE_MAGIC_NUM)
         != FULL_IMAGE_BASE_MAGIC_NUM) {
         icetRaiseError("Buffer magic number not set.", ICET_SANITY_CHECK_FAIL);
