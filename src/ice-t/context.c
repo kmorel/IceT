@@ -103,8 +103,8 @@ void *icetReserveBufferMem(int size)
         + icet_current_context->buffer_offset;
 
   /* Integer boundries are good. */
-    if (size%sizeof(long) != 0) {
-        size += sizeof(long) - size%sizeof(long);
+    if (size%sizeof(long long) != 0) {
+        size += sizeof(long long) - size%sizeof(long long);
     }
 
     icet_current_context->buffer_offset += size;
@@ -124,7 +124,7 @@ void icetCopyState(IceTContext dest, const IceTContext src)
 void icetResizeBuffer(int size)
 {
   /* Add some padding in case the user's data does not lie on byte boundries. */
-    size += 32*sizeof(long);
+    size += 32*sizeof(long long);
     if (icet_current_context->buffer_size < size) {
         free(icet_current_context->buffer);
         icet_current_context->buffer = malloc(size);
