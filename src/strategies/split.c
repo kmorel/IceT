@@ -83,7 +83,7 @@ static IceTImage splitStrategy(void)
         icetRaiseDebug("Not rendering any images.  Quit early.");
         if (tile_displayed >= 0) {
             icetResizeBuffer(icetFullImageSize(max_pixels));
-            fullImage =        icetReserveBufferMem(icetFullImageSize(max_pixels));
+            fullImage = icetReserveBufferMem(icetFullImageSize(max_pixels));
             icetInitializeImage(fullImage, max_pixels);
             icetClearImage(fullImage);
         } else {
