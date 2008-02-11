@@ -32,6 +32,18 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 
 	patch 3: Fixed the "demo bug."
 
+	patch 4: Miscellaneous build fixes and improvements.  This
+	unfortunately includes removing the man page documents.  I am in
+	the process of updating the documents, so that should be ready
+	"real soon now."  (As an aside, IceT is ready for its official
+	"1.0" release.  I'm just waiting to finish the documentation to do
+	that.)
+
+	Fixed an issue with the MSVC 6.0 compiler and 64 bit integers.
+
+	Fixed a problem when rendering objects behind the viewer with a
+	perspective projection matrix.
+
 Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	a composite on just the depth buffer.  This is useful when creating
 	shadow buffers.  This should also make it easier to implement
