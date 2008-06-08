@@ -8,8 +8,11 @@
 ## of authorship are reproduced on all copies.
 #
 
-CMAKE_MINIMUM_REQUIRED(VERSION 1.6)
 PROJECT(ICET C)
+CMAKE_MINIMUM_REQUIRED(VERSION 1.6)
+IF(COMMAND cmake_policy)
+  CMAKE_POLICY(SET CMP0003 NEW)
+ENDIF(COMMAND cmake_policy)
 
 # Set the current ICE-T version.
 SET(ICET_MAJOR_VERSION 0)
