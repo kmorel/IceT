@@ -13,19 +13,25 @@ ADD_SUBDIRECTORY(communication)
 ADD_SUBDIRECTORY(strategies)
 
 IF (NOT PV_INSTALL_NO_DEVELOPMENT)
-  SET(resPath "${CMAKE_CURRENT_SOURCE_DIR}/ice-t")
-  GLOB_INSTALL_DEVELOPMENT(
-      "${CMAKE_CURRENT_SOURCE_DIR}"
-      "${PV_INSTALL_INCLUDE_DIR}/ice-t"
-      "${resPath}/*.h;${resPath}/*.hxx;${resPath}/*.txx")
-  SET(resPath "${CMAKE_CURRENT_SOURCE_DIR}/communication")
-  GLOB_INSTALL_DEVELOPMENT(
-      "${CMAKE_CURRENT_SOURCE_DIR}"
-      "${PV_INSTALL_INCLUDE_DIR}/ice-t"
-      "${resPath}/*.h;${resPath}/*.hxx;${resPath}/*.txx")
-  SET(resPath "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
-  GLOB_INSTALL_DEVELOPMENT(
-      "${CMAKE_CURRENT_SOURCE_DIR}"
-      "${PV_INSTALL_INCLUDE_DIR}/ice-t"
-      "${resPath}/*.h;${resPath}/*.hxx;${resPath}/*.txx")
+  SET(resPath 
+      "${CMAKE_CURRENT_SOURCE_DIR}/ice-t"
+      "${CMAKE_CURRENT_SOURCE_DIR}/communication"
+      "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
+  SET(filesToInstall)
+  FOREACH(p IN ${resPath})
+      SET(tmpFilesToInstall)
+      SET(exts "${p}/*.h;${p}/*.hxx;${p}/*.txx")
+      FOREACH(ext IN ${exts})
+          FILE(GLOB tmpFilesToInstall
+          RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+          "${ext}")
+          IF(tmpFilesToInstall)
+              SET(filesToInstall "${filesToInstall};${tmpFilesToInstall}")
+          ENDIF(tmpFilesToInstall)
+      ENDFOREACH(ext IN ${exts})
+  ENDFOREACH(p IN ${resPath})
+  INSTALL(
+      FILES ${filesToInstall}
+      DESTINATION "${PV_INSTALL_INCLUDE_DIR}/ice-t"
+      COMPONENT Development)
 ENDIF (NOT PV_INSTALL_NO_DEVELOPMENT)
