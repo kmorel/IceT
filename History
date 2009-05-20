@@ -11,6 +11,9 @@
 **
 *****************************************************************************
 
+Revision 1.0: Basically the same as 0.5.4, which has been stable for years
+	now, with the addition of offical documentation.
+
 Revision 0.5: Introduced the concept of ordered composition, especially
 	with respect to color blending.  Once the image layer order is
 	specified by the user level application, some composition
