@@ -1,0 +1,123 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetDrawFrame" "3" "February 14, 2008" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetDrawFrame \-\- renders and composites a frame\fP
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+.TS H
+l l l .
+void \fBicetDrawFrame\fP(void);
+.TE
+.PP
+.SH Description
+
+.PP
+Initiates a frame draw using the current \fbOpenGL \fPtransformation matrices 
+(modelview and projection). 
+.PP
+\fBIceT \fPmay render an image, the tile display needs to be defined (using 
+\fBicetAddTile\fP)
+and the drawing function needs to be set (using 
+\fBicetDrawFunc\fP).
+The composite strategy may also optionally be set 
+(using \fBicetStrategy\fP).
+.PP
+If \fBICET_DISPLAY\fP
+is enabled, then the fully composited image is 
+written back to the \fbOpenGL \fPframebuffer for display. It is the 
+application\&'s responsibility to synchronize the processes and swap front 
+and back buffers. If the \fbOpenGL \fPbackground color is set to something 
+other than black, \fBICET_DISPLAY_COLORED_BACKGROUND\fP
+should also 
+be enabled. Displaying with \fBICET_DISPLAY_COLORED_BACKGROUND\fP
+disabled may be slightly faster (depending on graphics hardware) but can 
+result in black rectangles in the background. If 
+\fBICET_DISPLAY_INFLATE\fP
+is enabled and the size of the renderable 
+window (determined by the current \fbOpenGL \fPviewport) is greater than that 
+of the tile being displayed, then the image will first be `inflated\&' to 
+the size of the actual display. If \fBICET_DISPLAY_INFLATE\fP
+is 
+disabled, the image is drawn at its original resolution at the lower left 
+corner of the display. 
+.PP
+The image remaining in the frame buffer is undefined if 
+\fBICET_DISPLAY\fP
+is disabled or the process is not displaying a 
+tile. 
+.PP
+.SH Errors
+
+.PP
+.TP
+\fBICET_INVALID_OPERATION\fP
+ Raised if the drawing function has not been set. Also can be raised if 
+\fBicetDrawFrame\fP
+is called recursively, probably from within the 
+drawing callback. 
+.TP
+\fBICET_OUT_OF_MEMORY\fP
+ Not enough memory left to hold intermittent frame buffers and other 
+temporary data. 
+.PP
+.SH Warnings
+
+.PP
+None. 
+.PP
+.SH Bugs
+
+.PP
+If compositing with color blending on, the image returned with 
+\fBicetGetColorBuffer\fPmay have values of $<R, G, B, A >= 
+<0, 0, 0, 0 >$and the rest of the image may be blended with 
+black rather than the correct background color. 
+.PP
+During compositing, image compression is employed that relies on knowing 
+the maximum possible value in the z\-buffer. Unfortunately, different 
+rendering hardware can give different results for this value. \fBIceT \fP
+tries to dermine this value up front by clearing the screen and reading 
+the z\-buffer value, but this test sometimes fails, resulting in a 
+classification of background. The side effects of this are minimal, and 
+\fBIceT \fPusually quickly fixes the problem by continually checking depth 
+values. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetResetTiles\fP(3),
+\fIicetAddTile\fP(3),
+\fIicetBoundingBox\fP(3),
+\fIicetBoundingVertices\fP(3),
+\fIicetDrawFunc\fP(3),
+\fIicetStrategy\fP(3),
+\fIicetGetColorBuffer\fP(3),
+\fIicetGetDepthBuffer\fP(3)
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

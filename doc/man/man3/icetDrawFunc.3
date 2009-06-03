@@ -1,0 +1,135 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetDrawFunc" "3" "January 31, 2007" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetDrawFunc \-\- set a callback for drawing.\fP
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+typedef void (*\fBIceTCallback\fP)(void);
+.PP
+.TS H
+l l l .
+void \fBicetDrawFunc\fP(	\fBIceTCallback\fP	\fIfunc\fP  );
+.TE
+.PP
+.SH Description
+
+.PP
+The \fBicetDrawFunc\fP
+function sets a callback that is used to draw 
+the geometry from a given viewpoint. 
+.PP
+\fIfunc\fP
+should be a function that issues appropriate \fbOpenGL \fPcalls to 
+draw geometry in the current \fbOpenGL \fPcontext. After \fIfunc\fP
+is 
+called, the image left in the back frame buffer will be read back for 
+compositing. 
+.PP
+\fIfunc\fP
+should \fInot\fP
+modify the \fBGL_PROJECTION_MATRIX\fP
+as this would cause \fBIceT \fPto place image data in the wrong location in 
+the tiled display and improperly cull geometry. It is acceptable to add 
+transformations to \fBGL_MODELVIEW_MATRIX\fP,
+but the bounding 
+vertices given with \fBicetBoundingVertices\fP
+or 
+\fBicetBoundingBox\fP
+are assumed to already be transformed by any such 
+changes to the modelview matrix. Also, \fBGL_MODELVIEW_MATRIX\fP
+must be restored before the draw function returns. Therefore, any 
+changes to \fBGL_MODELVIEW_MATRIX\fP
+are to be done with care and 
+should be surrounded by a pair of glPushMatrix and glPopMatrix functions. 
+.PP
+It is also important that \fIfunc\fP
+\fInot\fP
+attempt the change the 
+clear color. In some composting modes, \fBIceT \fPneeds to read, modify, and 
+change the background color. These operations will be lost if 
+\fIfunc\fP
+changes the background color, and severe color blending 
+artifacts may result. 
+.PP
+\fBIceT \fPmay call \fIfunc\fP
+several times from within a call to 
+\fBicetDrawFrame\fP
+or not at all if the current bounds lie outside the 
+current viewpoint. This can have a subtle but important impact on the 
+behavior of \fIfunc\fP\&.
+For example, counting frames by incrementing a 
+frame counter in \fIfunc\fP
+is obviously wrong (although you could count 
+how many times a render occurs). \fIfunc\fP
+should also leave \fbOpenGL \fP
+in a state such that it will be correct for a subsequent run of 
+\fIfunc\fP\&.
+Any matrices or attributes pushed in \fIfunc\fP
+should be 
+popped before \fIfunc\fP
+returns, and any state that is assumed to be 
+true on entrance to \fIfunc\fP
+should also be true on return. 
+.PP
+.SH Errors
+
+.PP
+None. 
+.PP
+.SH Warnings
+
+.PP
+None. 
+.PP
+.SH Bugs
+
+.PP
+None known. 
+.PP
+.SH Notes
+
+.PP
+\fIfunc\fP
+is tightly coupled with the bounds set with 
+\fBicetBoundingVertices\fP
+or \fBicetBoundingBox\fP\&.
+If the geometry 
+drawn by \fIfunc\fP
+is dynamic (changes from frame to frame), then the 
+bounds may need to be changed as well. Incorrect bounds may cause the 
+geometry to be culled in surprising ways. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetDrawFrame\fP(3),
+\fIicetBoundingVertices\fP(3),
+\fIicetBoundingBox\fP(3)
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

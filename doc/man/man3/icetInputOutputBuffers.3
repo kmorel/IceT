@@ -1,0 +1,121 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetInputOutputBuffers" "3" "February 14, 2008" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetInputOutputBuffers \-\- set \fBIceT \fPcomposition mode.\fP
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+.TS H
+l l l .
+void \fBicetInputOutputBuffers\fP(	GLenum	\fIinputs\fP,
+	GLenum	\fIoutputs\fP  );
+.TE
+.PP
+.SH Description
+
+.PP
+\fBicetInputOutputBuffers\fP
+sets what OpenGL frame buffers \fBIceT \fPreads 
+and generates. During a call to \fBicetDrawFrame\fP,
+\fBIceT \fPreads the 
+input buffers directly from OpenGL after it performs a callback to the 
+draw function (set by \fBicetDrawFunc\fP).
+Output buffers are stored 
+internally after the call to \fBicetDrawFrame\fP
+finishes. The output 
+buffers can be retrieved with calls to the \fBicetGetColorBuffer\fP
+and 
+\fBicetGetDepthBuffer\fP
+functions. In addition, if the color buffer 
+output is on and \fBICET_DISPLAY\fP
+is enabled, the color buffer is 
+also written back to the OpenGL frame buffer before \fBicetDrawFrame\fP
+returns. 
+.PP
+Both \fIinputs\fP
+and \fIoutputs\fP
+are or\&'ed values of one or more 
+of the following flags: 
+.TP
+\fBICET_COLOR_BUFFER_BIT\fP
+ Reads/generates color data. 
+Color data is stored in RGBA or BGRA format. Each channel is 8\-bits, 
+resulting in a 32\-bit word when combined together. Each 32\-bit color 
+value is always aligned on 32\-bit word boundaries for faster 
+computation. 
+.TP
+\fBICET_DEPTH_BUFFER_BIT\fP
+ Reads/generates depth data. 
+Depth data is stored as 32\-bit unsigned integers. 
+.PP
+The current values of the input and output buffers are stored in the 
+\fBICET_INPUT_BUFFERS\fP
+and \fBICET_OUTPUT_BUFFERS\fP
+state 
+variables. By default, the \fBICET_INPUT_BUFFERS\fP
+value is set to 
+$(\fBICET_COLOR_BUFFER_BIT\fP
+| \fBICET_DEPTH_BUFFER_BIT\fP)$,
+and the \fBICET_OUTPUT_BUFFERS\fP
+value is set to 
+$\fBICET_COLOR_BUFFER_BIT\fP$.
+.PP
+The composition operator \fBIceT \fPuses is defined by the inputs. If the 
+depth buffer is an input, then Z comparison is performed. If the depth 
+buffer is not an input, alpha blending is performed. Note that in the 
+latter case, order of composition may matter and therefore not all 
+composition strategies will work. 
+.PP
+.SH Errors
+
+.PP
+.TP
+\fBICET_INVALID_VALUE\fP
+ An output was selected that is 
+not also an input or no outputs were selected at all. 
+.PP
+.SH Warnings
+
+.PP
+None. 
+.PP
+.SH Bugs
+
+.PP
+Blending of colors cannot be used in conjunction with depth testing. 
+Even with depth testing, the order of operation for color blending is 
+important, so such a combination is not likely to be useful. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetGetColorBuffer\fP(3),
+\fIicetGetDepthBuffer\fP(3),
+\fIicetDrawFrame\fP(3)
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

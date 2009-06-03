@@ -1,0 +1,143 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetEnable" "3" "May 23, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetEnable\fP,\fBicetDisable\fP\-\- enable/disable an \fBIceT \fPfeature. 
+.PP
+.igmanpage:icetDisable
+.igicetDisable|(textbf
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+.TS H
+l l l l .
+void \fBicetEnable\fP	(	GLenum	\fIpname\fP  );
+void \fBicetDisable\fP	(	GLenum	\fIpname\fP  );
+.TE
+.PP
+.SH Description
+
+.PP
+The \fBicetEnable\fPand \fBicetDisable\fPfunctions turn various \fBIceT \fPfeatures on 
+and off. \fIpname\fP
+is a symbolic constant representing the feature to 
+be turned on or off. Valid values for \fIpname\fP
+are: 
+.PP
+.TP
+\fBICET_CORRECT_COLORED_BACKGROUND\fP
+ Colored backgrounds are 
+problematic when performing color blended compositing in that the 
+background color will be additively blended from each image. Enabling 
+this flag will internally cause the color to be reset to black and then 
+cause the color to be blended back into the resulting images. This 
+flag is disabled by default. 
+.TP
+\fBICET_DISPLAY\fP
+ If enabled, the final, composited image for 
+each tile is written back to the frame buffer before the return of 
+\fBicetDrawFrame\fP\&.
+This flag is enabled by default. 
+.TP
+\fBICET_DISPLAY_COLORED_BACKGROUND\fP
+ If this and 
+\fBICET_DISPLAY\fP
+are enabled, uses \fbOpenGL \fPblending to ensure that 
+all background is set to the correct color. This flag is disabled by 
+default. This option does not affect the images returned from 
+\fBicetGetColorBuffer\fPor \fBicetGetDepthBuffer\fP;it only affects the image 
+in the \fbOpenGL \fPcolor buffer. 
+.TP
+\fBICET_DISPLAY_INFLATE\fP
+ If this and \fBICET_DISPLAY\fP
+are enabled and the renderable window is larger then the displayed tile 
+(as determined by the current \fbOpenGL \fPviewport), then resample the 
+image to fit within the renderable window before writing back to frame 
+buffer. This flag is disabled by default. This option does not affect 
+the images returned from \fBicetGetColorBuffer\fPor \fBicetGetDepthBuffer\fP;it 
+only affects the image in the OpenGL color buffer. 
+.TP
+\fBICET_DISPLAY_INFLATE_WITH_HARDWARE\fP
+ This option 
+determines how images are inflated. When enabled (the default), images 
+are inflated by creating a texture and allowing the hardware the 
+inflate the image. When disabled, images are inflated on the CPU. 
+This option has no effect unless both \fBICET_DISPLAY\fP
+and 
+\fBICET_DISPLAY_INFLATE\fP
+are also enabled. 
+.TP
+\fBICET_FLOATING_VIEWPORT\fP
+ If enabled, the projection will 
+be shifted such that the geometry will be rendered in one shot whenever 
+possible, even if the geometry straddles up to four tiles. This flag 
+is enabled by default. 
+.TP
+\fBICET_ORDERED_COMPOSITE\fP
+ If enabled, the image composition 
+will be performed in the order specified by the last call to 
+\fBicetCompositeOrder\fP,
+assuming the current strategy (specified by 
+a call to \fBicetStrategy\fP)
+supports ordered composition. 
+Generally, you want to enable ordered compositing if doing color 
+blending and disable if you are doing z\-buffer comparisons. If 
+enabled, you should call \fBicetCompositeOrder\fP
+between each frame 
+to update the image order as camera angles change. This flag is 
+disabled by default. 
+.PP
+.SH Errors
+
+.PP
+.TP
+\fBICET_INVALID_VALUE\fP
+ If \fIpname\fP
+is not a feature 
+to be enabled or disabled. 
+.PP
+.SH Warnings
+
+.PP
+None. 
+.PP
+.SH Bugs
+
+.PP
+The check for a valid \fIpname\fP
+is not thorough, and thus the 
+\fBICET_INVALID_VALUE\fP
+error may not always be raised. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetIsEnabled\fP(3)
+.PP
+.igicetDisable|)textbf
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

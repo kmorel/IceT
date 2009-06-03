@@ -1,0 +1,88 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:32 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetSetContext" "3" "December  1, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetSetContext \-\- changes the current context.\fP
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+.TS H
+l l l .
+void \fBicetSetContext\fP(	\fBIceTContext\fP	\fIcontext\fP  );
+.TE
+.PP
+.SH Description
+
+.PP
+The \fBicetSetContext\fP
+function sets the \fBIceT \fPstate machine to work 
+with the context defined by \fIcontext\fP
+and the state associated with 
+it. Further calls to \fBIceT \fPfunctions will operate based on the state 
+encapsulated in \fIcontext\fP\&.
+Changing the state of the context is a 
+fast operation. 
+.PP
+.SH Errors
+
+.PP
+.TP
+\fBICET_INVALID_VALUE\fP
+ \fIcontext\fP
+is not valid. 
+.PP
+.SH Warnings
+
+.PP
+None. 
+.PP
+.SH Bugs
+
+.PP
+None known. 
+.PP
+.SH Notes
+
+.PP
+The behavior of \fBicetSetContext\fP
+is somewhat indeterminate if 
+\fIcontext\fP
+is not valid. Usually, an 
+\fBICET_INVALID_VALUE\fP
+error will be raised, but it is 
+possible that the context will be set to some other context. Under any 
+circumstances, a valid context will be current when this function 
+returns. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetGetContext\fP(3),
+\fIicetCreateContext\fP(3),
+\fIicetCopyState\fP(3)
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

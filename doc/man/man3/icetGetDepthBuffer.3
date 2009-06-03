@@ -1,0 +1,132 @@
+'\" t
+.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "icetGetColorBuffer" "3" "February 14, 2008" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.SH NAME
+
+\fBicetGetColorBuffer\fP,\fBicetGetDepthBuffer\fP\-\- retrieves the last computed color or depth buffer. 
+.PP
+.igmanpage:icetGetDepthBuffer
+.igicetGetDepthBuffer|(textbf
+.PP
+.SH Synopsis
+
+.PP
+#include <GL/ice\-t.h>
+.PP
+.TS H
+l l l l .
+GLubyte	*\fBicetGetColorBuffer\fP	(	void  );
+GLuint	*\fBicetGetDepthBuffer\fP	(	void  );
+.TE
+.PP
+.SH Description
+
+.PP
+Returns a buffer containing the result of the image composition performed 
+by the last call to \fBicetDrawFrame\fP\&.
+Be aware that a color or 
+depth buffer may not have been computed with the last call to 
+\fBicetDrawFrame\fP\&.
+\fBIceT \fPavoids the computation and network 
+transfers for any unnecessary buffers unless specifically requested 
+otherwise with the flags given to the \fBicetInputOutputBuffers\fP
+function. Use a call to \fBicetGetBooleanv\fPwith a value of 
+\fBICET_COLOR_BUFFER_VALID\fP
+or \fBICET_DEPTH_BUFFER_VALID\fP
+to determine whether either of these buffers are available. Attempting 
+to get a nonexistent buffer will result with a warning being emitted and 
+NULL
+returned. 
+.PP
+.SH Return Value
+
+.PP
+\fBicetGetColorBuffer\fPreturns the color buffer for the displayed tile. 
+Each pixel value can be assumed to be four consecutive bytes in the 
+buffer. The pixels are also always aligned on 4\-byte boundaries. The 
+format of the color buffer is defined by the state parameter 
+\fBICET_COLOR_FORMAT\fP,
+which is typically either \fBGL_RGBA\fP,
+\fBGL_BGRA\fP,
+or \fBGL_BGRA_EXT\fP\&.
+.PP
+\fBicetGetDepthBuffer\fPreturns the depth buffer for the displayed tile. 
+Depth values are stored as 32\-bit integers. 
+.PP
+The width and the height of the buffer are determined by the width and 
+the height of the displayed tile at the time \fBicetDrawFrame\fP
+was 
+called. If the tile layout is changed since the last call to 
+\fBicetDrawFrame\fP,
+the dimensions of the buffer returned may not 
+agree with the dimensions stored in the current \fBIceT \fPstate. 
+.PP
+The memory returned by \fBicetGetColorBuffer\fPand \fBicetGetDepthBuffer\fPneed 
+not, and should not, be freed. It will be reclaimed in the next call to 
+\fBicetDrawFrame\fP\&.
+Expect the data returned to be obliterated on the 
+next call to \fBicetDrawFrame\fP\&.
+.PP
+.SH Errors
+
+.PP
+None. 
+.PP
+.SH Warnings
+
+.PP
+.TP
+\fBICET_INVALID_VALUE\fP
+ The appropriate buffer is not 
+available, either because it was not computed or it has been 
+obliterated by a subsequent \fBIceT \fPcomputation. 
+.PP
+.SH Bugs
+
+.PP
+The returned image may have a value of $(R, G, B, A) = (0, 0, 0, 0)$ for 
+a pixel instead of the true background color. This can usually be 
+corrected by replacing all pixels with an alpha value of 0 with the 
+background color. 
+.PP
+The buffers are stored in a shared memory pool attached to a particular 
+context. As such, the buffers are not copied with the state. Also, 
+because they are shared, it is conceivable that the buffers will be 
+reclaimed before the next call to \fBicetDrawFrame\fP\&.
+If this should 
+happen, the \fBICET_COLOR_BUFFER_VALID\fP
+and 
+\fBICET_DEPTH_BUFFER_VALID\fP
+state variables will be set 
+accordingly. 
+.PP
+.SH Copyright
+
+Copyright (C)2003 Sandia Corporation 
+.PP
+Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
+license for use of this work by or on behalf of the U.S. Government. 
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that this Notice and any statement 
+of authorship are reproduced on all copies. 
+.PP
+.SH See Also
+
+.PP
+\fIicetDrawFrame\fP(3),
+\fIicetInputOutputBuffers\fP(3),
+\fIicetGet\fP(3)
+.PP
+.igicetGetDepthBuffer|)textbf
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.
