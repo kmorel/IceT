@@ -144,7 +144,11 @@ INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
 ADD_SUBDIRECTORY(src)
 
 IF (BUILD_TESTING AND ICET_BUILD_TESTING)
-  ADD_SUBDIRECTORY(tests)
+  IF (NOT APPLE)
+    ADD_SUBDIRECTORY(tests)
+  ELSE (NOT APPLE)
+    MESSAGE(STATUS "Tests not supported on Mac.  Disabling.")
+  ENDIF (NOT APPLE)
 ENDIF (BUILD_TESTING AND ICET_BUILD_TESTING)
 
 # Save the CMake settings so another project can import them.  Loaded by:
