@@ -18,18 +18,18 @@ IF (NOT ICET_INSTALL_NO_DEVELOPMENT)
       "${CMAKE_CURRENT_SOURCE_DIR}/communication"
       "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
   SET(filesToInstall)
-  FOREACH(p IN ${resPath})
+  FOREACH(p ${resPath})
       SET(tmpFilesToInstall)
       SET(exts "${p}/*.h;${p}/*.hxx;${p}/*.txx")
-      FOREACH(ext IN ${exts})
+      FOREACH(ext ${exts})
           FILE(GLOB tmpFilesToInstall
           RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
           "${ext}")
           IF(tmpFilesToInstall)
               SET(filesToInstall "${filesToInstall};${tmpFilesToInstall}")
           ENDIF(tmpFilesToInstall)
-      ENDFOREACH(ext IN ${exts})
-  ENDFOREACH(p IN ${resPath})
+      ENDFOREACH(ext)
+  ENDFOREACH(p)
   INSTALL(
       FILES ${filesToInstall}
       DESTINATION "${ICET_INSTALL_INCLUDE_DIR}/ice-t"
