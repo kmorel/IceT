@@ -637,7 +637,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
         screen_viewport[3] = target_viewport[3] = 0;
       /* Don't bother to render. */
         return;
-#if 0
+#if 1
     } else if (   (contained_viewport[0] >= tile_viewport[0])
                && (contained_viewport[1] >= tile_viewport[1])
                && (   contained_viewport[2]+contained_viewport[0]
