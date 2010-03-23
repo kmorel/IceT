@@ -43,13 +43,9 @@ static void PrintMatrix(float *mat)
     }
 }
 
-int BoundsBehindViewer(int argc, char * argv[])
+int BoundsBehindViewer(int vtkNotUsed(argc), char * vtkNotUsed(argv[]))
 {
     float mat[16];
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
     GLint rank;
     icetGetIntegerv(ICET_RANK, &rank);
