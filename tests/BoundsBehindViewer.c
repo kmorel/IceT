@@ -43,7 +43,7 @@ static void PrintMatrix(float *mat)
     }
 }
 
-int BoundsBehindViewer(int vtkNotUsed(argc), char * vtkNotUsed(argv[]))
+int BoundsBehindViewer(int argc, char * vargv[])
 {
     float mat[16];
 
