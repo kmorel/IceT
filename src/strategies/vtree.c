@@ -8,9 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 #include <image.h>
 #include <context.h>
@@ -37,15 +35,15 @@ static void sort_by_contained(struct node_info *info, int size);
 static int find_sender(struct node_info *info, int num_proc,
                        int recv_node, int tile,
                        int display_node,
-                       int num_tiles, GLboolean *all_contained_tmasks);
+                       int num_tiles, IceTBoolean *all_contained_tmasks);
 static int find_receiver(struct node_info *info, int num_proc,
                          int send_node, int tile,
                          int display_node,
-                         int num_tiles, GLboolean *all_contained_tmasks);
+                         int num_tiles, IceTBoolean *all_contained_tmasks);
 static void do_send_receive(struct node_info *my_info, int tile_held,
-                            GLint max_pixels, GLint num_tiles,
-                            GLint *tile_viewports,
-                            GLboolean *all_contained_tmasks,
+                            IceTInt max_pixels, IceTInt num_tiles,
+                            IceTInt *tile_viewports,
+                            IceTBoolean *all_contained_tmasks,
                             IceTImage imageBuffer,
                             IceTSparseImage inImage, IceTSparseImage outImage);
 
@@ -54,13 +52,13 @@ IceTStrategy ICET_STRATEGY_VTREE
 
 static IceTImage vtreeCompose(void)
 {
-    GLint rank, num_proc;
-    GLint num_tiles;
-    GLint max_pixels;
-    GLint *display_nodes;
-    GLint tile_displayed;
-    GLboolean *all_contained_tmasks;
-    GLint *tile_viewports;
+    IceTInt rank, num_proc;
+    IceTInt num_tiles;
+    IceTInt max_pixels;
+    IceTInt *display_nodes;
+    IceTInt tile_displayed;
+    IceTBoolean *all_contained_tmasks;
+    IceTInt *tile_viewports;
     IceTImage imageBuffer;
     IceTSparseImage inImage, outImage;
     struct node_info *info;
@@ -84,13 +82,13 @@ static IceTImage vtreeCompose(void)
     icetResizeBuffer(  icetFullImageSize(max_pixels)
                      + icetSparseImageSize(max_pixels)*2
                      + sizeof(struct node_info)*num_proc
-                     + sizeof(GLboolean)*num_proc*num_tiles);
+                     + sizeof(IceTBoolean)*num_proc*num_tiles);
     imageBuffer = icetReserveBufferMem(icetFullImageSize(max_pixels));
     inImage     = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     outImage    = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     info        = icetReserveBufferMem(sizeof(struct node_info)*num_proc);
     all_contained_tmasks
-                = icetReserveBufferMem(sizeof(GLboolean)*num_proc*num_tiles);
+                = icetReserveBufferMem(sizeof(IceTBoolean)*num_proc*num_tiles);
 
     icetGetBooleanv(ICET_ALL_CONTAINED_TILES_MASKS, all_contained_tmasks);
     
@@ -239,7 +237,7 @@ static IceTImage vtreeCompose(void)
 static int find_sender(struct node_info *info, int num_proc,
                        int recv_node, int tile,
                        int display_node, int num_tiles,
-                       GLboolean *all_contained_tmasks)
+                       IceTBoolean *all_contained_tmasks)
 {
     int send_node;
     int sender = -1;
@@ -279,7 +277,7 @@ static int find_sender(struct node_info *info, int num_proc,
 static int find_receiver(struct node_info *info, int num_proc,
                          int send_node, int tile,
                          int display_node, int num_tiles,
-                         GLboolean *all_contained_tmasks)
+                         IceTBoolean *all_contained_tmasks)
 {
     int recv_node;
 
@@ -328,13 +326,13 @@ static void sort_by_contained(struct node_info *info, int size)
 }
 
 static void do_send_receive(struct node_info *my_info, int tile_held,
-                            GLint max_pixels, GLint num_tiles,
-                            GLint *  tile_viewports,
-                            GLboolean *all_contained_tmasks,
+                            IceTInt max_pixels, IceTInt num_tiles,
+                            IceTInt *  tile_viewports,
+                            IceTBoolean *all_contained_tmasks,
                             IceTImage imageBuffer,
                             IceTSparseImage inImage, IceTSparseImage outImage)
 {
-    GLint outImageSize = 0;
+    IceTInt outImageSize = 0;
 
     /* To remove warning */
     (void)tile_viewports;

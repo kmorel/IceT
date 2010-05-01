@@ -8,9 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#include <GL/ice-t.h>
+#include <IceT.h>
 #include <image.h>
 #include <state.h>
 #include <context.h>
@@ -36,19 +34,19 @@ static IceTImage splitStrategy(void)
     int group_size;
     int fragment_size;
 
-    GLint rank;
-    GLint num_proc;
-    GLint num_tiles;
-    GLint max_pixels;
-    GLint *tile_contribs;
-    GLint total_image_count;
-    GLint *display_nodes;
-    GLint tile_displayed;
-    GLenum output_buffers;
+    IceTInt rank;
+    IceTInt num_proc;
+    IceTInt num_tiles;
+    IceTInt max_pixels;
+    IceTInt *tile_contribs;
+    IceTInt total_image_count;
+    IceTInt *display_nodes;
+    IceTInt tile_displayed;
+    IceTEnum output_buffers;
 
-    GLint num_contained_tiles;
-    GLint *contained_tiles_list;
-    GLboolean *all_contained_tiles_masks;
+    IceTInt num_contained_tiles;
+    IceTInt *contained_tiles_list;
+    IceTBoolean *all_contained_tiles_masks;
 
     int tile, image, node;
     int num_allocated;
@@ -213,7 +211,7 @@ static IceTImage splitStrategy(void)
     for (image = 0; image < num_contained_tiles; image++) {
         int sending_frag_size;
         int compressedSize;
-        GLuint offset;
+        IceTUInt offset;
 
         tile = contained_tiles_list[image];
         icetGetTileImage(tile, fullImage);
@@ -247,7 +245,7 @@ static IceTImage splitStrategy(void)
     }
 
   /* Send composited fragment to display process. */
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
     if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
         icetAddSentBytes(4*fragment_size);
         requests[0] = ICET_COMM_ISEND(icetGetImageColorBuffer(imageFragment),
@@ -270,7 +268,7 @@ static IceTImage splitStrategy(void)
             int my_frag_size = max_pixels/(  tile_groups[tile_displayed+1]
                                            - tile_groups[tile_displayed]);
             if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-                GLubyte *cb = icetGetImageColorBuffer(fullImage);
+                IceTUByte *cb = icetGetImageColorBuffer(fullImage);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final color fragment from %d",
@@ -281,7 +279,7 @@ static IceTImage splitStrategy(void)
                 }
             }
             if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-                GLuint *db = icetGetImageDepthBuffer(fullImage);
+                IceTUInt *db = icetGetImageDepthBuffer(fullImage);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final depth fragment from %d",

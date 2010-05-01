@@ -8,10 +8,11 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceTBuckets.h>
+#include <IceT.h>
 
-#include <GL/ice-t_buckets.h>
-#include <GL/ice-t.h>
+/* TODO: Remove dependence on OpenGL. */
+#include <IceTGL.h>
 
 #include "diagnostics.h"
 
@@ -19,7 +20,7 @@
 
 #define MI(r,c)	((c)*4+(r))
 
-static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B);
+static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B);
 
 IceTBucket icetCreateBucket(void)
 {
@@ -39,17 +40,17 @@ void icetDestroyBucket(IceTBucket bucket)
 }
 
 void icetBucketVertices(IceTBucket bucket,
-			GLint size, GLenum type, GLsizei stride,
-			GLsizei count, const GLvoid *pointer)
+			IceTInt size, IceTEnum type, IceTSizeType stride,
+			IceTSizeType count, const IceTVoid *pointer)
 {
-    GLdouble *verts;
+    IceTDouble *verts;
     int i, j;
 
     if (stride < 1) {
 	stride = size;
     }
 
-    verts = malloc(count*3*sizeof(GLdouble));
+    verts = malloc(count*3*sizeof(IceTDouble));
     for (i = 0; i < count; i++) {
 	for (j = 0; j < 3; j++) {
 	    switch (type) {
@@ -64,13 +65,13 @@ void icetBucketVertices(IceTBucket bucket,
 		  }							\
 		  break;
 	      case ICET_SHORT:
-		  castcopy(GLshort);
+		  castcopy(IceTShort);
 	      case ICET_INT:
-		  castcopy(GLint);
+		  castcopy(IceTInt);
 	      case ICET_FLOAT:
-		  castcopy(GLfloat);
+		  castcopy(IceTFloat);
 	      case ICET_DOUBLE:
-		  castcopy(GLdouble);
+		  castcopy(IceTDouble);
 	      default:
 		  icetRaiseError("Bad type to icetBucketVertices.",
 				 ICET_INVALID_VALUE);
@@ -86,13 +87,13 @@ void icetBucketVertices(IceTBucket bucket,
 }
 
 void icetBucketBoxd(IceTBucket bucket,
-		    GLdouble x_min, GLdouble x_max,
-		    GLdouble y_min, GLdouble y_max,
-		    GLdouble z_min, GLdouble z_max)
+		    IceTDouble x_min, IceTDouble x_max,
+		    IceTDouble y_min, IceTDouble y_max,
+		    IceTDouble z_min, IceTDouble z_max)
 {
-    GLdouble *verts;
+    IceTDouble *verts;
 
-    verts = malloc(8*3*sizeof(GLdouble));
+    verts = malloc(8*3*sizeof(IceTDouble));
     verts[0*3 + 0] = x_min;  verts[0*3 + 1] = y_min;  verts[0*3 + 2] = z_min;
     verts[1*3 + 0] = x_min;  verts[1*3 + 1] = y_min;  verts[1*3 + 2] = z_max;
     verts[2*3 + 0] = x_min;  verts[2*3 + 1] = y_max;  verts[2*3 + 2] = z_min;
@@ -107,22 +108,22 @@ void icetBucketBoxd(IceTBucket bucket,
     bucket->num_bounds = 8;
 }
 
-void icetBucketBoxf(IceTBucket bucket, GLfloat x_min, GLfloat x_max,
-		    GLfloat y_min, GLfloat y_max,
-		    GLfloat z_min, GLfloat z_max)
+void icetBucketBoxf(IceTBucket bucket, IceTFloat x_min, IceTFloat x_max,
+		    IceTFloat y_min, IceTFloat y_max,
+		    IceTFloat z_min, IceTFloat z_max)
 {
     icetBucketBoxd(bucket, x_min, x_max, y_min, y_max, z_min, z_max);
 }
 
-GLboolean icetBucketInView(IceTBucket bucket, GLdouble *transform)
+IceTBoolean icetBucketInView(IceTBucket bucket, IceTDouble *transform)
 {
     int left, right, bottom, top, znear, zfar;
     int i;
     left = right = bottom = top = znear = zfar = 0;
 
     for (i = 0; i < bucket->num_bounds; i++) {
-	GLdouble *vert = bucket->bounds + 3*i;
-	GLdouble x, y, z, w;
+	IceTDouble *vert = bucket->bounds + 3*i;
+	IceTDouble x, y, z, w;
 
 	w = transform[MI(3,0)]*vert[0] + transform[MI(3,1)]*vert[1]
 	    + transform[MI(3,2)]*vert[2] + transform[MI(3,3)];
@@ -146,7 +147,7 @@ GLboolean icetBucketInView(IceTBucket bucket, GLdouble *transform)
 
 void icetSetBoundsFromBuckets(IceTBucket *buckets, int num_buckets)
 {
-    GLdouble x_min, x_max, y_min, y_max, z_min, z_max;
+    IceTDouble x_min, x_max, y_min, y_max, z_min, z_max;
     int b, v;
 
     if (num_buckets < 1) return;
@@ -156,7 +157,7 @@ void icetSetBoundsFromBuckets(IceTBucket *buckets, int num_buckets)
 
     for (b = 0; b < num_buckets; b++) {
 	for (v = 0; v < buckets[b]->num_bounds; v++) {
-	    GLdouble *vert = buckets[b]->bounds + v*3;
+	    IceTDouble *vert = buckets[b]->bounds + v*3;
 	    if (x_min > vert[0]) x_min = vert[0];
 	    if (x_max < vert[0]) x_max = vert[0];
 	    if (y_min > vert[1]) y_min = vert[1];
@@ -172,9 +173,9 @@ void icetSetBoundsFromBuckets(IceTBucket *buckets, int num_buckets)
 void icetBucketsDraw(const IceTBucket *buckets, int num_buckets,
 		     void (*draw_func)(int))
 {
-    GLdouble projection[16];
-    GLdouble modelview[16];
-    GLdouble transform[16];
+    IceTDouble projection[16];
+    IceTDouble modelview[16];
+    IceTDouble transform[16];
     int i;
 
     glGetDoublev(GL_PROJECTION_MATRIX, projection);
@@ -188,7 +189,7 @@ void icetBucketsDraw(const IceTBucket *buckets, int num_buckets,
     }
 }
 
-static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B)
+static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
 {
     int i, j, k;
 

@@ -8,9 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 #include <image.h>
 #include <context.h>
@@ -28,14 +26,14 @@ static IceTImage directCompose(void)
     IceTSparseImage inImage;
     IceTSparseImage outImage;
     IceTImage image;
-    GLint *contrib_counts;
-    GLint *display_nodes;
-    GLint max_pixels;
-    GLint num_tiles;
-    GLint num_contributors;
-    GLint display_tile;
-    GLint tile;
-    GLint *tile_image_dest;
+    IceTInt *contrib_counts;
+    IceTInt *display_nodes;
+    IceTInt max_pixels;
+    IceTInt num_tiles;
+    IceTInt num_contributors;
+    IceTInt display_tile;
+    IceTInt tile;
+    IceTInt *tile_image_dest;
     icetRaiseDebug("In Direct Compose");
 
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
@@ -43,11 +41,11 @@ static IceTImage directCompose(void)
 
     icetResizeBuffer(  2*icetSparseImageSize(max_pixels)
 		     + icetFullImageSize(max_pixels)
-		     + num_tiles*sizeof(GLint));
+		     + num_tiles*sizeof(IceTInt));
     inImage     = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     outImage    = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     image	= icetReserveBufferMem(icetFullImageSize(max_pixels));
-    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(GLint));
+    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {

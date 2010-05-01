@@ -8,10 +8,10 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #include <diagnostics.h>
-#include <GL/ice-t.h>
+
+#include <IceT.h>
+
 #include <context.h>
 
 #include <stdlib.h>
@@ -20,14 +20,15 @@
 
 #include <signal.h>
 
-static GLenum currentError = ICET_NO_ERROR;
-static GLenum currentLevel;
+static IceTEnum currentError = ICET_NO_ERROR;
+static IceTEnum currentLevel;
 
-void icetRaiseDiagnostic(const char *msg, GLenum type,
-                         GLbitfield level, const char *file, int line)
+void icetRaiseDiagnostic(const char *msg, IceTEnum type,
+                         IceTBitField level, const char *file, int line)
 {
     static int raisingDiagnostic = 0;
-    GLbitfield diagLevel;
+    IceTBitField diagLevel;
+    IceTInt tmpInt;
     static char full_message[1024];
     char *m;
     int rank;
@@ -56,7 +57,8 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
         currentError = type;
         currentLevel = level;
     }
-    icetGetIntegerv(ICET_DIAGNOSTIC_LEVEL, (GLint *)(&diagLevel));
+    icetGetIntegerv(ICET_DIAGNOSTIC_LEVEL, &tmpInt);
+    diagLevel = tmpInt;
     if ((diagLevel & level) != level) {
       /* Don't do anything if we are not reporting the raised diagnostic. */
         FINISH;
@@ -109,14 +111,14 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
     FINISH;
 }
 
-GLenum icetGetError(void)
+IceTEnum icetGetError(void)
 {
-    GLenum error = currentError;
+    IceTEnum error = currentError;
     currentError = ICET_NO_ERROR;
     return error;
 }
 
-void icetDiagnostics(GLbitfield mask)
+void icetDiagnostics(IceTBitField mask)
 {
     icetStateSetInteger(ICET_DIAGNOSTIC_LEVEL, mask);
 }

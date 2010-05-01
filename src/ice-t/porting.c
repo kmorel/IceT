@@ -11,7 +11,8 @@
 /* Id */
 
 #include <porting.h>
-#include <GL/ice-t.h>
+
+#include <IceT.h>
 
 #ifndef WIN32
 #include <sys/time.h>

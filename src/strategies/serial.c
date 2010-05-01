@@ -8,9 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 #include <image.h>
 #include <context.h>
@@ -24,16 +22,16 @@ IceTStrategy ICET_STRATEGY_SERIAL = { "Serial", ICET_TRUE, serialCompose };
 
 static IceTImage serialCompose(void)
 {
-    GLint num_tiles;
-    GLint max_pixels;
-    GLint rank;
-    GLint num_proc;
-    GLint *display_nodes;
-    GLboolean ordered_composite;
+    IceTInt num_tiles;
+    IceTInt max_pixels;
+    IceTInt rank;
+    IceTInt num_proc;
+    IceTInt *display_nodes;
+    IceTBoolean ordered_composite;
     IceTImage myImage;
     IceTImage imageBuffer;
     IceTSparseImage inImage, outImage;
-    GLint *compose_group;
+    IceTInt *compose_group;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
@@ -50,7 +48,7 @@ static IceTImage serialCompose(void)
     imageBuffer   = icetReserveBufferMem(icetFullImageSize(max_pixels));
     inImage       = icetReserveBufferMem(icetSparseImageSize(max_pixels));
     outImage      = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    compose_group = icetReserveBufferMem(sizeof(GLint)*num_proc);
+    compose_group = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
 
     if (ordered_composite) {
 	icetGetIntegerv(ICET_COMPOSITE_ORDER, compose_group);

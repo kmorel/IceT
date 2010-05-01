@@ -137,8 +137,8 @@ ELSE(BUILD_SHARED_LIBS)
 ENDIF(BUILD_SHARED_LIBS)
 
 # Configure files with settings for use by the build.
-CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/GL/ice-t_config.h.in
-               ${ICET_BINARY_DIR}/src/include/GL/ice-t_config.h)
+CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/IceTConfig.h.in
+               ${ICET_BINARY_DIR}/src/include/IceTConfig.h)
 
 # Point to ICE-T include files.
 INCLUDE_DIRECTORIES(${ICET_SOURCE_DIR}/src/include)

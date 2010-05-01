@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_CONFIG_H_
 #define _ICET_CONFIG_H_
 
@@ -59,6 +57,20 @@
 #cmakedefine ICET_SIZEOF_FLOAT          @ICET_SIZEOF_FLOAT@
 #cmakedefine ICET_SIZEOF_DOUBLE         @ICET_SIZEOF_DOUBLE@
 #cmakedefine ICET_SIZEOF_VOID_P         @ICET_SIZEOF_VOID_P@
+
+#if ICET_SIZEOF_CHAR == 1
+typedef char IceTInt8;
+typedef unsigned char IceTUnsignedInt8;
+#else
+#error "No valid data type for 8 bit integers found."
+#endif
+
+#if ICET_SIZEOF_SHORT == 2
+typedef short IceTInt16;
+typedef unsigned short IceTUnsignedInt16;
+#else
+#error "No valid data type for 16 bit integers founds."
+#endif
 
 #if ICET_SIZEOF_INT == 4
 typedef int IceTInt32;

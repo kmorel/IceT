@@ -8,18 +8,16 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_STATE_H_
 #define _ICET_STATE_H_
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 typedef IceTUnsignedInt64 IceTTimeStamp;
 
 struct IceTStateValue {
-    GLenum type;
-    GLint size;
+    IceTEnum type;
+    IceTInt size;
     void *data;
     IceTTimeStamp mod_time;
 };
@@ -31,31 +29,31 @@ void      icetStateDestroy(IceTState state);
 void      icetStateCopy(IceTState dest, const IceTState src);
 void      icetStateSetDefaults(void);
 
-ICET_EXPORT void icetStateSetDoublev(GLenum pname, GLint size,
-                                     const GLdouble *data);
-ICET_EXPORT void icetStateSetFloatv(GLenum pname, GLint size,
-                                    const GLfloat *data);
-ICET_EXPORT void icetStateSetIntegerv(GLenum pname, GLint size,
-                                      const GLint *data);
-ICET_EXPORT void icetStateSetBooleanv(GLenum pname, GLint size,
-                                      const GLboolean *data);
-ICET_EXPORT void icetStateSetPointerv(GLenum pname, GLint size,
-                                      const GLvoid **data);
+ICET_EXPORT void icetStateSetDoublev(IceTEnum pname, IceTInt size,
+                                     const IceTDouble *data);
+ICET_EXPORT void icetStateSetFloatv(IceTEnum pname, IceTInt size,
+                                    const IceTFloat *data);
+ICET_EXPORT void icetStateSetIntegerv(IceTEnum pname, IceTInt size,
+                                      const IceTInt *data);
+ICET_EXPORT void icetStateSetBooleanv(IceTEnum pname, IceTInt size,
+                                      const IceTBoolean *data);
+ICET_EXPORT void icetStateSetPointerv(IceTEnum pname, IceTInt size,
+                                      const IceTVoid **data);
 
-ICET_EXPORT void icetStateSetDouble(GLenum pname, GLdouble value);
-ICET_EXPORT void icetStateSetFloat(GLenum pname, GLfloat value);
-ICET_EXPORT void icetStateSetInteger(GLenum pname, GLint value);
-ICET_EXPORT void icetStateSetBoolean(GLenum pname, GLboolean value);
-ICET_EXPORT void icetStateSetPointer(GLenum pname, const GLvoid *value);
+ICET_EXPORT void icetStateSetDouble(IceTEnum pname, IceTDouble value);
+ICET_EXPORT void icetStateSetFloat(IceTEnum pname, IceTFloat value);
+ICET_EXPORT void icetStateSetInteger(IceTEnum pname, IceTInt value);
+ICET_EXPORT void icetStateSetBoolean(IceTEnum pname, IceTBoolean value);
+ICET_EXPORT void icetStateSetPointer(IceTEnum pname, const IceTVoid *value);
 
-ICET_EXPORT GLenum icetStateGetType(GLenum pname);
-ICET_EXPORT GLint icetStateGetSize(GLenum pname);
-ICET_EXPORT IceTTimeStamp icetStateGetTime(GLenum pname);
+ICET_EXPORT IceTEnum icetStateGetType(IceTEnum pname);
+ICET_EXPORT IceTInt icetStateGetSize(IceTEnum pname);
+ICET_EXPORT IceTTimeStamp icetStateGetTime(IceTEnum pname);
 
-ICET_EXPORT void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type,
-                                    GLvoid *data);
-ICET_EXPORT void *icetUnsafeStateGet(GLenum pname);
-ICET_EXPORT GLenum icetStateType(GLenum pname);
+ICET_EXPORT void icetUnsafeStateSet(IceTEnum pname, IceTInt size, IceTEnum type,
+                                    IceTVoid *data);
+ICET_EXPORT void *icetUnsafeStateGet(IceTEnum pname);
+ICET_EXPORT IceTEnum icetStateType(IceTEnum pname);
 
 ICET_EXPORT IceTTimeStamp icetGetTimeStamp(void);
 

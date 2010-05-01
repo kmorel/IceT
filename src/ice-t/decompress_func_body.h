@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 /* This is not a traditional header file, but rather a "macro" file that
  * defines the body of a decompression function.  In general, there are
  * many flavors of the decompression functionality which differ only
@@ -48,13 +46,13 @@
 #endif
 
 {
-    const GLuint *_src;
-    GLuint _pixels;
-    GLuint _p;
-    GLuint _i;
+    const IceTUInt *_src;
+    IceTUInt _pixels;
+    IceTUInt _p;
+    IceTUInt _i;
 #ifdef TIME_DECOMPRESSION
-    GLdouble _timer;
-    GLdouble *_compress_time;
+    IceTDouble _timer;
+    IceTDouble *_compress_time;
 
     _compress_time = icetUnsafeStateGet(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
@@ -65,8 +63,8 @@
 
     _p = 0;
     while (_p < _pixels) {
-	const GLuint *_runlengths = _src++;
-	GLushort _rl;
+	const IceTUInt *_runlengths = _src++;
+	IceTUShort _rl;
       /* Set background pixels. */
 	_rl = INACTIVE_RUN_LENGTH(*_runlengths);
 	_p += _rl;

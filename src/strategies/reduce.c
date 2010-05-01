@@ -8,9 +8,8 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceT.h>
 
-#include <GL/ice-t.h>
 #include <image.h>
 #include <state.h>
 #include <context.h>
@@ -25,11 +24,11 @@
 #endif
 
 static IceTImage reduceCompose(void);
-static GLint delegate(GLint **tile_image_destp,
-		      GLint **compose_groupp, GLint *group_sizep,
-		      GLint *group_image_destp,
-		      GLint *num_receivingp,
-		      GLint buffer_size);
+static IceTInt delegate(IceTInt **tile_image_destp,
+                        IceTInt **compose_groupp, IceTInt *group_sizep,
+                        IceTInt *group_image_destp,
+                        IceTInt *num_receivingp,
+                        IceTInt buffer_size);
 
 
 IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
@@ -39,15 +38,15 @@ static IceTImage reduceCompose(void)
     IceTSparseImage inImage;
     IceTSparseImage outImage;
     IceTImage image;
-    GLint max_pixels;
-    GLint num_processes;
-    GLint tile_displayed;
-    GLint buffer_size;
+    IceTInt max_pixels;
+    IceTInt num_processes;
+    IceTInt tile_displayed;
+    IceTInt buffer_size;
 
-    GLint *tile_image_dest;
-    GLint *compose_group, group_size, group_image_dest;
-    GLint num_receiving;
-    GLint compose_tile;
+    IceTInt *tile_image_dest;
+    IceTInt *compose_group, group_size, group_image_dest;
+    IceTInt num_receiving;
+    IceTInt compose_tile;
 
     icetRaiseDebug("In reduceCompose");
 
@@ -93,37 +92,37 @@ static IceTImage reduceCompose(void)
     return image;
 }
 
-static GLint delegate(GLint **tile_image_destp,
-		      GLint **compose_groupp, GLint *group_sizep,
-		      GLint *group_image_destp,
-		      GLint *num_receivingp,
-		      GLint buffer_size)
+static IceTInt delegate(IceTInt **tile_image_destp,
+		      IceTInt **compose_groupp, IceTInt *group_sizep,
+		      IceTInt *group_image_destp,
+		      IceTInt *num_receivingp,
+		      IceTInt buffer_size)
 {
-    GLboolean *all_contained_tiles_masks;
-    GLint *contrib_counts;
-    GLint total_image_count;
+    IceTBoolean *all_contained_tiles_masks;
+    IceTInt *contrib_counts;
+    IceTInt total_image_count;
 
-    GLint num_tiles;
-    GLint num_processes;
-    GLint rank;
-    GLint *tile_display_nodes;
-    GLint *composite_order;
+    IceTInt num_tiles;
+    IceTInt num_processes;
+    IceTInt rank;
+    IceTInt *tile_display_nodes;
+    IceTInt *composite_order;
 
-    GLint *num_proc_for_tile;
-    GLint *node_assignment;
-    GLint *tile_proc_groups;
-    GLint *group_sizes;
-    GLint *tile_image_dest;
-    GLint group_image_dest = 0;
-    GLint *contributors;
+    IceTInt *num_proc_for_tile;
+    IceTInt *node_assignment;
+    IceTInt *tile_proc_groups;
+    IceTInt *group_sizes;
+    IceTInt *tile_image_dest;
+    IceTInt group_image_dest = 0;
+    IceTInt *contributors;
 
-    GLint pcount;
+    IceTInt pcount;
 
-    GLint tile, node;
-    GLint snode, rnode, dest;
-    GLint piece;
-    GLint first_loop;
-    GLint num_receiving;
+    IceTInt tile, node;
+    IceTInt snode, rnode, dest;
+    IceTInt piece;
+    IceTInt first_loop;
+    IceTInt num_receiving;
 
     all_contained_tiles_masks
 	= icetUnsafeStateGet(ICET_ALL_CONTAINED_TILES_MASKS);
@@ -144,26 +143,26 @@ static GLint delegate(GLint **tile_image_destp,
 	return -1;
     }
 
-    icetResizeBuffer(  num_tiles*sizeof(GLint)
-		     + num_processes*sizeof(GLint)
-		     + num_tiles*num_processes*sizeof(GLint)
-		     + num_tiles*sizeof(GLint)
-		     + num_tiles*sizeof(GLint)
-		     + num_processes*sizeof(GLint)
+    icetResizeBuffer(  num_tiles*sizeof(IceTInt)
+		     + num_processes*sizeof(IceTInt)
+		     + num_tiles*num_processes*sizeof(IceTInt)
+		     + num_tiles*sizeof(IceTInt)
+		     + num_tiles*sizeof(IceTInt)
+		     + num_processes*sizeof(IceTInt)
 		     + buffer_size);
-    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    node_assignment   = icetReserveBufferMem(num_processes * sizeof(GLint));
+    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    node_assignment   = icetReserveBufferMem(num_processes * sizeof(IceTInt));
     tile_proc_groups  = icetReserveBufferMem(  num_tiles * num_processes
-					     * sizeof(GLint));
-    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    contributors      = icetReserveBufferMem(num_processes * sizeof(GLint));
+					     * sizeof(IceTInt));
+    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    contributors      = icetReserveBufferMem(num_processes * sizeof(IceTInt));
 
   /* Decide the minimum amount of processes that should be added to each
      tile. */
     pcount = 0;
     for (tile = 0; tile < num_tiles; tile++) {
-	GLint allocate = (contrib_counts[tile]*num_processes)/total_image_count;
+	IceTInt allocate = (contrib_counts[tile]*num_processes)/total_image_count;
       /* Make sure at least one process is assigned to tiles that have at
 	 least one image. */
 	if ((allocate < 1) && (contrib_counts[tile] > 0)) allocate = 1;
@@ -181,7 +180,7 @@ static GLint delegate(GLint **tile_image_destp,
     while (num_processes > pcount) {
       /* Find the tile with the largest image to process ratio that
 	 can still have a process added to it. */
-	GLint max = 0;
+	IceTInt max = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] < contrib_counts[tile])
 		&& (   (num_proc_for_tile[max] == contrib_counts[max])
@@ -204,7 +203,7 @@ static GLint delegate(GLint **tile_image_destp,
     while (num_processes < pcount) {
       /* Find tile with the smallest image to process ratio that can still
 	 have a process removed. */
-	GLint min = 0;
+	IceTInt min = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] > 1)
 		&& (   (num_proc_for_tile[min] < 2)
@@ -219,7 +218,7 @@ static GLint delegate(GLint **tile_image_destp,
     }
 
   /* Clear out arrays. */
-    memset(group_sizes, 0, num_tiles*sizeof(GLint));
+    memset(group_sizes, 0, num_tiles*sizeof(IceTInt));
     for (node = 0; node < num_processes; node++) {
 	node_assignment[node] = -1;
     }
@@ -240,7 +239,7 @@ group_sizes[(tile)]++;
   /* Assign each node to a tile it is rendering, if possible. */
     for (node = 0; node < num_processes; node++) {
 	if (node_assignment[node] < 0) {
-	    GLboolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
+	    IceTBoolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
 	    for (tile = 0; tile < num_tiles; tile++) {
 		if (   (tile_mask[tile])
 		    && (group_sizes[tile] < num_proc_for_tile[tile])) {
@@ -264,7 +263,7 @@ group_sizes[(tile)]++;
 
   /* Now figure out who I am sending to and how many I am receiving. */
     for (tile = 0; tile < num_tiles; tile++) {
-	GLint *proc_group = tile_proc_groups + tile*num_processes;
+	IceTInt *proc_group = tile_proc_groups + tile*num_processes;
 
 	if (   (node_assignment[rank] != tile)
 	    && !all_contained_tiles_masks[rank*num_tiles + tile]) {
@@ -329,7 +328,7 @@ group_sizes[(tile)]++;
 	   * gets images that are consecutive in the ordering.  Communication
 	   * costs come second. */
 
-	    GLint num_contributors = 0;
+	    IceTInt num_contributors = 0;
 	    int i;
 	  /* First, we make a list of all processes contributing to this
 	   * tile in the order in which the images need to be composed.

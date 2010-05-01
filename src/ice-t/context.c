@@ -8,10 +8,9 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceT.h>
 
 #include <context.h>
-#include <GL/ice-t.h>
 #include <diagnostics.h>
 
 #include <stdlib.h>
@@ -97,9 +96,9 @@ void icetSetContext(IceTContext context)
     icet_current_context = &(context_list[context]);
 }
 
-void *icetReserveBufferMem(int size)
+void *icetReserveBufferMem(IceTSizeType size)
 {
-    void *mem = ((GLubyte *)icet_current_context->buffer)
+    void *mem = ((IceTUByte *)icet_current_context->buffer)
         + icet_current_context->buffer_offset;
 
   /* Integer boundries are good. */
@@ -121,7 +120,7 @@ void icetCopyState(IceTContext dest, const IceTContext src)
     icetStateCopy(context_list[dest].state, context_list[src].state);
 }
 
-void icetResizeBuffer(int size)
+void icetResizeBuffer(IceTSizeType size)
 {
   /* Add some padding in case the user's data does not lie on byte boundries. */
     size += 32*sizeof(IceTInt64);

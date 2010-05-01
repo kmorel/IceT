@@ -8,33 +8,36 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #include <projections.h>
-#include <GL/ice-t.h>
+
+/* TODO: Remove the dependence on OpenGL.  Right now this is here for the
+   call to glViewport. */
+#include <IceTGL.h>
+
+#include <IceT.h>
 
 #include <state.h>
 #include <diagnostics.h>
 
 #include <stdlib.h>
 
-static GLint num_tiles = 0;
-static GLdouble *tile_projections = NULL;
+static IceTInt num_tiles = 0;
+static IceTDouble *tile_projections = NULL;
 static IceTTimeStamp viewport_time = (IceTTimeStamp)-1;
 
-static GLdouble global_projection[16];
+static IceTDouble global_projection[16];
 static IceTTimeStamp projection_time = (IceTTimeStamp)-1;
 
 static void update_tile_projections(void);
 
-/* static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B); */
+/* static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B); */
 
-void icetProjectTile(GLint tile)
+void icetProjectTile(IceTInt tile)
 {
-    GLint *viewports;
-    GLint physical_viewport[4];
-    GLint tile_width, tile_height;
-    GLint renderable_width, renderable_height;
+    IceTInt *viewports;
+    IceTInt physical_viewport[4];
+    IceTInt tile_width, tile_height;
+    IceTInt renderable_width, renderable_height;
 
   /* Update tile projections. */
     if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
@@ -72,12 +75,12 @@ void icetProjectTile(GLint tile)
     glMultMatrixd(global_projection);
 }
 
-void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
-                            GLdouble *mat_out)
+void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
+                            IceTSizeType height, IceTDouble *mat_out)
 {
-    GLint global_viewport[4];
-/*     GLdouble viewport_transform[16]; */
-/*     GLdouble tile_transform[16]; */
+    IceTInt global_viewport[4];
+/*     IceTDouble viewport_transform[16]; */
+/*     IceTDouble tile_transform[16]; */
 
     icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
 
@@ -123,13 +126,13 @@ void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
 
 /*     multMatrix(mat_out, tile_transform, viewport_transform); */
 
-    mat_out[ 0] = (GLdouble)global_viewport[2]/width;
+    mat_out[ 0] = (IceTDouble)global_viewport[2]/width;
     mat_out[ 1] = 0.0;
     mat_out[ 2] = 0.0;
     mat_out[ 3] = 0.0;
 
     mat_out[ 4] = 0.0;
-    mat_out[ 5] = (GLdouble)global_viewport[3]/height;
+    mat_out[ 5] = (IceTDouble)global_viewport[3]/height;
     mat_out[ 6] = 0.0;
     mat_out[ 7] = 0.0;
 
@@ -138,9 +141,9 @@ void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
     mat_out[10] = 1.0;
     mat_out[11] = 0.0;
 
-    mat_out[12] = (GLdouble)(  global_viewport[2] + 2*global_viewport[0]
+    mat_out[12] = (IceTDouble)(  global_viewport[2] + 2*global_viewport[0]
                              - 2*x - width)/width;
-    mat_out[13] = (GLdouble)(  global_viewport[3] + 2*global_viewport[1]
+    mat_out[13] = (IceTDouble)(  global_viewport[3] + 2*global_viewport[1]
                              - 2*y - height)/height;
     mat_out[14] = 0.0;
     mat_out[15] = 1.0;
@@ -148,12 +151,12 @@ void icetGetViewportProject(GLint x, GLint y, GLsizei width, GLsizei height,
 
 static void update_tile_projections(void)
 {
-    GLint *viewports;
+    IceTInt *viewports;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     free(tile_projections);
-    tile_projections = malloc(num_tiles*16*sizeof(GLdouble));
+    tile_projections = malloc(num_tiles*16*sizeof(IceTDouble));
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
 
     for (i = 0; i < num_tiles; i++) {
@@ -164,7 +167,7 @@ static void update_tile_projections(void)
 }
 
 /* #define MI(r,c)      ((c)*4+(r)) */
-/* static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B) */
+/* static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B) */
 /* { */
 /*     int i, j, k; */
 

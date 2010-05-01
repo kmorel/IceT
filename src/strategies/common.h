@@ -8,12 +8,10 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_STRATEGY_COMMON_H_
 #define _ICET_STRATEGY_COMMON_H_
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 #include <image.h>
 
 /* icetRenderTransferFullImages
@@ -38,7 +36,7 @@
 void icetRenderTransferFullImages(IceTImage imageBuffer,
                                   IceTSparseImage inImage,
                                   IceTSparseImage outImage,
-                                  GLint num_receiving, GLint *tile_image_dest);
+                                  IceTInt num_receiving, IceTInt *tile_image_dest);
 
 
 /* icetSendRecvLargeMessages
@@ -78,15 +76,15 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
    bufferSize - The maximum size of a message.
    
 */
-typedef void *(*IceTGenerateData)(GLint id, GLint dest, GLint *size);
-typedef void *(*IceTHandleData)(void *, GLint src);
-void icetSendRecvLargeMessages(GLint numMessagesSending,
-                               GLint *messageDestinations,
-                               GLint messagesInOrder,
+typedef void *(*IceTGenerateData)(IceTInt id, IceTInt dest, IceTInt *size);
+typedef void *(*IceTHandleData)(void *, IceTInt src);
+void icetSendRecvLargeMessages(IceTInt numMessagesSending,
+                               IceTInt *messageDestinations,
+                               IceTInt messagesInOrder,
                                IceTGenerateData generateDataFunc,
                                IceTHandleData handleDataFunc,
                                void *incomingBuffer,
-                               GLint bufferSize);
+                               IceTInt bufferSize);
 
 
 /* icetBswapCompose
@@ -110,7 +108,7 @@ void icetSendRecvLargeMessages(GLint numMessagesSending,
         results when the function returns.
    inImage/outImage - two buffers for holding sparse image data.
 */
-void icetBswapCompose(GLint *compose_group, GLint group_size, GLint image_dest,
+void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
                       IceTImage imageBuffer,
                       IceTSparseImage inImage, IceTSparseImage outImage);
 
@@ -134,11 +132,11 @@ void icetBswapCompose(GLint *compose_group, GLint group_size, GLint image_dest,
         the buffer has undefined partial results when the function returns.
    compressedImageBuffer - a buffer for holding sparse image data in transit.
 */
-void icetTreeCompose(GLint *compose_group, GLint group_size, GLint image_dest,
+void icetTreeCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
                      IceTImage imageBuffer,
                      IceTSparseImage compressedImageBuffer);
 
 #define icetAddSentBytes(num_sending)                                   \
-    ((GLint *)icetUnsafeStateGet(ICET_BYTES_SENT))[0] += (num_sending)
+    ((IceTInt *)icetUnsafeStateGet(ICET_BYTES_SENT))[0] += (num_sending)
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/

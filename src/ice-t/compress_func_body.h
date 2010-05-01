@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 /* This is not a traditional header file, but rather a "macro" file that
  * defines the body of a compression function.  In general, there are many
  * flavors of the compression functionality which differ only slightly.
@@ -59,15 +57,15 @@
 #endif
 
 {
-    GLuint *_dest;
-    GLuint _pixels = PIXEL_COUNT;
-    GLuint _p;
-    GLuint _count;
+    IceTUInt *_dest;
+    IceTUInt _pixels = PIXEL_COUNT;
+    IceTUInt _p;
+    IceTUInt _count;
 #ifdef DEBUG
-    GLuint _totalcount = 0;
+    IceTUInt _totalcount = 0;
 #endif
-    GLdouble _timer;
-    GLdouble *_compress_time;
+    IceTDouble _timer;
+    IceTDouble *_compress_time;
 
     _compress_time = icetUnsafeStateGet(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
@@ -89,7 +87,7 @@
 	    int _lastx = FULL_WIDTH-SPACE_RIGHT;
 	    _count += SPACE_LEFT;
 	    while (ICET_TRUE) {
-		GLuint *_runlengths;
+		IceTUInt *_runlengths;
 		while ((_x < _lastx) && (!ACTIVE())) {
 		    _x++;
 		    _count++;
@@ -106,7 +104,7 @@
 		    _count -= 0xFFFF;
 		    _runlengths = _dest++;
 		}
-		INACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
+		INACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
 		_totalcount += _count;
 #endif
@@ -117,7 +115,7 @@
 		    _count++;
 		    _x++;
 		}
-		ACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
+		ACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
 		_totalcount += _count;
 #endif
@@ -132,7 +130,7 @@
 
 	_p = 0;
 	while (_p < _pixels) {
-	    GLuint *_runlengths = _dest++;
+	    IceTUInt *_runlengths = _dest++;
 	  /* Count background pixels. */
 	    while ((_p < _pixels) && (!ACTIVE())) {
 		_p++;
@@ -148,7 +146,7 @@
 		_count -= 0xFFFF;
 		_runlengths = _dest++;
 	    }
-	    INACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
+	    INACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
 	    _totalcount += _count;
 #endif
@@ -161,7 +159,7 @@
 		_count++;
 		_p++;
 	    }
-	    ACTIVE_RUN_LENGTH(*_runlengths) = (GLushort)_count;
+	    ACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
 	    _totalcount += _count;
 #endif
@@ -182,7 +180,7 @@
 #endif /*DEBUG*/
 	    _count -= 0xFFFF;
 	}
-	INACTIVE_RUN_LENGTH(*_dest) = (GLushort)_count;
+	INACTIVE_RUN_LENGTH(*_dest) = (IceTUShort)_count;
 	ACTIVE_RUN_LENGTH(*_dest) = 0;
 	_dest++;
 #ifdef DEBUG
@@ -192,7 +190,7 @@
 #endif /*PADDING*/
 
 #ifdef DEBUG
-    if (_totalcount != (GLuint)PIXEL_COUNT) {
+    if (_totalcount != (IceTUInt)PIXEL_COUNT) {
 	char msg[256];
 	sprintf(msg, "Total run lengths don't equal pixel count: %d != %d",
 		(int)_totalcount, (int)(PIXEL_COUNT));
@@ -202,7 +200,7 @@
 
     *_compress_time += icetWallTime() - _timer;
 
-    COMPRESSED_SIZE = (GLuint)(  (IceTPointerArithmetic)_dest
+    COMPRESSED_SIZE = (IceTUInt)(  (IceTPointerArithmetic)_dest
 			       - (IceTPointerArithmetic)COMPRESSED_BUFFER);
     icetRaiseDebug1("Compression: %d%%",
 		    (int)(100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8)));

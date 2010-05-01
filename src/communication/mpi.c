@@ -8,10 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#define USE_STDARG
-#include <GL/ice-t_mpi.h>
+#include <IceTMPI.h>
 
 #include <diagnostics.h>
 
@@ -25,23 +22,23 @@
 static IceTCommunicator Duplicate(IceTCommunicator self);
 static void Destroy(IceTCommunicator self);
 static void Send(IceTCommunicator self,
-                 const void *buf, int count, GLenum datatype, int dest,
+                 const void *buf, int count, IceTEnum datatype, int dest,
                  int tag);
 static void Recv(IceTCommunicator self,
-                 void *buf, int count, GLenum datatype, int src, int tag);
+                 void *buf, int count, IceTEnum datatype, int src, int tag);
 static void Sendrecv(IceTCommunicator self,
-                     const void *sendbuf, int sendcount, GLenum sendtype,
+                     const void *sendbuf, int sendcount, IceTEnum sendtype,
                      int dest, int sendtag,
-                     void *recvbuf, int recvcount, GLenum recvtype,
+                     void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
 static void Allgather(IceTCommunicator self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);
 static IceTCommRequest Isend(IceTCommunicator self,
-                             const void *buf, int count, GLenum datatype,
+                             const void *buf, int count, IceTEnum datatype,
                              int dest, int tag);
 static IceTCommRequest Irecv(IceTCommunicator self,
-                             void *buf, int count, GLenum datatype,
+                             void *buf, int count, IceTEnum datatype,
                              int src, int tag);
 static void Waitone(IceTCommunicator self, IceTCommRequest *request);
 static int  Waitany(IceTCommunicator self,
@@ -180,7 +177,7 @@ static void Destroy(IceTCommunicator self)
     }
 
 static void Send(IceTCommunicator self,
-                 const void *buf, int count, GLenum datatype, int dest, int tag)
+                 const void *buf, int count, IceTEnum datatype, int dest, int tag)
 {
     MPI_Datatype mpidatatype;
     CONVERT_DATATYPE(datatype, mpidatatype);
@@ -188,7 +185,7 @@ static void Send(IceTCommunicator self,
 }
 
 static void Recv(IceTCommunicator self,
-                 void *buf, int count, GLenum datatype, int src, int tag)
+                 void *buf, int count, IceTEnum datatype, int src, int tag)
 {
     MPI_Status status;
     MPI_Datatype mpidatatype;
@@ -197,9 +194,9 @@ static void Recv(IceTCommunicator self,
 }
 
 static void Sendrecv(IceTCommunicator self,
-                     const void *sendbuf, int sendcount, GLenum sendtype,
+                     const void *sendbuf, int sendcount, IceTEnum sendtype,
                      int dest, int sendtag,
-                     void *recvbuf, int recvcount, GLenum recvtype,
+                     void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag)
 {
     MPI_Status status;
@@ -225,7 +222,7 @@ static void Allgather(IceTCommunicator self,
 }
 
 static IceTCommRequest Isend(IceTCommunicator self,
-                             const void *buf, int count, GLenum datatype,
+                             const void *buf, int count, IceTEnum datatype,
                              int dest, int tag)
 {
     IceTCommRequest icet_request;
@@ -240,7 +237,7 @@ static IceTCommRequest Isend(IceTCommunicator self,
 }
 
 static IceTCommRequest Irecv(IceTCommunicator self,
-                             void *buf, int count, GLenum datatype,
+                             void *buf, int count, IceTEnum datatype,
                              int src, int tag)
 {
     IceTCommRequest icet_request;

@@ -8,11 +8,9 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_PORTING_H_
 #define _ICET_PORTING_H_
 
-/* Currently, everything defined in porting.c is declared in ice-t.h. */
+/* Currently, everything defined in porting.c is declared in IceT.h. */
 
 #endif /*_ICET_PORTING_H_*/

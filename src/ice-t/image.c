@@ -8,25 +8,26 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #include <image.h>
 #include <projections.h>
 #include <state.h>
 #include <diagnostics.h>
 
+/* TODO: Get rid of this and decouple the core IceT from OpenGL. */
+#include <IceTGL.h>
+
 #include <stdlib.h>
 #include <string.h>
 
-#define GET_MAGIC_NUM(buf)      (((GLuint *)(buf))[0])
-#define GET_PIXEL_COUNT(buf)    (((GLuint *)(buf))[1])
-#define GET_DATA_START(buf)     (((GLuint *)(buf)) + 2)
+#define GET_MAGIC_NUM(buf)      (((IceTUInt *)(buf))[0])
+#define GET_PIXEL_COUNT(buf)    (((IceTUInt *)(buf))[1])
+#define GET_DATA_START(buf)     (((IceTUInt *)(buf)) + 2)
 
 #define GET_IMAGE_COLOR(buf)    (GET_DATA_START(buf))
 #define GET_DEPTH_COLOR(buf)    (GET_DATA_START(buf) + GET_PIXEL_NUM(buf))
 
-#define INACTIVE_RUN_LENGTH(rl) (((GLushort *)&(rl))[0])
-#define ACTIVE_RUN_LENGTH(rl)   (((GLushort *)&(rl))[1])
+#define INACTIVE_RUN_LENGTH(rl) (((IceTUShort *)&(rl))[0])
+#define ACTIVE_RUN_LENGTH(rl)   (((IceTUShort *)&(rl))[1])
 
 #ifndef MIN
 #define MIN(x, y)       ((x) < (y) ? (x) : (y))
@@ -45,12 +46,14 @@
  * and dimensions of the place where the pixels actually fall in a viewport
  * for the tile.  Everything outside of this tile viewport should be
  * cleared to the background color. */
-static void renderTile(int tile, GLint *screen_viewport, GLint *tile_viewport);
+static void renderTile(int tile, IceTInt *screen_viewport,
+                       IceTInt *tile_viewport);
 /* Reads an image from the frame buffer.  x and y are the offset, and width
  * and height are the dimensions of the part of the framebuffer to read.
  * If renderTile has just been called, it is appropriate to use the values
  * from screen_viewport for these parameters. */
-static void readImage(GLint x, GLint y, GLsizei width, GLsizei height,
+static void readImage(IceTInt x, IceTInt y,
+                      IceTSizeType width, IceTSizeType height,
                       IceTImage buffer);
 /* Like readImage, except that it stores the result in an offset in buffer
  * and clears out everything else in buffer to the background color.  If
@@ -59,56 +62,56 @@ static void readImage(GLint x, GLint y, GLsizei width, GLsizei height,
  * fb_y, sub_width, and sub_height parameters.  Pass the first two values
  * of target_viewport into ib_x and ib_y.  The full dimensions of the tile
  * should be passed into full_width and full_height. */
-static void readSubImage(GLint fb_x, GLint fb_y,
-                         GLsizei sub_width, GLsizei sub_height,
+static void readSubImage(IceTInt fb_x, IceTInt fb_y,
+                         IceTSizeType sub_width, IceTSizeType sub_height,
                          IceTImage buffer,
-                         GLint ib_x, GLint ib_y,
-                         GLsizei full_width, GLsizei full_height);
+                         IceTInt ib_x, IceTInt ib_y,
+                         IceTSizeType full_width, IceTSizeType full_height);
 /* Attempts to retrieve the correct value of the far depth.  First gets the
  * ICET_FAR_DEPTH parameter.  If depthBuffer is non NULL, it double checks
  * to make sure the first entry is not less than ICET_FAR_DEPTH.  If so,
  * the parameter is corrected. */
-static GLuint getFarDepth(const GLuint *depthBuffer);
+static IceTUInt getFarDepth(const IceTUInt *depthBuffer);
 /* Gets a static image buffer that is shared amongst all contexts (and
  * therefore not thread safe.  The buffer is resized as necessary. */
-static void getBuffers(GLuint type, GLuint pixels, IceTImage *bufferp);
+static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp);
 /* Releases use of the buffers retreived with getBuffers.  Currently does
  * nothing as thread safty is not ensured. */
 static void releaseBuffers(void);
 
-GLuint icetFullImageTypeSize(GLuint pixels, GLuint type)
+IceTUInt icetFullImageTypeSize(IceTUInt pixels, IceTUInt type)
 {
     switch (type) {
       case FULL_IMAGE_CD_MAGIC_NUM:
-          return (2*sizeof(GLuint)*(pixels+1));
+          return (2*sizeof(IceTUInt)*(pixels+1));
       case FULL_IMAGE_C_MAGIC_NUM:
       case FULL_IMAGE_D_MAGIC_NUM:
-          return (sizeof(GLuint)*(pixels+2));
+          return (sizeof(IceTUInt)*(pixels+2));
       default:
           icetRaiseError("Bad full image type.", ICET_INVALID_VALUE);
           return 0;
     }
 }
-GLuint icetSparseImageTypeSize(GLuint pixels, GLuint type)
+IceTUInt icetSparseImageTypeSize(IceTUInt pixels, IceTUInt type)
 {
     switch (type) {
       case SPARSE_IMAGE_CD_MAGIC_NUM:
-          return (sizeof(GLuint)*(2*(pixels+1) + pixels/0x10000 + 1));
+          return (sizeof(IceTUInt)*(2*(pixels+1) + pixels/0x10000 + 1));
       case SPARSE_IMAGE_C_MAGIC_NUM:
       case SPARSE_IMAGE_D_MAGIC_NUM:
-          return (sizeof(GLuint)*(pixels + 2 + pixels/0x10000 + 1));
+          return (sizeof(IceTUInt)*(pixels + 2 + pixels/0x10000 + 1));
       default:
           icetRaiseError("Bad sparse image type.", ICET_INVALID_VALUE);
           return 0;
     }
 }
 
-GLubyte *icetGetImageColorBuffer(IceTImage image)
+IceTUByte *icetGetImageColorBuffer(IceTImage image)
 {
     switch (GET_MAGIC_NUM(image)) {
       case FULL_IMAGE_CD_MAGIC_NUM:
       case FULL_IMAGE_C_MAGIC_NUM:
-          return (GLubyte *)(image + 2);
+          return (IceTUByte *)(image + 2);
       case FULL_IMAGE_D_MAGIC_NUM:
           return NULL;
       default:
@@ -117,7 +120,7 @@ GLubyte *icetGetImageColorBuffer(IceTImage image)
           return NULL;
     }
 }
-GLuint *icetGetImageDepthBuffer(IceTImage image)
+IceTUInt *icetGetImageDepthBuffer(IceTImage image)
 {
     switch (GET_MAGIC_NUM(image)) {
       case FULL_IMAGE_CD_MAGIC_NUM:
@@ -133,47 +136,48 @@ GLuint *icetGetImageDepthBuffer(IceTImage image)
     }
 }
 
-void icetInitializeImage(IceTImage image, GLuint pixel_count)
+void icetInitializeImage(IceTImage image, IceTUInt pixel_count)
 {
-    GLenum type;
+    IceTEnum type;
 
-    icetGetIntegerv(ICET_INPUT_BUFFERS, (GLint *)&type);
+    icetGetIntegerv(ICET_INPUT_BUFFERS, (IceTInt *)&type);
     type |= FULL_IMAGE_BASE_MAGIC_NUM;
 
     icetInitializeImageType(image, pixel_count, type);
 }
 
-void icetInitializeImageType(IceTImage image, GLuint pixel_count, GLuint type) {
+void icetInitializeImageType(IceTImage image, IceTUInt pixel_count,
+                             IceTUInt type) {
     GET_MAGIC_NUM(image) = type;
     GET_PIXEL_COUNT(image) = pixel_count;
 }
 
 void icetClearImage(IceTImage image)
 {
-    GLenum output_buffers;
-    GLuint pixels = icetGetImagePixelCount(image);
+    IceTEnum output_buffers;
+    IceTUInt pixels = icetGetImagePixelCount(image);
 
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
+    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
     if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        GLuint background_color;
-        GLuint *color = (GLuint *)icetGetImageColorBuffer(image);
-        GLuint i;
-        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (GLint *)&background_color);
+        IceTUInt background_color;
+        IceTUInt *color = (IceTUInt *)icetGetImageColorBuffer(image);
+        IceTUInt i;
+        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
         for (i = 0; i < pixels; i++) {
             color[i] = background_color;
         }
     }
     if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        GLuint far_depth = getFarDepth(NULL);
-        GLuint *depth = icetGetImageDepthBuffer(image);
-        GLuint i;
+        IceTUInt far_depth = getFarDepth(NULL);
+        IceTUInt *depth = icetGetImageDepthBuffer(image);
+        IceTUInt i;
         for (i = 0; i < pixels; i++) {
             depth[i] = far_depth;
         }
     }
 }
 
-void icetInputOutputBuffers(GLenum inputs, GLenum outputs)
+void icetInputOutputBuffers(IceTEnum inputs, IceTEnum outputs)
 {
     if ((inputs & outputs) != outputs) {
         icetRaiseError("Tried to use an output that is not also an input.",
@@ -191,11 +195,11 @@ void icetInputOutputBuffers(GLenum inputs, GLenum outputs)
     icetStateSetInteger(ICET_OUTPUT_BUFFERS, outputs);
 }
 
-void icetGetTileImage(GLint tile, IceTImage buffer)
+void icetGetTileImage(IceTInt tile, IceTImage buffer)
 {
-    GLint screen_viewport[4], target_viewport[4];
-    GLint *viewports;
-    GLsizei width, height;
+    IceTInt screen_viewport[4], target_viewport[4];
+    IceTInt *viewports;
+    IceTSizeType width, height;
 
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
@@ -211,23 +215,23 @@ void icetGetTileImage(GLint tile, IceTImage buffer)
                  width, height);
 }
 
-GLuint icetGetCompressedTileImage(GLint tile, IceTSparseImage buffer)
+IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
 {
-    GLint screen_viewport[4], target_viewport[4];
+    IceTInt screen_viewport[4], target_viewport[4];
     IceTImage imageBuffer;
-    GLubyte *colorBuffer;
-    GLuint  *depthBuffer;
-    GLint *viewports;
-    GLsizei width, height;
+    IceTUByte *colorBuffer;
+    IceTUInt  *depthBuffer;
+    IceTInt *viewports;
+    IceTSizeType width, height;
     int space_left, space_right, space_bottom, space_top;
-    GLuint compressedSize;
+    IceTUInt compressedSize;
 
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
     renderTile(tile, screen_viewport, target_viewport);
-    getBuffers((  *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
+    getBuffers((  *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
                 | FULL_IMAGE_BASE_MAGIC_NUM),
                screen_viewport[2]*screen_viewport[3],
                &imageBuffer);
@@ -244,10 +248,10 @@ GLuint icetGetCompressedTileImage(GLint tile, IceTSparseImage buffer)
     space_top = height - target_viewport[3] - space_bottom;
 
     if (depthBuffer) {
-        GLuint far_depth = getFarDepth(depthBuffer);
-        GLuint *depth = depthBuffer;
+        IceTUInt far_depth = getFarDepth(depthBuffer);
+        IceTUInt *depth = depthBuffer;
         if (colorBuffer) {
-            GLuint *color = (GLuint*)colorBuffer;
+            IceTUInt *color = (IceTUInt*)colorBuffer;
 #define MAGIC_NUMBER            SPARSE_IMAGE_CD_MAGIC_NUM
 #define COMPRESSED_BUFFER       buffer
 #define PIXEL_COUNT             width*height
@@ -281,11 +285,11 @@ GLuint icetGetCompressedTileImage(GLint tile, IceTSparseImage buffer)
 #include "compress_func_body.h"
         }
     } else {
-        GLuint *color = (GLuint*)colorBuffer;
+        IceTUInt *color = (IceTUInt*)colorBuffer;
 #define MAGIC_NUMBER            SPARSE_IMAGE_C_MAGIC_NUM
 #define COMPRESSED_BUFFER       buffer
 #define PIXEL_COUNT             width*height
-#define ACTIVE()                (((GLubyte*)color)[3] != 0x00)
+#define ACTIVE()                (((IceTUByte*)color)[3] != 0x00)
 #define WRITE_PIXEL(dest)       *(dest++) = *color;
 #define INCREMENT_PIXEL()       color++;
 #define COMPRESSED_SIZE         compressedSize
@@ -304,24 +308,24 @@ GLuint icetGetCompressedTileImage(GLint tile, IceTSparseImage buffer)
     return compressedSize;
 }
 
-GLuint icetCompressImage(const IceTImage imageBuffer,
+IceTUInt icetCompressImage(const IceTImage imageBuffer,
                          IceTSparseImage compressedBuffer)
 {
     return icetCompressSubImage(imageBuffer, 0, GET_PIXEL_COUNT(imageBuffer),
                                 compressedBuffer);
 }
 
-GLuint icetCompressSubImage(const IceTImage imageBuffer,
-                            GLuint offset, GLuint pixels,
+IceTUInt icetCompressSubImage(const IceTImage imageBuffer,
+                            IceTUInt offset, IceTUInt pixels,
                             IceTSparseImage compressedBuffer)
 {
-    const GLuint *color
-        = (GLuint *)icetGetImageColorBuffer((IceTImage)imageBuffer);
-    const GLuint *depth = icetGetImageDepthBuffer((IceTImage)imageBuffer);
-    GLuint compressedSize;
+    const IceTUInt *color
+        = (IceTUInt *)icetGetImageColorBuffer((IceTImage)imageBuffer);
+    const IceTUInt *depth = icetGetImageDepthBuffer((IceTImage)imageBuffer);
+    IceTUInt compressedSize;
 
     if (depth) {
-        GLuint far_depth = getFarDepth(depth);
+        IceTUInt far_depth = getFarDepth(depth);
         depth += offset;
         if (color) {
             color += offset;
@@ -348,7 +352,7 @@ GLuint icetCompressSubImage(const IceTImage imageBuffer,
 #define MAGIC_NUMBER            SPARSE_IMAGE_C_MAGIC_NUM
 #define COMPRESSED_BUFFER       compressedBuffer
 #define PIXEL_COUNT             pixels
-#define ACTIVE()                (((GLubyte*)color)[3] != 0x00)
+#define ACTIVE()                (((IceTUByte*)color)[3] != 0x00)
 #define WRITE_PIXEL(dest)       *(dest++) = *color;
 #define INCREMENT_PIXEL()       color++;
 #define COMPRESSED_SIZE         compressedSize
@@ -358,22 +362,22 @@ GLuint icetCompressSubImage(const IceTImage imageBuffer,
     return compressedSize;
 }
 
-GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
+IceTUInt icetDecompressImage(const IceTSparseImage compressedBuffer,
                            IceTImage imageBuffer)
 {
-    GLuint *color;
-    GLuint *depth;
-    GLuint background_color;
-    GLuint far_depth;
+    IceTUInt *color;
+    IceTUInt *depth;
+    IceTUInt background_color;
+    IceTUInt far_depth;
 
     switch (GET_MAGIC_NUM(compressedBuffer)) {
       case SPARSE_IMAGE_CD_MAGIC_NUM:
           icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
                                   FULL_IMAGE_CD_MAGIC_NUM);
-          color = (GLuint *)icetGetImageColorBuffer(imageBuffer);
+          color = (IceTUInt *)icetGetImageColorBuffer(imageBuffer);
           depth = icetGetImageDepthBuffer(imageBuffer);
           icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
-                          (GLint *)&background_color);
+                          (IceTInt *)&background_color);
           far_depth = getFarDepth(NULL);
 #define COMPRESSED_BUFFER       compressedBuffer
 #define READ_PIXEL(src)         *color = *(src++);  *depth = *(src++);
@@ -389,9 +393,9 @@ GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
       case SPARSE_IMAGE_C_MAGIC_NUM:
           icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
                                   FULL_IMAGE_C_MAGIC_NUM);
-          color = (GLuint *)icetGetImageColorBuffer(imageBuffer);
+          color = (IceTUInt *)icetGetImageColorBuffer(imageBuffer);
           icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
-                          (GLint *)&background_color);
+                          (IceTInt *)&background_color);
 #define COMPRESSED_BUFFER       compressedBuffer
 #define READ_PIXEL(src)         *color = *(src++);
 #define INCREMENT_PIXEL()       color++;
@@ -430,14 +434,14 @@ GLuint icetDecompressImage(const IceTSparseImage compressedBuffer,
 void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                    int srcOnTop)
 {
-    GLuint *destColorBuffer;
-    GLuint *destDepthBuffer;
-    const GLuint *srcColorBuffer;
-    const GLuint *srcDepthBuffer;
-    GLuint pixels;
-    GLuint i;
-    GLdouble timer;
-    GLdouble *compare_time;
+    IceTUInt *destColorBuffer;
+    IceTUInt *destDepthBuffer;
+    const IceTUInt *srcColorBuffer;
+    const IceTUInt *srcDepthBuffer;
+    IceTUInt pixels;
+    IceTUInt i;
+    IceTDouble timer;
+    IceTDouble *compare_time;
 
     pixels = GET_PIXEL_COUNT(destBuffer);
     if (pixels != GET_PIXEL_COUNT(srcBuffer)) {
@@ -452,9 +456,9 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
         return;
     }
 
-    destColorBuffer = (GLuint *)icetGetImageColorBuffer(destBuffer);
+    destColorBuffer = (IceTUInt *)icetGetImageColorBuffer(destBuffer);
     destDepthBuffer = icetGetImageDepthBuffer(destBuffer);
-    srcColorBuffer =(GLuint *)icetGetImageColorBuffer((IceTImage)srcBuffer);
+    srcColorBuffer =(IceTUInt *)icetGetImageColorBuffer((IceTImage)srcBuffer);
     srcDepthBuffer = icetGetImageDepthBuffer((IceTImage)srcBuffer);
 
     compare_time = icetUnsafeStateGet(ICET_COMPARE_TIME);
@@ -479,14 +483,14 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
         if (srcOnTop) {
             for (i = 0; i < pixels; i++) {
               /* The blending should probably be more flexible. */
-                ICET_OVER((GLubyte *)(&srcColorBuffer[i]),
-                          (GLubyte *)(&destColorBuffer[i]));
+                ICET_OVER((IceTUByte *)(&srcColorBuffer[i]),
+                          (IceTUByte *)(&destColorBuffer[i]));
             }
         } else {
             for (i = 0; i < pixels; i++) {
               /* The blending should probably be more flexible. */
-                ICET_UNDER((GLubyte *)(&srcColorBuffer[i]),
-                           (GLubyte *)(&destColorBuffer[i]));
+                ICET_UNDER((IceTUByte *)(&srcColorBuffer[i]),
+                           (IceTUByte *)(&destColorBuffer[i]));
             }
         }
     }
@@ -502,14 +506,14 @@ void icetCompressedComposite(IceTImage destBuffer,
                                srcBuffer, srcOnTop);
 }
 void icetCompressedSubComposite(IceTImage destBuffer,
-                                GLuint offset, GLuint pixels,
+                                IceTUInt offset, IceTUInt pixels,
                                 const IceTSparseImage srcBuffer,
                                 int srcOnTop)
 {
-    GLuint *destColor;
-    GLuint *destDepth;
-    GLdouble timer;
-    GLdouble *compare_time;
+    IceTUInt *destColor;
+    IceTUInt *destDepth;
+    IceTDouble timer;
+    IceTDouble *compare_time;
 
     compare_time = icetUnsafeStateGet(ICET_COMPARE_TIME);
     timer = icetWallTime();
@@ -526,7 +530,7 @@ void icetCompressedSubComposite(IceTImage destBuffer,
         return;
     }
 
-    destColor = (GLuint *)icetGetImageColorBuffer(destBuffer) + offset;
+    destColor = (IceTUInt *)icetGetImageColorBuffer(destBuffer) + offset;
     destDepth = icetGetImageDepthBuffer(destBuffer) + offset;
 
     switch (GET_MAGIC_NUM(srcBuffer)) {
@@ -559,7 +563,7 @@ void icetCompressedSubComposite(IceTImage destBuffer,
 #define READ_PIXEL(srcColor)                                            \
     {                                                                   \
       /* The blending should probably be more flexible. */              \
-        ICET_OVER((GLubyte *)(srcColor), (GLubyte *)(destColor));       \
+        ICET_OVER((IceTUByte *)(srcColor), (IceTUByte *)(destColor));       \
     }                                                                   \
     srcColor += 1;
 #define INCREMENT_PIXEL()       destColor++;
@@ -570,7 +574,7 @@ void icetCompressedSubComposite(IceTImage destBuffer,
 #define READ_PIXEL(srcColor)                                            \
     {                                                                   \
       /* The blending should probably be more flexible. */              \
-        ICET_UNDER((GLubyte *)(srcColor), (GLubyte *)(destColor));      \
+        ICET_UNDER((IceTUByte *)(srcColor), (IceTUByte *)(destColor));      \
     }                                                                   \
     srcColor += 1;
 #define INCREMENT_PIXEL()       destColor++;
@@ -585,24 +589,25 @@ void icetCompressedSubComposite(IceTImage destBuffer,
    currently available in the given OpenGL frame buffers.  Returns a
    viewport in the screen which has the pertinent information and a
    viewport that it should be mapped to in the given tile screen space. */
-static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
+static void renderTile(int tile, IceTInt *screen_viewport,
+                       IceTInt *target_viewport)
 {
-    GLint *contained_viewport;
-    GLint *tile_viewport;
-    GLboolean *contained_mask;
-    GLint physical_viewport[4];
-    GLint max_width, max_height;
-    GLboolean use_floating_viewport;
+    IceTInt *contained_viewport;
+    IceTInt *tile_viewport;
+    IceTBoolean *contained_mask;
+    IceTInt physical_viewport[4];
+    IceTInt max_width, max_height;
+    IceTBoolean use_floating_viewport;
     IceTCallback drawfunc;
-    GLvoid *value;
-    GLdouble render_time;
-    GLdouble timer;
-    GLuint far_depth;
-    GLint readBuffer;
+    IceTVoid *value;
+    IceTDouble render_time;
+    IceTDouble timer;
+    IceTUInt far_depth;
+    IceTInt readBuffer;
 
     icetRaiseDebug1("Rendering tile %d", tile);
     contained_viewport = icetUnsafeStateGet(ICET_CONTAINED_VIEWPORT);
-    tile_viewport = ((GLint *)icetUnsafeStateGet(ICET_TILE_VIEWPORTS)) + 4*tile;
+    tile_viewport = ((IceTInt *)icetUnsafeStateGet(ICET_TILE_VIEWPORTS)) + 4*tile;
     contained_mask = icetUnsafeStateGet(ICET_CONTAINED_TILES_MASK);
     use_floating_viewport = icetIsEnabled(ICET_FLOATING_VIEWPORT);
 
@@ -694,8 +699,8 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
         }
     } else {
       /* Case 3: Using floating viewport. */
-        GLdouble matrix[16];
-        GLint *rendered_viewport;
+        IceTDouble matrix[16];
+        IceTInt *rendered_viewport;
         icetRaiseDebug("Case 3: Using floating viewport.");
 
         if (contained_viewport[0] < tile_viewport[0]) {
@@ -734,7 +739,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
       /* Setup render for this tile. */
 
       /* This will later be freed with state.c code. */
-        rendered_viewport = malloc(sizeof(GLint)*4);
+        rendered_viewport = malloc(sizeof(IceTInt)*4);
         rendered_viewport[0] = contained_viewport[0];
         rendered_viewport[1] = contained_viewport[1];
         rendered_viewport[2] = max_width;
@@ -756,7 +761,7 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
   /* This is a good place to check the far depth since we have been asked
      to draw in the current OpenGL context. */
     icetRaiseDebug("Checking depth.");
-    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (GLint *)&far_depth);
+    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
     if (far_depth == 1) {       /* An unlikely initial value. */
         icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
         glReadBuffer(readBuffer);
@@ -783,28 +788,29 @@ static void renderTile(int tile, GLint *screen_viewport, GLint *target_viewport)
 /* Performs a glReadPixels on the color and depth buffers (unless they
  * are not needed).  buffer is expected to already have its magic number
  * and pixel count set. */
-static void readImage(GLint x, GLint y, GLsizei width, GLsizei height,
+static void readImage(IceTInt x, IceTInt y,
+                      IceTSizeType width, IceTSizeType height,
                       IceTImage buffer)
 {
     readSubImage(x, y, width, height, buffer, 0, 0, width, height);
 }
-static void readSubImage(GLint fb_x, GLint fb_y,
-                         GLsizei sub_width, GLsizei sub_height,
+static void readSubImage(IceTInt fb_x, IceTInt fb_y,
+                         IceTSizeType sub_width, IceTSizeType sub_height,
                          IceTImage buffer,
-                         GLint ib_x, GLint ib_y,
-                         GLsizei full_width, GLsizei full_height)
+                         IceTInt ib_x, IceTInt ib_y,
+                         IceTSizeType full_width, IceTSizeType full_height)
 {
-    GLint readBuffer;
-    GLint colorFormat;
-    GLdouble *read_time;
-    GLdouble timer;
-    GLubyte *colorBuffer;
-    GLuint *depthBuffer;
-    GLint physical_viewport[4];
-    GLint x_offset, y_offset;
-    GLuint background_color;
-    GLuint far_depth;
-    GLint x, y;
+    IceTInt readBuffer;
+    IceTInt colorFormat;
+    IceTDouble *read_time;
+    IceTDouble timer;
+    IceTUByte *colorBuffer;
+    IceTUInt *depthBuffer;
+    IceTInt physical_viewport[4];
+    IceTInt x_offset, y_offset;
+    IceTUInt background_color;
+    IceTUInt far_depth;
+    IceTInt x, y;
 
     icetRaiseDebug4("Reading viewport %d %d %d %d", (int)fb_x, (int)fb_y,
                     (int)sub_width, (int)sub_height);
@@ -818,7 +824,7 @@ static void readSubImage(GLint fb_x, GLint fb_y,
         icetRaiseError("Buffer magic number not set.", ICET_SANITY_CHECK_FAIL);
         return;
     }
-    if (GET_PIXEL_COUNT(buffer) != (GLuint)(full_width*full_height)) {
+    if (GET_PIXEL_COUNT(buffer) != (IceTUInt)(full_width*full_height)) {
         icetRaiseError("Buffer size was not set.", ICET_SANITY_CHECK_FAIL);
         return;
     }
@@ -846,18 +852,18 @@ static void readSubImage(GLint fb_x, GLint fb_y,
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
                      colorFormat, GL_UNSIGNED_BYTE, colorBuffer);
 
-        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (GLint *)&background_color);
+        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
       /* Clear out bottom. */
         for (y = 0; y < ib_y; y++) {
             for (x = 0; x < full_width; x++) {
-                ((GLuint *)colorBuffer)[y*full_width + x] = background_color;
+                ((IceTUInt *)colorBuffer)[y*full_width + x] = background_color;
             }
         }
       /* Clear out left. */
         if (ib_x > 0) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = 0; x < ib_x; x++) {
-                    ((GLuint *)colorBuffer)[y*full_width + x] =background_color;
+                    ((IceTUInt *)colorBuffer)[y*full_width + x] =background_color;
                 }
             }
         }
@@ -865,14 +871,14 @@ static void readSubImage(GLint fb_x, GLint fb_y,
         if (ib_x + sub_width < full_width) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = ib_x+sub_width; x < full_width; x++) {
-                    ((GLuint *)colorBuffer)[y*full_width + x] =background_color;
+                    ((IceTUInt *)colorBuffer)[y*full_width + x] =background_color;
                 }
             }
         }
       /* Clear out top. */
         for (y = ib_y+sub_height; y < full_height; y++) {
             for (x = 0; x < full_width; x++) {
-                ((GLuint *)colorBuffer)[y*full_width + x] = background_color;
+                ((IceTUInt *)colorBuffer)[y*full_width + x] = background_color;
             }
         }
     }
@@ -918,11 +924,11 @@ static void readSubImage(GLint fb_x, GLint fb_y,
     glPixelStorei(GL_PACK_SKIP_ROWS, 0);
 }
 
-static GLuint getFarDepth(const GLuint *depthBuffer)
+static IceTUInt getFarDepth(const IceTUInt *depthBuffer)
 {
-    GLuint far_depth;
+    IceTUInt far_depth;
 
-    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (GLint *)&far_depth);
+    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
     if ((depthBuffer != NULL) && (depthBuffer[0] > far_depth)) {
         icetRaiseDebug("Far depth failed sanity check, resetting.");
         icetRaiseDebug2("Old value: 0x%x,  New value: 0x%x",
@@ -935,12 +941,12 @@ static GLuint getFarDepth(const GLuint *depthBuffer)
 }
 
 /* Currently not thread safe. */
-static void getBuffers(GLuint type, GLuint pixels, IceTImage *bufferp)
+static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp)
 {
     static IceTImage buffer = NULL;
-    static GLuint bufferSize = 0;
+    static IceTUInt bufferSize = 0;
 
-    GLuint newBufferSize = icetFullImageTypeSize(pixels, type);
+    IceTUInt newBufferSize = icetFullImageTypeSize(pixels, type);
 
     if (newBufferSize > bufferSize) {
         free(buffer);

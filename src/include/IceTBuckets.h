@@ -8,18 +8,10 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_BUCKETS_H_
 #define _ICET_BUCKETS_H_
 
-#include "GL/ice-t_config.h"
-
-#ifdef __APPLE__
-#  include <OpenGL/gl.h>
-#else
-#  include <GL/gl.h>
-#endif
+#include "IceT.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,26 +21,28 @@ extern "C" {
 #endif
 
 typedef struct icet_bucket_st {
-    GLdouble *bounds;
-    int num_bounds;
+    IceTDouble *bounds;
+    IceTInt num_bounds;
 } *IceTBucket;
 
 ICET_EXPORT IceTBucket icetCreateBucket(void);
 ICET_EXPORT void       icetDestroyBucket(IceTBucket bucket);
 
 ICET_EXPORT void icetBucketVertices(IceTBucket bucket,
-                                    GLint size, GLenum type, GLsizei stride,
-                                    GLsizei count, const GLvoid *pointer);
+                                    IceTInt size, IceTEnum type,
+                                    IceTSizeType stride, IceTSizeType count,
+                                    const IceTVoid *pointer);
 ICET_EXPORT void icetBucketBoxd(IceTBucket bucket,
-                                GLdouble x_min, GLdouble x_max,
-                                GLdouble y_min, GLdouble y_max,
-                                GLdouble z_min, GLdouble z_max);
+                                IceTDouble x_min, IceTDouble x_max,
+                                IceTDouble y_min, IceTDouble y_max,
+                                IceTDouble z_min, IceTDouble z_max);
 ICET_EXPORT void icetBucketBoxf(IceTBucket bucket,
-                                GLfloat x_min, GLfloat x_max,
-                                GLfloat y_min, GLfloat y_max,
-                                GLfloat z_min, GLfloat z_max);
+                                IceTFloat x_min, IceTFloat x_max,
+                                IceTFloat y_min, IceTFloat y_max,
+                                IceTFloat z_min, IceTFloat z_max);
 
-ICET_EXPORT GLboolean icetBucketInView(IceTBucket bucket, GLdouble *transform);
+ICET_EXPORT IceTBoolean icetBucketInView(IceTBucket bucket,
+                                         IceTDouble *transform);
 
 ICET_EXPORT void icetSetBoundsFromBuckets(IceTBucket *buckets, int num_buckets);
 
