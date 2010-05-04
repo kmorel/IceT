@@ -1,5 +1,3 @@
-# Id
-#
 ## Copyright 2003 Sandia Coporation
 ## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ## license for use of this work by or on behalf of the U.S. Government.
@@ -19,12 +17,6 @@ SET(MyTests
 
 SET(UTIL_SRCS init.c ppm.c)
 
-IF (WIN32)
-  SET(UTIL_SRCS ${UTIL_SRCS} glwin_wgl.c)
-ELSE (WIN32)
-  SET(UTIL_SRCS ${UTIL_SRCS} glwin_glx.c)
-ENDIF (WIN32)
-
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
@@ -37,6 +29,7 @@ TARGET_LINK_LIBRARIES(icetTests_mpi
   icet_strategies
   icet_mpi
   ${OPENGL_glu_LIBRARY}
+  ${GLUT_LIBRARIES}
   )
 
 IF (ICET_MPIRUN_EXE)

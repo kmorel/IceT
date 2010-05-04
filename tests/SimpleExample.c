@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -15,7 +13,6 @@
 #include <GL/ice-t.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #ifdef __APPLE__
 #  include <OpenGL/gl.h>
@@ -58,13 +55,9 @@ static void draw(void)
     glPopMatrix();
 }
 
-int SimpleExample(int argc, char * argv[])
+static int SimpleExampleRun()
 {
     float angle;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
   /* Normally, the first thing that you do is set up your communication and
    * then create at least one ICE-T context.  This has already been done in
@@ -174,6 +167,14 @@ int SimpleExample(int argc, char * argv[])
         swap_buffers();
     }
 
-    finalize_test(TEST_PASSED);
     return TEST_PASSED;
+}
+
+int SimpleExample(int argc, char * argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(SimpleExampleRun);
 }

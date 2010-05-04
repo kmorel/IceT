@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2005 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -15,7 +13,6 @@
 #include <GL/ice-t.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,13 +40,9 @@ static void PrintMatrix(float *mat)
     }
 }
 
-int BoundsBehindViewer(int argc, char *argv[])
+static int BoundsBehindViewerRun()
 {
     float mat[16];
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
     GLint rank;
     icetGetIntegerv(ICET_RANK, &rank);
@@ -101,11 +94,18 @@ int BoundsBehindViewer(int argc, char *argv[])
         GLuint *cb = (GLuint *)icetGetColorBuffer();
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
-            finalize_test(TEST_FAILED);
             return TEST_FAILED;
         }
     }
 
-    finalize_test(TEST_PASSED);
     return TEST_PASSED;
+}
+
+int BoundsBehindViewer(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    run_test(BoundsBehindViewerRun);
 }
