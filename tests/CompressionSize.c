@@ -10,7 +10,7 @@
 ** exceeds the advertised maximum buffer size.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
 
@@ -45,14 +45,14 @@ static int DoCompressionTest(int num_buffers)
     GLint viewport[4];
     int pixels;
     IceTImage imagebuffer;
-    GLubyte *colorbuffer;
-    GLuint *depthbuffer;
+    IceTUByte *colorbuffer;
+    IceTUInt *depthbuffer;
     IceTSparseImage compressedbuffer;
-    GLint fardepth;
+    IceTInt fardepth;
     int i;
-    GLuint size;
+    IceTUInt size;
     int result;
-    GLint tmp;
+    IceTInt tmp;
 
     result = TEST_PASSED;
 
@@ -93,7 +93,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Expected size: %d.  Actual size: %d\n",
            (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)(2+2*num_buffers)*pixels) ) {
+        || (size < (IceTUInt)(2+2*num_buffers)*pixels) ) {
         printf("Size differs from expected size!\n");
         result = TEST_FAILED;
     }
@@ -115,7 +115,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Expected size: %d.  Actual size: %d\n",
            (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)4*num_buffers*pixels) ) {
+        || (size < (IceTUInt)4*num_buffers*pixels) ) {
         printf("Size differs from expected size!\n");
         result = TEST_FAILED;
     }
@@ -148,7 +148,7 @@ static int DoCompressionTest(int num_buffers)
     printf("Expected size: %d.  Actual size: %d\n",
            (int)icetSparseImageSize(pixels), (int)size);
     if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)4*num_buffers*pixels) ) {
+        || (size < (IceTUInt)4*num_buffers*pixels) ) {
         printf("Size differs from expected size!\n");
         result = TEST_FAILED;
     }

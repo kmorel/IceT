@@ -10,7 +10,7 @@
 ** Makes sure that all compositions are equivalent.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include <context.h>
 #include "test_codes.h"
 #include "test-util.h"
@@ -39,13 +39,13 @@ static void draw(void)
 #define DIFF(x, y)      ((x) < (y) ? (y) - (x) : (x) - (y))
 
 static int compare_color_buffers(int local_width, int local_height,
-                                 GLubyte *refcbuf, int rank)
+                                 IceTUByte *refcbuf, int rank)
 {
     int ref_off_x, ref_off_y;
     int bad_pixel_count;
     int x, y;
     char filename[FILENAME_MAX];
-    GLubyte *cb;
+    IceTUByte *cb;
 
     printf("Checking returned image.\n");
     cb = icetGetColorBuffer();
@@ -138,13 +138,13 @@ static int compare_color_buffers(int local_width, int local_height,
 }
 
 static int compare_depth_buffers(int local_width, int local_height,
-                                 GLuint *refdbuf, int rank)
+                                 IceTUInt *refdbuf, int rank)
 {
     int ref_off_x, ref_off_y;
     int bad_pixel_count;
     int x, y;
     char filename[FILENAME_MAX];
-    GLuint *db;
+    IceTUInt *db;
 
     printf("Checking returned image.\n");
     db = icetGetDepthBuffer();
@@ -178,10 +178,10 @@ static int compare_depth_buffers(int local_width, int local_height,
       /* Write encoded image. */
         for (y = 0; y < local_height; y++) {
             for (x = 0; x < local_width; x++) {
-                GLuint ref = refdbuf[(y+ref_off_y)*SCREEN_WIDTH
-                                    +x + ref_off_x];
-                GLuint rendered = db[y*local_width + x];
-                GLubyte *encoded = (GLubyte *)&db[y*local_width+x];
+                IceTUInt ref = refdbuf[(y+ref_off_y)*SCREEN_WIDTH
+                                      +x + ref_off_x];
+                IceTUInt rendered = db[y*local_width + x];
+                IceTUByte *encoded = (IceTUByte *)&db[y*local_width+x];
                 long error = ref - rendered;
                 if (error < 0) error = -error;
                 encoded[0] = (error & 0xFF000000) >> 24;
@@ -190,7 +190,7 @@ static int compare_depth_buffers(int local_width, int local_height,
             }
         }
         sprintf(filename, "depth_error%03d.ppm", rank);
-        write_ppm(filename, (GLubyte*)db,
+        write_ppm(filename, (IceTUByte *)db,
                   local_width, local_height);
 
         return 0;
@@ -228,19 +228,19 @@ static void check_results(int result)
 static int RandomTransformRun()
 {
     int i, x, y;
-    GLubyte *cb;
-    GLubyte *refcbuf = NULL;
-    GLubyte *refcbuf2 = NULL;
-    GLuint *db;
-    GLuint *refdbuf = NULL;
+    IceTUByte *cb;
+    IceTUByte *refcbuf = NULL;
+    IceTUByte *refcbuf2 = NULL;
+    IceTUInt *db;
+    IceTUInt *refdbuf = NULL;
     int result = TEST_PASSED;
-    GLfloat mat[16];
+    IceTFloat mat[16];
     int rank, num_proc;
-    GLint *image_order;
-    GLint rep_group_size;
-    GLint *rep_group;
-    GLfloat color[3];
-    GLfloat background_color[3];
+    IceTInt *image_order;
+    IceTInt rep_group_size;
+    IceTInt *rep_group;
+    IceTFloat color[3];
+    IceTFloat background_color[3];
     unsigned int seed;
 
     icetGetIntegerv(ICET_RANK, &rank);
@@ -251,7 +251,7 @@ static int RandomTransformRun()
     srand(seed);
 
   /* Decide on an image order and data replication group size. */
-    image_order = malloc(num_proc * sizeof(GLint));
+    image_order = malloc(num_proc * sizeof(IceTInt));
     if (rank == 0) {
         for (i = 0; i < num_proc; i++) image_order[i] = i;
         printf("Image order:\n");
@@ -372,8 +372,8 @@ static int RandomTransformRun()
     memcpy(refcbuf, cb, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
 
     db = icetGetDepthBuffer();
-    refdbuf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(GLuint));
-    memcpy(refdbuf, db, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(GLuint));
+    refdbuf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(IceTUInt));
+    memcpy(refdbuf, db, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(IceTUInt));
 
     printf("Getting base image for color blend.\n");
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT, ICET_COLOR_BUFFER_BIT);
@@ -389,7 +389,7 @@ static int RandomTransformRun()
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        GLboolean test_ordering;
+        IceTBoolean test_ordering;
 
         icetStrategy(strategy_list[i]);
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());

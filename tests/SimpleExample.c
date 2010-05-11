@@ -10,7 +10,7 @@
 ** rendering.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
 
@@ -25,8 +25,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-GLint rank;
-GLint num_proc;
+IceTInt rank;
+IceTInt num_proc;
 
 static void draw(void)
 {

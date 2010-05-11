@@ -12,7 +12,7 @@
 #define _MPI_COMM_H_
 
 #include "test-util.h"
-#include <GL/ice-t_mpi.h>
+#include <IceTMPI.h>
 
 void init_mpi_comm(int *argcp, char ***argvp)
 {

@@ -9,7 +9,7 @@
 ** Tests to make sure blank tiles are correctly handled.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
 
@@ -33,9 +33,9 @@ static void draw(void)
 static int BlankTilesRun()
 {
     int i, j, x, y;
-    GLubyte *cb;
+    IceTUByte *cb;
     int result = TEST_PASSED;
-    GLint rank, num_proc;
+    IceTInt rank, num_proc;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);

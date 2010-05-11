@@ -15,7 +15,7 @@
 ** processors.  This should flag some problems with assumed far depths.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
 
@@ -44,7 +44,7 @@ static DisplayNoDrawRun()
 {
     int result = TEST_PASSED;
     int i;
-    GLint rank, num_proc;
+    IceTInt rank, num_proc;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -76,7 +76,7 @@ static DisplayNoDrawRun()
     glColor4f(1.0, 1.0, 1.0, 1.0);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        GLubyte *color_buffer;
+        IceTUByte *color_buffer;
 
         icetStrategy(strategy_list[i]);
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());

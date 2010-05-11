@@ -10,7 +10,7 @@
 ** the viewing frustum to behind the viewpoint in perspective mode.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
 
@@ -44,7 +44,7 @@ static int BoundsBehindViewerRun()
 {
     float mat[16];
 
-    GLint rank;
+    IceTInt rank;
     icetGetIntegerv(ICET_RANK, &rank);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -91,7 +91,7 @@ static int BoundsBehindViewerRun()
 
   /* Test the resulting image to make sure the polygon was drawn over it. */
     if (rank == 0) {
-        GLuint *cb = (GLuint *)icetGetColorBuffer();
+        IceTUInt *cb = (IceTUInt *)icetGetColorBuffer();
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
             return TEST_FAILED;

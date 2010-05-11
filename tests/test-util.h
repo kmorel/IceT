@@ -18,7 +18,7 @@ extern "C" {
 }
 #endif
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 extern IceTStrategy strategy_list[];
 extern int STRATEGY_LIST_SIZE;
@@ -35,7 +35,7 @@ void swap_buffers(void);
 void finalize_test(int result);
 
 void write_ppm(const char *filename,
-               const GLubyte *image,
+               const IceTUByte *image,
                int width, int height);
 
 #ifdef __cplusplus

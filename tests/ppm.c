@@ -13,14 +13,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// TODO: Delete this line once ICET_COLOR_FORMAT no longer relies on OpenGL
+#include <IceTGL.h>
+
 void write_ppm(const char *filename,
-	       const GLubyte *image,
+	       const IceTUByte *image,
 	       int width, int height)
 {
     FILE *fd;
     int x, y;
     const unsigned char *color;
-    GLint color_format;
+    IceTInt color_format;
 
     icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
 
