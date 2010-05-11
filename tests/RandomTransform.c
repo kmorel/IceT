@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -16,7 +14,6 @@
 #include <context.h>
 #include "test_codes.h"
 #include "test-util.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -228,7 +225,7 @@ static void check_results(int result)
     }
 }
 
-int RandomTransform()
+static int RandomTransformRun()
 {
     int i, x, y;
     GLubyte *cb;
@@ -524,6 +521,14 @@ int RandomTransform()
     icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
                            ICET_COLOR_BUFFER_BIT);
 
-    finalize_test(result);
     return result;
+}
+
+int RandomTransform(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(RandomTransformRun);
 }

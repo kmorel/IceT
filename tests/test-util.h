@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
 
@@ -29,6 +27,10 @@ extern int SCREEN_WIDTH;
 extern int SCREEN_HEIGHT;
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
+
+int run_test(int (*test_function)(void));
+
+void swap_buffers(void);
 
 void finalize_test(int result);
 

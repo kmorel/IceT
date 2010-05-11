@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #include "test-util.h"
 
 #include <stdlib.h>

@@ -1,5 +1,3 @@
-# Id
-#
 ## Copyright 2003 Sandia Coporation
 ## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ## license for use of this work by or on behalf of the U.S. Government.
@@ -147,11 +145,12 @@ INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
 ADD_SUBDIRECTORY(src)
 
 IF (BUILD_TESTING AND ICET_BUILD_TESTING)
-  IF (NOT APPLE)
+  FIND_PACKAGE(GLUT)
+  IF (GLUT_FOUND)
     ADD_SUBDIRECTORY(tests)
-  ELSE (NOT APPLE)
-    MESSAGE(STATUS "Tests not supported on Mac.  Disabling.")
-  ENDIF (NOT APPLE)
+  ELSE (GLUT_FOUND)
+    MESSAGE(STATUS "Tests require Glut, which is not found.  Disabling tests.")
+  ENDIF (GLUT_FOUND)
 ENDIF (BUILD_TESTING AND ICET_BUILD_TESTING)
 
 ADD_SUBDIRECTORY(doc)

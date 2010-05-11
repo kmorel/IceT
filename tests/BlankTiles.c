@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -14,7 +12,6 @@
 #include <GL/ice-t.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,16 +30,12 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int BlankTiles(int argc, char *argv[])
+static int BlankTilesRun()
 {
     int i, j, x, y;
     GLubyte *cb;
     int result = TEST_PASSED;
     GLint rank, num_proc;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -95,8 +88,14 @@ int BlankTiles(int argc, char *argv[])
         }
     }
 
-    printf("Cleaning up.\n");
-
-    finalize_test(result);
     return result;
+}
+
+int BlankTiles(int argc, char *argv[])
+{
+  /* To remove warning */
+  (void)argc;
+  (void)argv;
+
+  return run_test(BlankTilesRun);
 }

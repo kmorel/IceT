@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -161,13 +159,9 @@ static int DoCompressionTest(int num_buffers)
     return result;
 }
 
-int CompressionSize(int argc, char *argv[])
+static int CompressionSizeRun()
 {
     int result;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
     icetStrategy(ICET_STRATEGY_REDUCE);
 
@@ -190,6 +184,14 @@ int CompressionSize(int argc, char *argv[])
         DoCompressionTest(2);
     }
 
-    finalize_test(result);
     return result;
+}
+
+int CompressionSize(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    run_test(CompressionSizeRun);
 }

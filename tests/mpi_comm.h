@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _MPI_COMM_H_
 #define _MPI_COMM_H_
 
