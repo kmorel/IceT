@@ -75,7 +75,7 @@ static void checkIceTError(void)
     GLenum error = icetGetError();
 #define TRY_ERROR(ename)                                                \
     if (error == ename) {                                               \
-        printf("## Current Ice-T error = " #ename "\n");                \
+        printf("## Current IceT error = " #ename "\n");                \
         return;                                                         \
     }
     TRY_ERROR(ICET_NO_ERROR);
@@ -85,7 +85,7 @@ static void checkIceTError(void)
     TRY_ERROR(ICET_OUT_OF_MEMORY);
     TRY_ERROR(ICET_INVALID_OPERATION);
     TRY_ERROR(ICET_INVALID_VALUE);
-    printf("## UNKNOWN ICE-T ERROR CODE!!!!!\n");
+    printf("## UNKNOWN ICET ERROR CODE!!!!!\n");
 #undef TRY_ERROR
 }
 
@@ -188,12 +188,15 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowPosition(0, 0);
     glutInitWindowSize(width, height);
-    windowId = glutCreateWindow("IceT Test");
+
+    char title[256];
+    sprintf(title, "IceT Test %d of %d", rank, num_proc);
+    windowId = glutCreateWindow(title);
 
     SCREEN_WIDTH = width;
     SCREEN_HEIGHT = height;
 
-  /* Create an ICE-T context. */
+  /* Create an IceT context. */
     context = icetCreateContext(comm);
     icetDiagnostics(diag_level);
 
@@ -224,6 +227,10 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     strategy_list[4] = ICET_STRATEGY_VTREE;
 }
 
+static void no_op()
+{
+}
+
 static void glut_draw()
 {
     glEnable(GL_DEPTH_TEST);
@@ -243,7 +250,8 @@ int run_test(int (*tf)(void))
   /* Record the test function so we can run it in the Glut draw callback. */
     test_function = tf;
 
-    glutDisplayFunc(glut_draw);
+    glutDisplayFunc(no_op);
+    glutIdleFunc(glut_draw);
 
   /* Glut will reliably create the OpenGL context only after the main loop is
    * started.  This will create the window and then call our glut_draw function
