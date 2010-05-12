@@ -72,7 +72,7 @@ static void checkOglError(void)
 
 static void checkIceTError(void)
 {
-    GLenum error = icetGetError();
+    IceTEnum error = icetGetError();
 #define TRY_ERROR(ename)                                                \
     if (error == ename) {                                               \
         printf("## Current IceT error = " #ename "\n");                \
@@ -130,7 +130,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     char **argv = *argvp;
     int width = 1024;
     int height = 768;
-    GLbitfield diag_level = ICET_DIAG_FULL;
+    IceTBitField diag_level = ICET_DIAG_FULL;
     int redirect = 0;
     int rank, num_proc;
 
@@ -272,7 +272,7 @@ void swap_buffers(void)
 extern void finalize_communication(void);
 void finalize_test(int result)
 {
-    GLint rank;
+    IceTInt rank;
 
     checkOglError();
     checkIceTError();

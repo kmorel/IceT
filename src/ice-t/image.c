@@ -309,15 +309,15 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
 }
 
 IceTUInt icetCompressImage(const IceTImage imageBuffer,
-                         IceTSparseImage compressedBuffer)
+                           IceTSparseImage compressedBuffer)
 {
     return icetCompressSubImage(imageBuffer, 0, GET_PIXEL_COUNT(imageBuffer),
                                 compressedBuffer);
 }
 
 IceTUInt icetCompressSubImage(const IceTImage imageBuffer,
-                            IceTUInt offset, IceTUInt pixels,
-                            IceTSparseImage compressedBuffer)
+                              IceTUInt offset, IceTUInt pixels,
+                              IceTSparseImage compressedBuffer)
 {
     const IceTUInt *color
         = (IceTUInt *)icetGetImageColorBuffer((IceTImage)imageBuffer);
@@ -363,7 +363,7 @@ IceTUInt icetCompressSubImage(const IceTImage imageBuffer,
 }
 
 IceTUInt icetDecompressImage(const IceTSparseImage compressedBuffer,
-                           IceTImage imageBuffer)
+                             IceTImage imageBuffer)
 {
     IceTUInt *color;
     IceTUInt *depth;
@@ -834,8 +834,12 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     depthBuffer = icetGetImageDepthBuffer(buffer);
 
     glPixelStorei(GL_PACK_ROW_LENGTH, full_width);
-    glPixelStorei(GL_PACK_SKIP_PIXELS, ib_x);
-    glPixelStorei(GL_PACK_SKIP_ROWS, ib_y);
+
+  /* These pixel store parameters are not working on one of the platforms
+   * I am testing on (thank you Mac).  Instead of using these, just offset
+   * the buffers we read in from. */
+  /* glPixelStorei(GL_PACK_SKIP_PIXELS, ib_x); */
+  /* glPixelStorei(GL_PACK_SKIP_ROWS, ib_y); */
 
     icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
     glReadBuffer(readBuffer);
@@ -850,7 +854,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     if (colorBuffer != NULL) {
         icetGetIntegerv(ICET_COLOR_FORMAT, &colorFormat);
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     colorFormat, GL_UNSIGNED_BYTE, colorBuffer);
+                     colorFormat, GL_UNSIGNED_BYTE,
+                     colorBuffer + 4*(ib_x + full_width*ib_y));
 
         icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
       /* Clear out bottom. */
@@ -884,7 +889,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     }
     if (depthBuffer != NULL) {
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, depthBuffer);
+                     GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
+                     depthBuffer + ib_x + full_width*ib_y);
 
         far_depth = getFarDepth(NULL);
       /* Clear out bottom. */
@@ -920,8 +926,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     *read_time += icetWallTime() - timer;
 
     glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+  /* glPixelStorei(GL_PACK_SKIP_PIXELS, 0); */
+  /* glPixelStorei(GL_PACK_SKIP_ROWS, 0); */
 }
 
 static IceTUInt getFarDepth(const IceTUInt *depthBuffer)

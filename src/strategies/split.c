@@ -166,6 +166,7 @@ static IceTImage splitStrategy(void)
 
   /* Figure out which tile I am assigned to. */
     for (my_tile = 0; rank >= tile_groups[my_tile+1]; my_tile++);
+    icetRaiseDebug1("My tile is %d", my_tile);
 
     group_size = tile_groups[my_tile+1] - tile_groups[my_tile];
     fragment_size = max_pixels/group_size;
@@ -209,17 +210,18 @@ static IceTImage splitStrategy(void)
 
   /* Render and send all tile images I am rendering. */
     for (image = 0; image < num_contained_tiles; image++) {
-        int sending_frag_size;
-        int compressedSize;
+        IceTUInt sending_frag_size;
+        IceTUInt compressedSize;
         IceTUInt offset;
 
         tile = contained_tiles_list[image];
         icetGetTileImage(tile, fullImage);
-        icetRaiseDebug1("Got image for tile %d", tile);
+        icetRaiseDebug1("Rendered image for tile %d", tile);
         offset = 0;
         sending_frag_size = max_pixels/(tile_groups[tile+1]-tile_groups[tile]);
         for (node = tile_groups[tile]; node < tile_groups[tile+1]; node++) {
             icetRaiseDebug2("Sending tile %d to node %d", tile, node);
+            icetRaiseDebug2("Pixels %d to %d", offset, sending_frag_size-1);
             compressedSize = icetCompressSubImage(fullImage, offset,
                                                   sending_frag_size, outgoing);
             icetAddSentBytes(compressedSize);
