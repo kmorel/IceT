@@ -403,7 +403,7 @@ void icetDrawFrame(void)
     IceTFloat background_color[4];
     IceTUInt background_color_word;
     IceTBoolean color_blending;
-    GLfloat physical_viewport[4];
+    GLint physical_viewport[4];
     int i, j;
 
     icetRaiseDebug("In icetDrawFrame");
