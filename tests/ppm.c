@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// TODO: Delete this line once ICET_COLOR_FORMAT no longer relies on OpenGL
+// TODO: Delete this line once image format no longer relies on OpenGL
 #include <IceTGL.h>
 
 void write_ppm(const char *filename,
@@ -25,7 +25,7 @@ void write_ppm(const char *filename,
     const unsigned char *color;
     IceTInt color_format;
 
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
+    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
 
     fd = fopen(filename, "wb");
 

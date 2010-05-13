@@ -29,9 +29,10 @@ ICET_GL_EXPORT void icetGLSetReadBuffer(GLenum mode);
 
 #define ICET_GL_STATE_START (IceTEnum)0x00000140
 
-#define ICET_GL_INITIALIZED	(ICET_GL_STATE_START | (IceTEnum)0x0001)
+#define ICET_GL_INITIALIZED     (ICET_GL_STATE_START | (IceTEnum)0x0001)
 
 #define ICET_GL_READ_BUFFER     (ICET_GL_STATE_START | (IceTEnum)0x0010)
+#define ICET_GL_COLOR_FORMAT    (ICET_GL_STATE_START | (IceTEnum)0x0011)
 
 
 #ifdef __cplusplus

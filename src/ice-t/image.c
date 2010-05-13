@@ -852,7 +852,7 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     timer = icetWallTime();
 
     if (colorBuffer != NULL) {
-        icetGetIntegerv(ICET_COLOR_FORMAT, &colorFormat);
+        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &colorFormat);
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
                      colorFormat, GL_UNSIGNED_BYTE,
                      colorBuffer + 4*(ib_x + full_width*ib_y));

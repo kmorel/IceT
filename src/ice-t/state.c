@@ -10,10 +10,6 @@
 
 #include <state.h>
 
-/* TODO: Remove this include.  It is here for GL_BACK, GL_RGBA enums which
-   need to be changed to make core IceT not rely on OpenGL. */
-#include <IceTGL.h>
-
 #include <IceT.h>
 #include <context.h>
 #include <diagnostics.h>
@@ -121,11 +117,6 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
-#ifdef _WIN32
-    icetStateSetInteger(ICET_COLOR_FORMAT, GL_BGRA_EXT);
-#else
-    icetStateSetInteger(ICET_COLOR_FORMAT, GL_RGBA);
-#endif
     icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
     icetEnable(ICET_FLOATING_VIEWPORT);

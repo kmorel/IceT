@@ -11,3 +11,5 @@ ICET_READ_BUFFER -> ICET_GL_READ_BUFFER
 Added icetGLInitialize.
 
 Added icetGLSetReadBuffer.
+
+ICET_COLOR_FORMAT -> ICET_GL_COLOR_BUFFER

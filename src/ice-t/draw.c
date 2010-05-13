@@ -413,7 +413,7 @@ void icetDrawFrame(void)
         return;
     }
 
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
+    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
 
     icetStateResetTiming();
     total_time = icetWallTime();
@@ -833,7 +833,7 @@ static void inflateBuffer(IceTUByte *buffer,
     display_width = physical_viewport[2];
     display_height = physical_viewport[3];
 
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
+    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
 
     if ((display_width <= width) && (display_height <= height)) {
       /* No need to inflate image. */
