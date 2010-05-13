@@ -1,0 +1,8 @@
+This is a temporary text file storing the interface changes made between
+version 1.0 and version 2.0.  This sticks around long enough for these to
+be moved to the IceT documentation.
+
+Names of include files.
+
+Many GL* types converted to IceT* types.
+
