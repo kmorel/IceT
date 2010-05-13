@@ -119,6 +119,8 @@ ICET_EXPORT int  icetAddTile(IceTInt x, IceTInt y,
                              IceTSizeType width, IceTSizeType height,
                              int display_rank);
 
+ICET_EXPORT void icetPhysicalRenderSize(IceTInt width, IceTInt height);
+
 ICET_EXPORT void icetDrawFrame(void);
 
 ICET_EXPORT IceTUByte *icetGetColorBuffer(void);
@@ -170,6 +172,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_ABSOLUTE_FAR_DEPTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0004)
 #define ICET_BACKGROUND_COLOR   (ICET_STATE_ENGINE_START | (IceTEnum)0x0005)
 #define ICET_BACKGROUND_COLOR_WORD (ICET_STATE_ENGINE_START | (IceTEnum)0x0006)
+#define ICET_PHYSICAL_RENDER_WIDTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0007)
+#define ICET_PHYSICAL_RENDER_HEIGHT (ICET_STATE_ENGINE_START| (IceTEnum)0x0008)
 
 #define ICET_NUM_TILES          (ICET_STATE_ENGINE_START | (IceTEnum)0x0010)
 #define ICET_TILE_VIEWPORTS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0011)

@@ -611,9 +611,8 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     contained_mask = icetUnsafeStateGet(ICET_CONTAINED_TILES_MASK);
     use_floating_viewport = icetIsEnabled(ICET_FLOATING_VIEWPORT);
 
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    max_width = physical_viewport[2];
-    max_height = physical_viewport[3];
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &max_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &max_height);
 
   /* Get ready for tile projection. */
     icetRaiseDebug("Determine projection");

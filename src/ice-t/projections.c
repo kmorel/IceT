@@ -35,7 +35,6 @@ static void update_tile_projections(void);
 void icetProjectTile(IceTInt tile)
 {
     IceTInt *viewports;
-    IceTInt physical_viewport[4];
     IceTInt tile_width, tile_height;
     IceTInt renderable_width, renderable_height;
 
@@ -54,9 +53,8 @@ void icetProjectTile(IceTInt tile)
     viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
     tile_width = viewports[tile*4+2];
     tile_height = viewports[tile*4+3];
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    renderable_width = physical_viewport[2];
-    renderable_height = physical_viewport[3];
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &renderable_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &renderable_height);
 
     if ((renderable_width != tile_width) || (renderable_height != tile_height)){
       /* Compensate for fact that tile is smaller than actual window. */

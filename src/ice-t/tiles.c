@@ -31,6 +31,8 @@ void icetResetTiles(void)
     icetStateSetInteger(ICET_TILE_MAX_WIDTH, 0);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, 0);
     icetStateSetInteger(ICET_TILE_MAX_PIXELS, 0);
+
+    icetPhysicalRenderSize(0, 0);
 }
 
 #ifndef MIN
@@ -123,8 +125,27 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     icetStateSetInteger(ICET_TILE_MAX_PIXELS,
 			max_width*max_height + num_processors);
 
+    icetPhysicalRenderSize(max_width, max_height);
+
   /* Return index to tile. */
     return num_tiles;
+}
+
+void icetPhysicalRenderSize(IceTInt width, IceTInt height)
+{
+    IceTInt max_width, max_height;
+
+  /* Perhaps this test should be moved to right before the render callback
+     is invoked. */
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
+    if ((width < max_width) || (height < max_height)) {
+	icetRaiseWarning("Physical render dimensions not large enough"
+			 " to render all tiles.", ICET_INVALID_VALUE);
+    }
+
+    icetStateSetInteger(ICET_PHYSICAL_RENDER_WIDTH, width);
+    icetStateSetInteger(ICET_PHYSICAL_RENDER_HEIGHT, height);
 }
 
 void icetBoundingBoxd(IceTDouble x_min, IceTDouble x_max,

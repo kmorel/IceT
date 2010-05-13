@@ -403,6 +403,7 @@ void icetDrawFrame(void)
     IceTFloat background_color[4];
     IceTUInt background_color_word;
     IceTBoolean color_blending;
+    GLfloat physical_viewport[4];
     int i, j;
 
     icetRaiseDebug("In icetDrawFrame");
@@ -421,6 +422,10 @@ void icetDrawFrame(void)
     color_blending =
         (IceTBoolean)(   *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
                     == ICET_COLOR_BUFFER_BIT);
+
+  /* Update physical render size to actual OpenGL viewport. */
+    glGetIntegerv(GL_VIEWPORT, physical_viewport);
+    icetPhysicalRenderSize(physical_viewport[2], physical_viewport[3]);
 
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
@@ -825,13 +830,11 @@ void icetDrawFrame(void)
 static void inflateBuffer(IceTUByte *buffer,
                           IceTSizeType width, IceTSizeType height)
 {
-    IceTInt physical_viewport[4];
     IceTInt display_width, display_height;
     IceTInt color_format;
 
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    display_width = physical_viewport[2];
-    display_height = physical_viewport[3];
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &display_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &display_height);
 
     icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
 
