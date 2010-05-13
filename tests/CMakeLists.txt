@@ -26,6 +26,7 @@ CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
 ADD_EXECUTABLE(icetTests_mpi ${Tests} ${UTIL_SRCS})
 TARGET_LINK_LIBRARIES(icetTests_mpi
   icet
+  icet_gl
   icet_strategies
   icet_mpi
   ${OPENGL_glu_LIBRARY}

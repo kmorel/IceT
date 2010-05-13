@@ -471,7 +471,7 @@ void icetDrawFrame(void)
         IceTInt readBuffer;
         IceTUInt depth;
         IceTUInt far_depth;
-        icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
+        icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
 
         icetRaiseDebug("Trying to get far depth.");
 
@@ -759,7 +759,7 @@ void icetDrawFrame(void)
 
             icetRaiseDebug("Displaying image.");
 
-            icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
+            icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
             glDrawBuffer(readBuffer);
 
           /* Place raster position in lower left corner. */

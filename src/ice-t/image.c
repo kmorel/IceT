@@ -763,7 +763,7 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     icetRaiseDebug("Checking depth.");
     icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
     if (far_depth == 1) {       /* An unlikely initial value. */
-        icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
+        icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
         glReadBuffer(readBuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glFlush();
@@ -841,7 +841,7 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
   /* glPixelStorei(GL_PACK_SKIP_PIXELS, ib_x); */
   /* glPixelStorei(GL_PACK_SKIP_ROWS, ib_y); */
 
-    icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
+    icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
     glReadBuffer(readBuffer);
 
     glGetIntegerv(GL_VIEWPORT, physical_viewport);

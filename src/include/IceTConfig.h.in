@@ -27,6 +27,11 @@
 #  else
 #    define ICET_EXPORT __declspec( dllimport )
 #  endif
+#  ifdef icet_gl_EXPORTS
+#    define ICET_GL_EXPORT __declspec( dllexport )
+#  else
+#    define ICET_GL_EXPORT __declspec( dllimport )
+#  endif
 #  ifdef icet_strategies_EXPORTS
 #    define ICET_STRATEGY_EXPORT __declspec( dllexport )
 #  else
@@ -39,6 +44,7 @@
 #  endif
 #else /* WIN32 && SHARED_LIBS */
 #  define ICET_EXPORT
+#  define ICET_GL_EXPORT
 #  define ICET_STRATEGY_EXPORT
 #  define ICET_MPI_EXPORT
 #endif /* WIN32 && SHARED_LIBS */

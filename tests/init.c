@@ -199,6 +199,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
   /* Create an IceT context. */
     context = icetCreateContext(comm);
     icetDiagnostics(diag_level);
+    icetGLInitialize();
 
   /* Redirect standard output on demand. */
     if (redirect) {

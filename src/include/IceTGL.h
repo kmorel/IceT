@@ -3,9 +3,6 @@
  * Copyright (C) 2010 Sandia Corporation
  * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
  * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
  */
 
 #ifndef _ICET_GL_H_
@@ -25,6 +22,17 @@ extern "C" {
 #if 0
 }
 #endif
+
+ICET_GL_EXPORT void icetGLInitialize(void);
+
+ICET_GL_EXPORT void icetGLSetReadBuffer(GLenum mode);
+
+#define ICET_GL_STATE_START (IceTEnum)0x00000140
+
+#define ICET_GL_INITIALIZED	(ICET_GL_STATE_START | (IceTEnum)0x0001)
+
+#define ICET_GL_READ_BUFFER     (ICET_GL_STATE_START | (IceTEnum)0x0010)
+
 
 #ifdef __cplusplus
 }

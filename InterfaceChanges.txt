@@ -6,3 +6,8 @@ Names of include files.
 
 Many GL* types converted to IceT* types.
 
+ICET_READ_BUFFER -> ICET_GL_READ_BUFFER
+
+Added icetGLInitialize.
+
+Added icetGLSetReadBuffer.

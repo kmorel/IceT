@@ -121,7 +121,6 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
-    icetStateSetInteger(ICET_READ_BUFFER, GL_BACK);
 #ifdef _WIN32
     icetStateSetInteger(ICET_COLOR_FORMAT, GL_BGRA_EXT);
 #else
