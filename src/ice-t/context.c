@@ -125,7 +125,7 @@ void icetCopyState(IceTContext dest, const IceTContext src)
 
 void icetResizeBuffer(IceTSizeType size)
 {
-    icetRaiseDebug1("Resizing buffer to %d bytes.", size);
+    icetRaiseDebug1("Resizing buffer to %d bytes.", (IceTInt)size);
 
   /* Add some padding in case the user's data does not lie on byte boundries. */
     size += 32*sizeof(IceTInt64);
