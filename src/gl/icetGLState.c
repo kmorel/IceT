@@ -8,6 +8,7 @@
 #include <IceTGL.h>
 
 #include <diagnostics.h>
+#include <state.h>
 
 void icetGLInitialize(void)
 {

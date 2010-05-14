@@ -40,7 +40,7 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-static DisplayNoDrawRun()
+static int DisplayNoDrawRun()
 {
     int result = TEST_PASSED;
     int i;

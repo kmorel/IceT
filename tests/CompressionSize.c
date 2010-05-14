@@ -193,5 +193,5 @@ int CompressionSize(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    run_test(CompressionSizeRun);
+    return run_test(CompressionSizeRun);
 }

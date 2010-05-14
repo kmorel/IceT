@@ -595,7 +595,6 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     IceTInt *contained_viewport;
     IceTInt *tile_viewport;
     IceTBoolean *contained_mask;
-    IceTInt physical_viewport[4];
     IceTInt max_width, max_height;
     IceTBoolean use_floating_viewport;
     IceTCallback drawfunc;

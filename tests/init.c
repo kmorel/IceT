@@ -11,6 +11,8 @@
 #include "test-util.h"
 #include "test_codes.h"
 
+#include <IceTGL.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>

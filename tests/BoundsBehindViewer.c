@@ -107,5 +107,5 @@ int BoundsBehindViewer(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    run_test(BoundsBehindViewerRun);
+    return run_test(BoundsBehindViewerRun);
 }

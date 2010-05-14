@@ -10,6 +10,9 @@
 
 #include <IceT.h>
 
+/* TODO: Get rid of this and decouple the core IceT from OpenGL. */
+#include <IceTGL.h>
+
 #include <context.h>
 #include <diagnostics.h>
 
