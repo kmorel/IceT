@@ -125,11 +125,11 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     IceTInt num_receiving;
 
     all_contained_tiles_masks
-	= icetUnsafeStateGet(ICET_ALL_CONTAINED_TILES_MASKS);
-    contrib_counts = icetUnsafeStateGet(ICET_TILE_CONTRIB_COUNTS);
+	= icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
+    contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
     icetGetIntegerv(ICET_TOTAL_IMAGE_COUNT, &total_image_count);
-    tile_display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
-    composite_order = icetUnsafeStateGet(ICET_COMPOSITE_ORDER);
+    tile_display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
+    composite_order = icetUnsafeStateGetInteger(ICET_COMPOSITE_ORDER);
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);

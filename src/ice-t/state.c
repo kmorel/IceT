@@ -357,9 +357,35 @@ static void stateSet(IceTEnum pname, IceTInt size, IceTEnum type, const IceTVoid
     }
 }
 
-void *icetUnsafeStateGet(IceTEnum pname)
+static void *icetUnsafeStateGet(IceTEnum pname, IceTEnum type)
 {
+    if (icetGetState()[pname].type != type) {
+	icetRaiseError("Mismatched types in unsafe state get.",
+		       ICET_SANITY_CHECK_FAIL);
+	return NULL;
+    }
     return icetGetState()[pname].data;
+}
+
+IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_DOUBLE);
+}
+IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_FLOAT);
+}
+IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_INT);
+}
+IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_BOOLEAN);
+}
+IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_POINTER);
 }
 
 IceTEnum icetStateType(IceTEnum pname)

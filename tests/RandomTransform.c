@@ -335,7 +335,7 @@ static int RandomTransformRun()
     }
   /* Get the true group size. */
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE, &rep_group_size);
-    rep_group = icetUnsafeStateGet(ICET_DATA_REPLICATION_GROUP);
+    rep_group = icetUnsafeStateGetInteger(ICET_DATA_REPLICATION_GROUP);
     if (rep_group[0] == rank) {
         for (i = 1; i < rep_group_size; i++) {
             ICET_COMM_SEND(mat, 16, ICET_FLOAT, rep_group[i], 40);

@@ -201,7 +201,7 @@ void icetGetTileImage(IceTInt tile, IceTImage buffer)
     IceTInt *viewports;
     IceTSizeType width, height;
 
-    viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
@@ -226,12 +226,12 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
     int space_left, space_right, space_bottom, space_top;
     IceTUInt compressedSize;
 
-    viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
     renderTile(tile, screen_viewport, target_viewport);
-    getBuffers((  *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
+    getBuffers((  *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))
                 | FULL_IMAGE_BASE_MAGIC_NUM),
                screen_viewport[2]*screen_viewport[3],
                &imageBuffer);
@@ -461,7 +461,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
     srcColorBuffer =(IceTUInt *)icetGetImageColorBuffer((IceTImage)srcBuffer);
     srcDepthBuffer = icetGetImageDepthBuffer((IceTImage)srcBuffer);
 
-    compare_time = icetUnsafeStateGet(ICET_COMPARE_TIME);
+    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
     timer = icetWallTime();
 
     if (srcDepthBuffer) {
@@ -515,7 +515,7 @@ void icetCompressedSubComposite(IceTImage destBuffer,
     IceTDouble timer;
     IceTDouble *compare_time;
 
-    compare_time = icetUnsafeStateGet(ICET_COMPARE_TIME);
+    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
     timer = icetWallTime();
 
     if (   (GET_MAGIC_NUM(srcBuffer) ^ SPARSE_IMAGE_BASE_MAGIC_NUM)
@@ -605,9 +605,9 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     IceTInt readBuffer;
 
     icetRaiseDebug1("Rendering tile %d", tile);
-    contained_viewport = icetUnsafeStateGet(ICET_CONTAINED_VIEWPORT);
-    tile_viewport = ((IceTInt *)icetUnsafeStateGet(ICET_TILE_VIEWPORTS)) + 4*tile;
-    contained_mask = icetUnsafeStateGet(ICET_CONTAINED_TILES_MASK);
+    contained_viewport = icetUnsafeStateGetInteger(ICET_CONTAINED_VIEWPORT);
+    tile_viewport = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS) + 4*tile;
+    contained_mask = icetUnsafeStateGetBoolean(ICET_CONTAINED_TILES_MASK);
     use_floating_viewport = icetIsEnabled(ICET_FLOATING_VIEWPORT);
 
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &max_width);
@@ -846,7 +846,7 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     x_offset = physical_viewport[0];
     y_offset = physical_viewport[1];
 
-    read_time = icetUnsafeStateGet(ICET_BUFFER_READ_TIME);
+    read_time = icetUnsafeStateGetDouble(ICET_BUFFER_READ_TIME);
     timer = icetWallTime();
 
     if (colorBuffer != NULL) {

@@ -54,7 +54,7 @@
     IceTDouble _timer;
     IceTDouble *_compress_time;
 
-    _compress_time = icetUnsafeStateGet(ICET_COMPRESS_TIME);
+    _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
 #endif /* TIME_DECOMPRESSION */
 

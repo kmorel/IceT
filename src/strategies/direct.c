@@ -49,13 +49,13 @@ static IceTImage directCompose(void)
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
-	contrib_counts = icetUnsafeStateGet(ICET_TILE_CONTRIB_COUNTS);
+	contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
 	num_contributors = contrib_counts[display_tile];
     } else {
 	num_contributors = 0;
     }
 
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     for (tile = 0; tile < num_tiles; tile++) {
 	tile_image_dest[tile] = display_nodes[tile];
     }

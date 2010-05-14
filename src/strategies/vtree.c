@@ -74,8 +74,8 @@ static IceTImage vtreeCompose(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
-    tile_viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
+    tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
 
   /* Allocate buffers. */

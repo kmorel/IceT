@@ -38,7 +38,7 @@ static IceTImage serialCompose(void)
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
     icetResizeBuffer(  icetFullImageSize(max_pixels)*2

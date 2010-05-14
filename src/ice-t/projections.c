@@ -50,7 +50,7 @@ void icetProjectTile(IceTInt tile)
         return;
     }
 
-    viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     tile_width = viewports[tile*4+2];
     tile_height = viewports[tile*4+3];
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &renderable_width);
@@ -155,7 +155,7 @@ static void update_tile_projections(void)
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     free(tile_projections);
     tile_projections = malloc(num_tiles*16*sizeof(IceTDouble));
-    viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
 
     for (i = 0; i < num_tiles; i++) {
         icetGetViewportProject(viewports[i*4+0], viewports[i*4+1],

@@ -30,11 +30,11 @@ typedef IceTUInt *IceTSparseImage;
    for the given number of pixels. */
 #define icetFullImageSize(pixels)                                       \
     icetFullImageTypeSize((pixels),                                     \
-                            *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))\
+                            *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))\
                           | FULL_IMAGE_BASE_MAGIC_NUM)
 #define icetSparseImageSize(pixels)                                     \
     icetSparseImageTypeSize((pixels),                                   \
-                            *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))\
+                            *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))\
                           | SPARSE_IMAGE_BASE_MAGIC_NUM)
 
 ICET_EXPORT IceTUInt icetFullImageTypeSize(IceTUInt pixels, IceTUInt type);

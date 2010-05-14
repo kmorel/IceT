@@ -137,6 +137,6 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_d
                      IceTSparseImage compressedImageBuffer);
 
 #define icetAddSentBytes(num_sending)                                   \
-    ((IceTInt *)icetUnsafeStateGet(ICET_BYTES_SENT))[0] += (num_sending)
+    (icetUnsafeStateGetInteger(ICET_BYTES_SENT))[0] += (num_sending)
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/

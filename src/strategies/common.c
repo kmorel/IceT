@@ -30,7 +30,7 @@ static IceTSparseImage rtfi_outImage;
 static IceTInt rtfi_first;
 static void *rtfi_generateDataFunc(IceTInt id, IceTInt dest, IceTInt *size) {
     IceTInt rank;
-    IceTInt *tile_list = icetUnsafeStateGet(ICET_CONTAINED_TILES_LIST);
+    IceTInt *tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
 
     icetGetIntegerv(ICET_RANK, &rank);
     if (dest == rank) {
@@ -53,7 +53,7 @@ static void *rtfi_handleDataFunc(void *inImage, IceTInt src) {
             IceTInt rank;
             IceTInt *process_orders;
             icetGetIntegerv(ICET_RANK, &rank);
-            process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+            process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
             icetCompressedComposite(rtfi_imageBuffer, inImage,
                                     process_orders[src] < process_orders[rank]);
         }
@@ -85,7 +85,7 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
     rtfi_first = 1;
 
     icetGetIntegerv(ICET_NUM_CONTAINED_TILES, &num_sending);
-    tile_list = icetUnsafeStateGet(ICET_CONTAINED_TILES_LIST);
+    tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
@@ -152,8 +152,8 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     icetGetIntegerv(ICET_NUM_PROCESSES, &comm_size);
     icetGetIntegerv(ICET_RANK, &rank);
 
-    composite_order = icetUnsafeStateGet(ICET_COMPOSITE_ORDER);
-    process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+    composite_order = icetUnsafeStateGetInteger(ICET_COMPOSITE_ORDER);
+    process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
 
   /* Make sure we have big enough arrays.  We should not have to allocate
      very often. */

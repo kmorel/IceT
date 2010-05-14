@@ -71,7 +71,7 @@ void icetCompositeOrder(const IceTInt *process_ranks)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
         && (icetStateGetSize(ICET_PROCESS_ORDERS) >= num_proc) ) {
-        process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+        process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
         new_process_orders = 0;
     } else {
         process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(IceTInt));
@@ -228,7 +228,7 @@ static void find_contained_viewport(const IceTDouble projection_matrix[16],
 
   /* Transform each vertex to find where it lies in the global viewport and
      normalized z.  Leave the results in homogeneous coordinates for now. */
-    bound_vert = icetUnsafeStateGet(ICET_GEOMETRY_BOUNDS);
+    bound_vert = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
     icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
     transformed_verts
         = icetReserveBufferMem(sizeof(IceTDouble)*num_bounding_verts*4);
@@ -420,8 +420,8 @@ void icetDrawFrame(void)
     total_time = icetWallTime();
 
     color_blending =
-        (IceTBoolean)(   *((IceTUInt *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
-                    == ICET_COLOR_BUFFER_BIT);
+        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))
+                      == ICET_COLOR_BUFFER_BIT);
 
   /* Update physical render size to actual OpenGL viewport. */
     glGetIntegerv(GL_VIEWPORT, physical_viewport);
@@ -505,10 +505,10 @@ void icetDrawFrame(void)
     contained_mask = icetReserveBufferMem(sizeof(IceTBoolean)*num_tiles);
 
     icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
-    tile_viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
 
   /* Get the current projection matrix. */
     icetRaiseDebug("Getting projection matrix.");

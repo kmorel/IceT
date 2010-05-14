@@ -67,14 +67,14 @@ static IceTImage splitStrategy(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
-    tile_contribs = icetUnsafeStateGet(ICET_TILE_CONTRIB_COUNTS);
+    tile_contribs = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
     icetGetIntegerv(ICET_TOTAL_IMAGE_COUNT, &total_image_count);
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     icetGetIntegerv(ICET_NUM_CONTAINED_TILES, &num_contained_tiles);
-    contained_tiles_list = icetUnsafeStateGet(ICET_CONTAINED_TILES_LIST);
+    contained_tiles_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     all_contained_tiles_masks
-        = icetUnsafeStateGet(ICET_ALL_CONTAINED_TILES_MASKS);
+        = icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
 
   /* Special case: no images rendered whatsoever. */
     if (total_image_count < 1) {
