@@ -10,33 +10,29 @@
 
 #include <projections.h>
 
-/* TODO: Remove the dependence on OpenGL.  Right now this is here for the
-   call to glViewport. */
-#include <IceTGL.h>
-
 #include <IceT.h>
 
 #include <state.h>
 #include <diagnostics.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 static IceTInt num_tiles = 0;
 static IceTDouble *tile_projections = NULL;
 static IceTTimeStamp viewport_time = (IceTTimeStamp)-1;
 
-static IceTDouble global_projection[16];
-static IceTTimeStamp projection_time = (IceTTimeStamp)-1;
 
 static void update_tile_projections(void);
 
-/* static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B); */
-
-void icetProjectTile(IceTInt tile)
+void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
 {
     IceTInt *viewports;
     IceTInt tile_width, tile_height;
     IceTInt renderable_width, renderable_height;
+    IceTDouble *tile_proj;
+    IceTDouble tile_viewport_proj[16];
+    IceTDouble *global_proj;
 
   /* Update tile projections. */
     if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
@@ -56,21 +52,28 @@ void icetProjectTile(IceTInt tile)
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &renderable_width);
     icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &renderable_height);
 
+    tile_proj = tile_projections + 16*tile;
+
     if ((renderable_width != tile_width) || (renderable_height != tile_height)){
-      /* Compensate for fact that tile is smaller than actual window. */
-        glOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
-                -1.0, 2.0*renderable_height/tile_height - 1.0,
-                1.0, -1.0);
+      /* Compensate for fact that tile is smaller than actual window.
+         Use an orthographic projection to place the tile in the lower left
+         corner of the tile. */
+        IceTDouble viewport_proj[16];
+        icetOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
+                  -1.0, 2.0*renderable_height/tile_height - 1.0,
+                  1.0, -1.0, viewport_proj);
+
+        icetMultMatrix(tile_viewport_proj, (const IceTDouble *)viewport_proj,
+                       (const IceTDouble *)tile_proj);
+    } else {
+        memcpy(tile_viewport_proj, (const IceTDouble*)tile_proj,
+               16*sizeof(IceTDouble));
     }
 
-    glMultMatrixd(tile_projections + 16*tile);
-
-    if (projection_time != icetStateGetTime(ICET_PROJECTION_MATRIX)) {
-        icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection);
-        projection_time = icetStateGetTime(ICET_PROJECTION_MATRIX);
-    }
-
-    glMultMatrixd(global_projection);
+  /* Project the user requested view to the tile projection. */
+    global_proj = icetUnsafeStateGetDouble(ICET_PROJECTION_MATRIX);
+    icetMultMatrix(mat_out, (const IceTDouble *)tile_viewport_proj,
+                   (const IceTDouble *)global_proj);
 }
 
 void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
@@ -164,17 +167,43 @@ static void update_tile_projections(void)
     }
 }
 
-/* #define MI(r,c)      ((c)*4+(r)) */
-/* static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B) */
-/* { */
-/*     int i, j, k; */
+#define MI(r,c)      ((c)*4+(r))
+void icetMultMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
+{
+    int i, j, k;
 
-/*     for (i = 0; i < 4; i++) { */
-/*      for (j = 0; j < 4; j++) { */
-/*          C[MI(i,j)] = 0.0; */
-/*          for (k = 0; k < 4; k++) { */
-/*              C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)]; */
-/*          } */
-/*      } */
-/*     } */
-/* } */
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            C[MI(i,j)] = 0.0;
+            for (k = 0; k < 4; k++) {
+                C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)];
+            }
+        }
+    }
+}
+
+ICET_EXPORT void icetOrtho(IceTDouble left, IceTDouble right,
+                           IceTDouble bottom, IceTDouble top,
+                           IceTDouble znear, IceTDouble zfar,
+                           IceTDouble *mat_out)
+{
+    mat_out[ 0] = 2.0/(right-left);
+    mat_out[ 1] = 0.0;
+    mat_out[ 2] = 0.0;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = 0.0;
+    mat_out[ 5] = 2.0/(top-bottom);
+    mat_out[ 6] = 0.0;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = 0.0;
+    mat_out[ 9] = 0.0;
+    mat_out[10] = -2.0/(zfar - znear);
+    mat_out[11] = 0.0;
+
+    mat_out[12] = -(right+left)/(right-left);
+    mat_out[13] = -(top+bottom)/(top-bottom);
+    mat_out[14] = -(zfar+znear)/(zfar-znear);
+    mat_out[15] = 1.0;
+}

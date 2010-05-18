@@ -648,8 +648,11 @@ static void renderTile(int tile, IceTInt *screen_viewport,
                && (   contained_viewport[3]+contained_viewport[1]
                    <= tile_viewport[3]+tile_viewport[1]) ) {
       /* Case 1: geometry fits entirely within tile. */
+        IceTDouble matrix[16];
         icetRaiseDebug("Case 1: geometry fits entirely within tile.");
-        icetProjectTile(tile);
+
+        icetProjectTile(tile, matrix);
+        glMultMatrixd(matrix);
         icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, tile_viewport);
         screen_viewport[0] = target_viewport[0]
             = contained_viewport[0] - tile_viewport[0];
@@ -663,8 +666,11 @@ static void renderTile(int tile, IceTInt *screen_viewport,
                || (contained_viewport[3] > max_height) ) {
       /* Case 2: Can't use floating viewport due to use selection or image
          does not fit. */
+        IceTDouble matrix[16];
         icetRaiseDebug("Case 2: Can't use floating viewport.");
-        icetProjectTile(tile);
+
+        icetProjectTile(tile, matrix);
+        glMultMatrixd(matrix);
         icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, tile_viewport);
         if (contained_viewport[0] <= tile_viewport[0]) {
             screen_viewport[0] = target_viewport[0] = 0;
