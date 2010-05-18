@@ -187,7 +187,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     }
 
   /* Create a renderable window. */
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ALPHA);
     glutInitWindowPosition(0, 0);
     glutInitWindowSize(width, height);
 
