@@ -108,9 +108,9 @@ typedef unsigned __int64 IceTUnsignedInt64;
 #endif
 
 #if ICET_SIZEOF_VOID_P == 4
-typedef IceTUnsignedInt32 IceTPointerArithmetic;
+typedef IceTInt32 IceTPointerArithmetic;
 #elif ICET_SIZEOF_VOID_P == 8
-typedef IceTUnsignedInt64 IceTPointerArithmetic;
+typedef IceTInt64 IceTPointerArithmetic;
 #else
 #error "Unexpected pointer size."
 #endif

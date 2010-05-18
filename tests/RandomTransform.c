@@ -424,8 +424,8 @@ static int RandomTransformRun()
                 viewport_offset_y = rand()%(SCREEN_HEIGHT-viewport_height);
             }
             
-/*          glViewport(viewport_offset_x, viewport_offset_y, */
-/*                     viewport_width, viewport_height); */
+            glViewport(viewport_offset_x, viewport_offset_y,
+                       viewport_width, viewport_height);
 /*          glViewport(0, 0, local_width, local_height); */
 
             printf("\nDoing color buffer.\n");
