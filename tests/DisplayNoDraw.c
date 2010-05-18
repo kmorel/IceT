@@ -24,10 +24,15 @@
 
 static int iteration;
 static int global_rank;
+static int result;
 
 static void draw(void)
 {
     printf("In draw\n");
+    if (global_rank == 0) {
+        printf("ERROR: Draw called on rank 0!\n");
+        result = TEST_FAILED;
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (global_rank != iteration) {
         glBegin(GL_QUADS);
@@ -42,7 +47,7 @@ static void draw(void)
 
 static int DisplayNoDrawRun()
 {
-    int result = TEST_PASSED;
+    result = TEST_PASSED;
     int i;
     IceTInt rank, num_proc;
 
@@ -82,7 +87,7 @@ static int DisplayNoDrawRun()
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
 
         for (iteration = 0; iteration < num_proc; iteration++) {
-            printf("Blank tile is rank %d\n", iteration);
+            printf("Blank image is rank %d\n", iteration);
 
             icetDrawFrame();
             swap_buffers();

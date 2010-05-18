@@ -68,9 +68,9 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                          IceTInt ib_x, IceTInt ib_y,
                          IceTSizeType full_width, IceTSizeType full_height);
 /* Attempts to retrieve the correct value of the far depth.  First gets the
- * ICET_FAR_DEPTH parameter.  If depthBuffer is non NULL, it double checks
- * to make sure the first entry is not less than ICET_FAR_DEPTH.  If so,
- * the parameter is corrected. */
+ * ICET_ABSOLUTE_FAR_DEPTH parameter.  If depthBuffer is non NULL, it double
+ * checks to make sure the first entry is not less than ICET_ABSOLUTE_FAR_DEPTH.
+ * If so, the parameter is corrected. */
 static IceTUInt getFarDepth(const IceTUInt *depthBuffer);
 /* Gets a static image buffer that is shared amongst all contexts (and
  * therefore not thread safe.  The buffer is resized as necessary. */
@@ -940,6 +940,7 @@ static IceTUInt getFarDepth(const IceTUInt *depthBuffer)
         far_depth = depthBuffer[0];
         icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, far_depth);
     }
+    icetRaiseDebug1("Using far depth of 0x%x", (unsigned int)far_depth);
 
     return far_depth;
 }

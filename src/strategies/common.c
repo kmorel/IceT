@@ -46,6 +46,11 @@ static void *rtfi_generateDataFunc(IceTInt id, IceTInt dest, IceTInt *size) {
 static void *rtfi_handleDataFunc(void *inImage, IceTInt src) {
     if (inImage == NULL) {
       /* Superfluous call from send to self. */
+        if (!rtfi_first) {
+            icetRaiseError("Unexpected callback order"
+                           " in icetRenderTransferFullImages.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
     } else {
         if (rtfi_first) {
             icetDecompressImage(inImage, rtfi_imageBuffer);
