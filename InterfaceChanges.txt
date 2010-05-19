@@ -19,3 +19,22 @@ ICET_PHYSICAL_RENDER_HEIGHT.
 
 Replaced icetUnsafeStateGet with multiple typed versions to make it
 somewhat less unsafe.
+
+Better formalized the IceTImage object and exposed an end user interface
+for creating an image and accessing the data.  This includes
+ICET_IMAGE_COLOR_* and ICET_IMAGE_DEPTH_* enumerations.  It also includes
+adding the functions icetImageBufferSize, icetImageInitialize, and
+icetImageGet*.
+
+Changed icetDrawFrame to return an IceTImage.
+
+Removed icetGetColorBuffer and icetGetDepthBuffer functions.  Also removed
+the ICET_COLOR_BUFFER, ICET_DEPTH_BUFFER, ICET_COLOR_BUFFER_VALID, and
+ICET_DEPTH_BUFFER_VALID state variables.  Rather than store the previous
+image composited, simply return the image from icetDrawFrame.
+
+Converted all depth buffers to floating point.  The OpenGL spec clamps
+floating point depth buffers to the range [0,1], so it should be OK to just
+assume that the max depth is 1.0.
+
+Removed the ICET_ABSOLUTE_FAR_DEPTH state variable (see above).

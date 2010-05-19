@@ -24,8 +24,8 @@ extern "C" {
 
 typedef IceTUnsignedInt32     IceTEnum;
 typedef IceTUnsignedInt32     IceTBitField;
-typedef double                IceTDouble;
-typedef float                 IceTFloat;
+typedef IceTFloat64           IceTDouble;
+typedef IceTFloat32           IceTFloat;
 typedef IceTInt32             IceTInt;
 typedef IceTUnsignedInt32     IceTUInt;
 typedef IceTInt16             IceTShort;
@@ -121,12 +121,38 @@ ICET_EXPORT int  icetAddTile(IceTInt x, IceTInt y,
 
 ICET_EXPORT void icetPhysicalRenderSize(IceTInt width, IceTInt height);
 
-ICET_EXPORT void icetDrawFrame(void);
+typedef IceTVoid *IceTImage;
 
-ICET_EXPORT IceTUByte *icetGetColorBuffer(void);
-ICET_EXPORT IceTUInt  *icetGetDepthBuffer(void);
+#define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
+#define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
+#define ICET_IMAGE_COLOR_NONE           (IceTEnum)0x0000
 
-typedef IceTUInt *IceTImage;
+#define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001
+#define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0x0000
+
+ICET_EXPORT IceTSizeType icetImageBufferSize(IceTEnum color_format,
+                                             IceTEnum depth_format,
+                                             IceTSizeType num_pixels);
+ICET_EXPORT void icetImageInitialize(IceTImage image_buffer,
+                                     IceTEnum color_format,
+                                     IceTEnum depth_format,
+                                     IceTSizeType num_pixels);
+ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image_buffer);
+ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image_buffer);
+ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image_buffer);
+ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image_buffer);
+ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image_buffer);
+ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image_buffer);
+ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image_buffer,
+                                         IceTUByte *color_buffer,
+                                         IceTEnum color_format);
+ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image_buffer,
+                                         IceTFloat *color_buffer,
+                                         IceTEnum color_format);
+ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image_buffer,
+                                         IceTFloat *depth_buffer,
+                                         IceTEnum depth_format);
+
 typedef struct _IceTStrategy {
     const char *name;
     IceTBoolean supports_ordering;
@@ -153,6 +179,8 @@ ICET_EXPORT void icetDataReplicationGroup(IceTInt size,
                                           const IceTInt *processes);
 ICET_EXPORT void icetDataReplicationGroupColor(IceTInt color);
 
+ICET_EXPORT IceTImage icetDrawFrame(void);
+
 #define ICET_DIAG_OFF           (IceTEnum)0x0000
 #define ICET_DIAG_ERRORS        (IceTEnum)0x0001
 #define ICET_DIAG_WARNINGS      (IceTEnum)0x0003
@@ -169,7 +197,7 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_DIAGNOSTIC_LEVEL   (ICET_STATE_ENGINE_START | (IceTEnum)0x0001)
 #define ICET_RANK               (ICET_STATE_ENGINE_START | (IceTEnum)0x0002)
 #define ICET_NUM_PROCESSES      (ICET_STATE_ENGINE_START | (IceTEnum)0x0003)
-#define ICET_ABSOLUTE_FAR_DEPTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0004)
+/* #define ICET_ABSOLUTE_FAR_DEPTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0004) */
 #define ICET_BACKGROUND_COLOR   (ICET_STATE_ENGINE_START | (IceTEnum)0x0005)
 #define ICET_BACKGROUND_COLOR_WORD (ICET_STATE_ENGINE_START | (IceTEnum)0x0006)
 #define ICET_PHYSICAL_RENDER_WIDTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0007)
@@ -214,11 +242,6 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_TOTAL_IMAGE_COUNT  (ICET_STATE_FRAME_START | (IceTEnum)0x000A)
 
 #define ICET_RENDERED_VIEWPORT  (ICET_STATE_FRAME_START | (IceTEnum)0x0010)
-
-#define ICET_COLOR_BUFFER       (ICET_STATE_FRAME_START | (IceTEnum)0x0018)
-#define ICET_DEPTH_BUFFER       (ICET_STATE_FRAME_START | (IceTEnum)0x0019)
-#define ICET_COLOR_BUFFER_VALID (ICET_STATE_FRAME_START | (IceTEnum)0x001A)
-#define ICET_DEPTH_BUFFER_VALID (ICET_STATE_FRAME_START | (IceTEnum)0x001B)
 
 #define ICET_STATE_TIMING_START (IceTEnum)0x000000C0
 

@@ -146,35 +146,6 @@ void icetDataReplicationGroupColor(IceTInt color)
     icetDataReplicationGroup(size, mygroup);
 }
 
-IceTUByte *icetGetColorBuffer(void)
-{
-    IceTInt color_buffer_valid;
-
-    icetGetIntegerv(ICET_COLOR_BUFFER_VALID, &color_buffer_valid);
-    if (color_buffer_valid) {
-        IceTVoid *color_buffer;
-        icetGetPointerv(ICET_COLOR_BUFFER, &color_buffer);
-        return (IceTUByte *)color_buffer;
-    } else {
-        icetRaiseError("Color buffer not available.", ICET_INVALID_OPERATION);
-        return NULL;
-    }
-}
-IceTUInt *icetGetDepthBuffer(void)
-{
-    IceTInt depth_buffer_valid;
-
-    icetGetIntegerv(ICET_DEPTH_BUFFER_VALID, &depth_buffer_valid);
-    if (depth_buffer_valid) {
-        IceTVoid *depth_buffer;
-        icetGetPointerv(ICET_DEPTH_BUFFER, &depth_buffer);
-        return (IceTUInt *)depth_buffer;
-    } else {
-        icetRaiseError("Depth buffer not available.", ICET_INVALID_OPERATION);
-        return NULL;
-    }
-}
-
 static void find_contained_viewport(const IceTDouble projection_matrix[16],
                                     const IceTInt global_viewport[4],
                                     IceTInt contained_viewport[4],
@@ -369,7 +340,7 @@ static void determine_contained_tiles(const IceTInt contained_viewport[4],
 
 static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
 
-void icetDrawFrame(void)
+IceTImage icetDrawFrame(void)
 {
     IceTInt rank, num_proc;
     IceTBoolean isDrawing;
@@ -411,7 +382,7 @@ void icetDrawFrame(void)
     icetGetBooleanv(ICET_IS_DRAWING_FRAME, &isDrawing);
     if (isDrawing) {
         icetRaiseError("Recursive frame draw detected.",ICET_INVALID_OPERATION);
-        return;
+        return NULL;
     }
 
     icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
@@ -471,25 +442,6 @@ void icetDrawFrame(void)
     icetGetIntegerv(ICET_FRAME_COUNT, &frame_count);
     frame_count++;
     icetStateSetIntegerv(ICET_FRAME_COUNT, 1, &frame_count);
-    if (frame_count == 1) {
-      /* On the first frame, try to fix the far depth. */
-        IceTInt readBuffer;
-        IceTUInt depth;
-        IceTUInt far_depth;
-        icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
-
-        icetRaiseDebug("Trying to get far depth.");
-
-        glClear(GL_DEPTH_BUFFER_BIT);
-        glReadBuffer(readBuffer);
-        glFlush();
-        glReadPixels(0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, &depth);
-
-        icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
-        if (depth > far_depth) {
-            icetStateSetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, 1, (IceTInt *)&depth);
-        }
-    }
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -709,13 +661,13 @@ void icetDrawFrame(void)
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     if (value == NULL) {
         icetRaiseError("Drawing function not set.", ICET_INVALID_OPERATION);
-        return;
+        return NULL;
     }
     icetRaiseDebug("Calling strategy.compose");
     icetGetPointerv(ICET_STRATEGY_COMPOSE, &value);
     if (value == NULL) {
         icetRaiseError("Strategy not set.", ICET_INVALID_OPERATION);
-        return;
+        return NULL;
     }
     strategy.compose = (IceTImage (*)(void))value;
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 1);
@@ -726,15 +678,27 @@ void icetDrawFrame(void)
                  background_color[2], background_color[3]);
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-        IceTUByte *color = icetGetImageColorBuffer(image);
-        IceTUByte *bc = (IceTUByte *)(&background_color_word);
-        IceTUInt pixels = icetGetImagePixelCount(image);
-        IceTUInt ui;
+        IceTSizeType pixels = icetImageGetSize(image);
+        IceTEnum color_format = icetImageGetColorFormat(image);
         IceTDouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
         blend_time = icetWallTime() - blend_time;
-        for (ui = 0; ui < pixels; ui++, color += 4) {
-            ICET_UNDER(bc, color);
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUByte *color = icetImageGetColorUByte(image);
+            IceTUByte *bc = (IceTUByte *)(&background_color_word);
+            IceTSizeType p;
+            for (p = 0; p < pixels; p++, color += 4) {
+                ICET_UNDER_UBYTE(bc, color);
+            }
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            IceTFloat *color = icetImageGetColorFloat(image);
+            IceTSizeType p;
+            for (p = 0; p < pixels; p++, color += 4) {
+                ICET_UNDER_FLOAT(background_color, color);
+            }
+        } else {
+            icetRaiseError("Encountered invalid color buffer type"
+                           " with color blending.", ICET_SANITY_CHECK_FAIL);
         }
         blend_time = icetWallTime() - blend_time;
         icetStateSetDouble(ICET_BLEND_TIME, blend_time);
@@ -742,24 +706,13 @@ void icetDrawFrame(void)
 
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
-        IceTUByte *colorBuffer;
         IceTEnum output_buffers;
 
         icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
-        if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-            icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 1);
-            colorBuffer = icetGetImageColorBuffer(image);
-            icetStateSetPointer(ICET_COLOR_BUFFER, colorBuffer);
-                                
-        }
-        if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-            icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 1);
-            icetStateSetPointer(ICET_DEPTH_BUFFER,
-                                icetGetImageDepthBuffer(image));
-        }    
 
         if (   ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0)
             && icetIsEnabled(ICET_DISPLAY) ) {
+            IceTUByte *colorBuffer;
             IceTInt readBuffer;
 
             icetRaiseDebug("Displaying image.");
@@ -776,7 +729,15 @@ void icetDrawFrame(void)
             glRasterPos2f(-1, -1);
             glPopMatrix();
 
-            colorBuffer = icetGetImageColorBuffer(image);
+          /* This could be made more efficient by natively handling all the
+             image formats.  Don't forget to free memory later if necessary. */
+            if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+                colorBuffer = icetImageGetColorUByte(image);
+            } else {
+                colorBuffer = (IceTUByte *)malloc(4*icetImageGetSize(image));
+                icetImageCopyColorUByte(image, colorBuffer,
+                                        ICET_IMAGE_COLOR_RGBA_UBYTE);
+            }
 
             glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);
             glDisable(GL_TEXTURE_1D);
@@ -804,6 +765,11 @@ void icetDrawFrame(void)
                              color_format, GL_UNSIGNED_BYTE, colorBuffer);
             }
             glPopAttrib();
+
+          /* Delete the color buffer if we had to create our own. */
+            if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_RGBA_UBYTE) {
+                free(colorBuffer);
+            }
         }
     }
 
@@ -825,6 +791,8 @@ void icetDrawFrame(void)
 
     compose_time = total_time - render_time - buf_read_time - buf_write_time;
     icetStateSetDouble(ICET_COMPOSITE_TIME, compose_time);
+
+    return image;
 }
 
 static void inflateBuffer(IceTUByte *buffer,

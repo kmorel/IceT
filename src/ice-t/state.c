@@ -56,9 +56,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
         if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
             || (i == ICET_DATA_REPLICATION_GROUP)
             || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
-            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
-            || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
-            || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
+            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS) )
         {
             continue;
         }
@@ -92,7 +90,7 @@ void icetStateSetDefaults(void)
 
     icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
     icetStateSetInteger(ICET_NUM_PROCESSES, ICET_COMM_SIZE());
-    icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1);
+    /* icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1); */
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
     icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
     icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
@@ -128,11 +126,6 @@ void icetStateSetDefaults(void)
     icetEnable(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
-
-    icetStateSetPointer(ICET_COLOR_BUFFER, NULL);
-    icetStateSetPointer(ICET_DEPTH_BUFFER, NULL);
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
 
     icetStateResetTiming();
 }

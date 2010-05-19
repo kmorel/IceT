@@ -149,9 +149,4 @@ void icetResizeBuffer(IceTSizeType size)
     }
 
     icet_current_context->buffer_offset = 0;
-
-  /* The color and depth buffers rely on this memory pool, so we have
-     probably just invalidated them. */
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
 }

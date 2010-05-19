@@ -19,12 +19,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GET_MAGIC_NUM(buf)      (((IceTUInt *)(buf))[0])
-#define GET_PIXEL_COUNT(buf)    (((IceTUInt *)(buf))[1])
-#define GET_DATA_START(buf)     (((IceTUInt *)(buf)) + 2)
+#define ICET_IMAGE_MAGIC_NUM            (IceTEnum)0x004D5000
+#define ICET_SPARSE_IMAGE_MAGIC_NUM     (IceTEnum)0x004D6000
 
-#define GET_IMAGE_COLOR(buf)    (GET_DATA_START(buf))
-#define GET_DEPTH_COLOR(buf)    (GET_DATA_START(buf) + GET_PIXEL_NUM(buf))
+#define ICET_IMAGE_MAGIC_NUM_INDEX      0
+#define ICET_IMAGE_COLOR_FORMAT_INDEX   1
+#define ICET_IMAGE_DEPTH_FORMAT_INDEX   2
+#define ICET_IMAGE_SIZE_INDEX           3
+#define ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX 4
+#define ICET_IMAGE_DATA_START_INDEX     5
+
+#define ICET_IMAGE_HEADER(buf)  ((IceTUInt *)buf)
+#define ICET_IMAGE_DATA(buf) \
+    ((IceTVoid *)&(ICET_IMAGE_HEADER(buf)[ICET_IMAGE_DATA_START_INDEX]))
 
 #define INACTIVE_RUN_LENGTH(rl) (((IceTUShort *)&(rl))[0])
 #define ACTIVE_RUN_LENGTH(rl)   (((IceTUShort *)&(rl))[1])
@@ -39,6 +46,10 @@
 #ifdef _MSC_VER
 #pragma warning(disable:4055)
 #endif
+
+/* Returns the size, in bytes, of a color/depth value for a single pixel. */
+static IceTSizeType colorPixelSize(IceTEnum color_format);
+static IceTSizeType depthPixelSize(IceTEnum depth_format);
 
 /* Renders the geometry for a tile.  The geometry may not be projected
  * exactly into the tile.  screen_viewport gives the offset and dimensions
@@ -67,17 +78,295 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                          IceTImage buffer,
                          IceTInt ib_x, IceTInt ib_y,
                          IceTSizeType full_width, IceTSizeType full_height);
-/* Attempts to retrieve the correct value of the far depth.  First gets the
- * ICET_ABSOLUTE_FAR_DEPTH parameter.  If depthBuffer is non NULL, it double
- * checks to make sure the first entry is not less than ICET_ABSOLUTE_FAR_DEPTH.
- * If so, the parameter is corrected. */
-static IceTUInt getFarDepth(const IceTUInt *depthBuffer);
 /* Gets a static image buffer that is shared amongst all contexts (and
  * therefore not thread safe.  The buffer is resized as necessary. */
 static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp);
 /* Releases use of the buffers retreived with getBuffers.  Currently does
  * nothing as thread safty is not ensured. */
 static void releaseBuffers(void);
+
+static IceTSizeType colorPixelSize(IceTEnum color_format)
+{
+    switch (color_format) {
+      case ICET_IMAGE_COLOR_RGBA_UBYTE: return 4;
+      case ICET_IMAGE_COLOR_RGBA_FLOAT: return 4*sizeof(IceTFloat);
+      case ICET_IMAGE_COLOR_NONE:       return 0;
+      default:
+          icetRaiseError("Invalid color format.", ICET_INVALID_ENUM);
+          return 0;
+    }
+}
+
+static IceTSizeType depthPixelSize(IceTEnum depth_format)
+{
+    switch (depth_format) {
+      case ICET_IMAGE_DEPTH_FLOAT: return 4*sizeof(IceTFloat);
+      case ICET_IMAGE_DEPTH_NONE:  return 0;
+      default:
+          icetRaiseError("Invalid depth format.", ICET_INVALID_ENUM);
+          return 0;
+    }
+}
+
+IceTSizeType icetImageBufferSize(IceTEnum color_format,
+                                 IceTEnum depth_format,
+                                 IceTSizeType num_pixels)
+{
+    IceTSizeType color_pixel_size = colorPixelSize(color_format);
+    IceTSizeType depth_pixel_size = depthPixelSize(depth_format);
+
+    return (  ICET_IMAGE_DATA_START_INDEX*sizeof(IceTUInt)
+            + num_pixels*(color_pixel_size + depth_pixel_size) );
+}
+
+IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
+                                       IceTEnum depth_format,
+                                       IceTSizeType num_pixels)
+{
+  /* Sparse images are designed to never take more than the same size of a
+     full image plus the space of 2 run lengths.  This occurs when there are
+     no inactive pixels (hence all data is stored plus 2 run lengths to tell
+     us that).  Even in the pathalogical case where every run length is 1,
+     we are still never any more than that because the 2 active/inactive run
+     lengths are packed into 2-bit shorts, which total takes no more space
+     than a color or depth value for a single pixel. */
+    return (  2*sizeof(IceTUShort)
+            + icetImageBufferSize(color_format, depth_format, num_pixels) );
+}
+
+void icetImageInitialize(IceTImage image_buffer,
+                         IceTEnum color_format, IceTEnum depth_format,
+                         IceTSizeType num_pixels)
+{
+    IceTUInt *header = ICET_IMAGE_HEADER(image_buffer);
+
+    if (   (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
+        && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_NONE) ) {
+        icetRaiseError("Invalid color format.", ICET_INVALID_ENUM);
+        color_format = ICET_IMAGE_COLOR_NONE;
+    }
+    if (   (depth_format != ICET_IMAGE_DEPTH_FLOAT)
+        && (depth_format != ICET_IMAGE_DEPTH_NONE) ) {
+        icetRaiseError("Invalid depth format.", ICET_INVALID_ENUM);
+        depth_format = ICET_IMAGE_DEPTH_NONE;
+    }
+
+    header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_IMAGE_MAGIC_NUM;
+    header[ICET_IMAGE_COLOR_FORMAT_INDEX]       = color_format;
+    header[ICET_IMAGE_DEPTH_FORMAT_INDEX]       = depth_format;
+    header[ICET_IMAGE_SIZE_INDEX]               = num_pixels;
+    header[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+        = icetImageBufferSize(color_format, depth_format, num_pixels);
+}
+
+void icetSparseImageInitialize(IceTSparseImage image_buffer,
+                               IceTEnum color_format, IceTEnum depth_format,
+                               IceTSizeType num_pixels)
+{
+    IceTUInt *header = ICET_IMAGE_HEADER(image_buffer);
+
+    if (   (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
+        && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_NONE) ) {
+        icetRaiseError("Invalid color format.", ICET_INVALID_ENUM);
+        color_format = ICET_IMAGE_COLOR_NONE;
+    }
+    if (   (depth_format != ICET_IMAGE_DEPTH_FLOAT)
+        && (depth_format != ICET_IMAGE_DEPTH_NONE) ) {
+        icetRaiseError("Invalid depth format.", ICET_INVALID_ENUM);
+        depth_format = ICET_IMAGE_DEPTH_NONE;
+    }
+
+    header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_IMAGE_MAGIC_NUM;
+    header[ICET_IMAGE_COLOR_FORMAT_INDEX]       = color_format;
+    header[ICET_IMAGE_DEPTH_FORMAT_INDEX]       = depth_format;
+    header[ICET_IMAGE_SIZE_INDEX]               = num_pixels;
+    header[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX] = 0;
+}
+
+IceTEnum icetImageGetColorFormat(const IceTImage image_buffer)
+{
+    if (!image_buffer) return ICET_IMAGE_COLOR_NONE;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_COLOR_FORMAT_INDEX];
+}
+IceTEnum icetImageGetDepthFormat(const IceTImage image_buffer)
+{
+    if (!image_buffer) return ICET_IMAGE_DEPTH_NONE;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_DEPTH_FORMAT_INDEX];
+}
+IceTSizeType icetImageGetSize(const IceTImage image_buffer)
+{
+    if (!image_buffer) return 0;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_SIZE_INDEX];
+}
+
+IceTEnum icetSparseImageGetColorFormat(const IceTSparseImage image_buffer)
+{
+    if (!image_buffer) return ICET_IMAGE_COLOR_NONE;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_COLOR_FORMAT_INDEX];
+}
+IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image_buffer)
+{
+    if (!image_buffer) return ICET_IMAGE_DEPTH_NONE;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_DEPTH_FORMAT_INDEX];
+}
+IceTSizeType icetSparseImageGetSize(const IceTSparseImage image_buffer)
+{
+    if (!image_buffer) return 0;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_SIZE_INDEX];
+}
+IceTSizeType icetSparseImageGetActualBufferSize(
+                                             const IceTSparseImage image_buffer)
+{
+    if (!image_buffer) return 0;
+    return ICET_IMAGE_HEADER(image_buffer)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX];
+}
+
+IceTUByte *icetImageGetColorUByte(IceTImage image_buffer)
+{
+    IceTEnum color_format = icetImageGetColorFormat(image_buffer);
+
+    if (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        icetRaiseError("Color format is not of type ubyte.",
+                       ICET_INVALID_OPERATION);
+        return NULL;
+    }
+
+    return ICET_IMAGE_DATA(image_buffer);
+}
+IceTFloat *icetImageGetColorFloat(IceTImage image_buffer)
+{
+    IceTEnum color_format = icetImageGetColorFormat(image_buffer);
+
+    if (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        icetRaiseError("Color format is not of type float.",
+                       ICET_INVALID_OPERATION);
+        return NULL;
+    }
+
+    return ICET_IMAGE_DATA(image_buffer);
+}
+
+IceTFloat *icetImageGetDepthFloat(IceTImage image_buffer)
+{
+    IceTEnum color_format = icetImageGetColorFormat(image_buffer);
+    IceTEnum depth_format = icetImageGetDepthFormat(image_buffer);
+    IceTSizeType color_format_bytes;
+
+    if (depth_format != ICET_IMAGE_DEPTH_FLOAT) {
+        icetRaiseError("Depth format is not of type float.",
+                       ICET_INVALID_OPERATION);
+        return NULL;
+    }
+
+    color_format_bytes = (  icetImageGetSize(image_buffer)
+                          * colorPixelSize(color_format) );
+
+    return ICET_IMAGE_DATA(image_buffer) + color_format_bytes;
+}
+
+void icetImageCopyColorUByte(const IceTImage image_buffer,
+                             IceTUByte *color_buffer,
+                             IceTEnum out_color_format)
+{
+    IceTEnum in_color_format = icetImageGetColorFormat(image_buffer);
+
+    if (out_color_format != ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        icetRaiseError("Color format is not of type ubyte.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+    if (in_color_format == ICET_IMAGE_COLOR_NONE) {
+        icetRaiseError("Input image has no color data.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+
+    if (in_color_format == out_color_format) {
+        const IceTUByte *in_buffer
+            = icetImageGetColorUByte((IceTImage)image_buffer);
+        IceTSizeType color_format_bytes = (  icetImageGetSize(image_buffer)
+                                           * colorPixelSize(in_color_format) );
+        memcpy(color_buffer, in_buffer, color_format_bytes);
+    } else { /* in_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT
+                out_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE */
+        const IceTFloat *in_buffer
+            = icetImageGetColorFloat((IceTImage)image_buffer);
+        IceTSizeType num_pixels = icetImageGetSize(image_buffer);
+        IceTSizeType i;
+        const IceTFloat *in;
+        IceTUByte *out;
+        for (i = 0, in = in_buffer, out = color_buffer; i < 4*num_pixels;
+             i++, in++, out++) {
+            out[0] = (IceTUByte)(255*in[0]);
+        }
+    }
+}
+
+void icetImageCopyColorFloat(const IceTImage image_buffer,
+                             IceTFloat *color_buffer,
+                             IceTEnum out_color_format)
+{
+    IceTEnum in_color_format = icetImageGetColorFormat(image_buffer);
+
+    if (out_color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        icetRaiseError("Color format is not of type float.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+    if (in_color_format == ICET_IMAGE_COLOR_NONE) {
+        icetRaiseError("Input image has no color data.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+
+    if (in_color_format == out_color_format) {
+        const IceTFloat *in_buffer
+            = icetImageGetColorFloat((IceTImage)image_buffer);
+        IceTSizeType color_format_bytes = (  icetImageGetSize(image_buffer)
+                                           * colorPixelSize(in_color_format) );
+        memcpy(color_buffer, in_buffer, color_format_bytes);
+    } else { /* in_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE
+                out_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT */
+        const IceTUByte *in_buffer
+            = icetImageGetColorUByte((IceTImage)image_buffer);
+        IceTSizeType num_pixels = icetImageGetSize(image_buffer);
+        IceTSizeType i;
+        const IceTUByte *in;
+        IceTFloat *out;
+        for (i = 0, in = in_buffer, out = color_buffer; i < 4*num_pixels;
+             i++, in++, out++) {
+            out[0] = (IceTFloat)in[0]/255.0f;
+        }
+    }
+}
+
+void icetImageCopyDepthFloat(const IceTImage image_buffer,
+                             IceTFloat *depth_buffer,
+                             IceTEnum out_depth_format)
+{
+    IceTEnum in_depth_format = icetImageGetDepthFormat(image_buffer);
+
+    if (out_depth_format != ICET_IMAGE_DEPTH_FLOAT) {
+        icetRaiseError("Depth format is not of type float.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+    if (in_depth_format == ICET_IMAGE_DEPTH_NONE) {
+        icetRaiseError("Input image has no depth data.",
+                       ICET_INVALID_OPERATION);
+        return;
+    }
+
+  /* Currently only possibility is
+     in_color_format == out_color_format == ICET_IMAGE_DEPTH_FLOAT. */
+    const IceTFloat *in_buffer
+        = icetImageGetDepthFloat((IceTImage)image_buffer);
+    IceTSizeType depth_format_bytes = (  icetImageGetSize(image_buffer)
+                                       * depthPixelSize(in_depth_format) );
+    memcpy(depth_buffer, in_buffer, depth_format_bytes);
+}
 
 IceTUInt icetFullImageTypeSize(IceTUInt pixels, IceTUInt type)
 {
