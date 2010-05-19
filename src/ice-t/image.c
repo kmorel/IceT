@@ -80,7 +80,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                          IceTSizeType full_width, IceTSizeType full_height);
 /* Gets a static image buffer that is shared amongst all contexts (and
  * therefore not thread safe.  The buffer is resized as necessary. */
-static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp);
+static void getBuffers(IceTEnum color_format, IceTEnum depth_format,
+                       IceTUInt pixels, IceTImage *bufferp);
 /* Releases use of the buffers retreived with getBuffers.  Currently does
  * nothing as thread safty is not ensured. */
 static void releaseBuffers(void);
@@ -235,6 +236,10 @@ IceTUByte *icetImageGetColorUByte(IceTImage image_buffer)
 
     return ICET_IMAGE_DATA(image_buffer);
 }
+IceTUInt *icetImageGetColorUInt(IceTImage image_buffer)
+{
+    return (IceTUInt *)icetImageGetColorUByte(image_buffer);
+}
 IceTFloat *icetImageGetColorFloat(IceTImage image_buffer)
 {
     IceTEnum color_format = icetImageGetColorFormat(image_buffer);
@@ -368,101 +373,47 @@ void icetImageCopyDepthFloat(const IceTImage image_buffer,
     memcpy(depth_buffer, in_buffer, depth_format_bytes);
 }
 
-IceTUInt icetFullImageTypeSize(IceTUInt pixels, IceTUInt type)
-{
-    switch (type) {
-      case FULL_IMAGE_CD_MAGIC_NUM:
-          return (2*sizeof(IceTUInt)*(pixels+1));
-      case FULL_IMAGE_C_MAGIC_NUM:
-      case FULL_IMAGE_D_MAGIC_NUM:
-          return (sizeof(IceTUInt)*(pixels+2));
-      default:
-          icetRaiseError("Bad full image type.", ICET_INVALID_VALUE);
-          return 0;
-    }
-}
-IceTUInt icetSparseImageTypeSize(IceTUInt pixels, IceTUInt type)
-{
-    switch (type) {
-      case SPARSE_IMAGE_CD_MAGIC_NUM:
-          return (sizeof(IceTUInt)*(2*(pixels+1) + pixels/0x10000 + 1));
-      case SPARSE_IMAGE_C_MAGIC_NUM:
-      case SPARSE_IMAGE_D_MAGIC_NUM:
-          return (sizeof(IceTUInt)*(pixels + 2 + pixels/0x10000 + 1));
-      default:
-          icetRaiseError("Bad sparse image type.", ICET_INVALID_VALUE);
-          return 0;
-    }
-}
-
-IceTUByte *icetGetImageColorBuffer(IceTImage image)
-{
-    switch (GET_MAGIC_NUM(image)) {
-      case FULL_IMAGE_CD_MAGIC_NUM:
-      case FULL_IMAGE_C_MAGIC_NUM:
-          return (IceTUByte *)(image + 2);
-      case FULL_IMAGE_D_MAGIC_NUM:
-          return NULL;
-      default:
-          icetRaiseError("Tried to get colors from invalid image buffer.",
-                         ICET_INVALID_VALUE);
-          return NULL;
-    }
-}
-IceTUInt *icetGetImageDepthBuffer(IceTImage image)
-{
-    switch (GET_MAGIC_NUM(image)) {
-      case FULL_IMAGE_CD_MAGIC_NUM:
-          return (image + 2 + image[1]);
-      case FULL_IMAGE_C_MAGIC_NUM:
-          return NULL;
-      case FULL_IMAGE_D_MAGIC_NUM:
-          return image + 2;
-      default:
-          icetRaiseError("Tried to get colors from invalid image buffer.",
-                         ICET_INVALID_VALUE);
-          return NULL;
-    }
-}
-
-void icetInitializeImage(IceTImage image, IceTUInt pixel_count)
-{
-    IceTEnum type;
-
-    icetGetIntegerv(ICET_INPUT_BUFFERS, (IceTInt *)&type);
-    type |= FULL_IMAGE_BASE_MAGIC_NUM;
-
-    icetInitializeImageType(image, pixel_count, type);
-}
-
-void icetInitializeImageType(IceTImage image, IceTUInt pixel_count,
-                             IceTUInt type) {
-    GET_MAGIC_NUM(image) = type;
-    GET_PIXEL_COUNT(image) = pixel_count;
-}
-
 void icetClearImage(IceTImage image)
 {
-    IceTEnum output_buffers;
-    IceTUInt pixels = icetGetImagePixelCount(image);
+    IceTUInt *ip;
+    IceTFloat *fp;
+    IceTSizeType pixels = icetImageGetSize(image);
+    IceTSizeType i;
+    IceTUInt i_bg_color;
+    IceTFloat f_bg_color[4];
 
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        IceTUInt background_color;
-        IceTUInt *color = (IceTUInt *)icetGetImageColorBuffer(image);
-        IceTUInt i;
-        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
-        for (i = 0; i < pixels; i++) {
-            color[i] = background_color;
-        }
+    icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&i_bg_color);
+    icetGetFloatv(ICET_BACKGROUND_COLOR, f_bg_color);
+
+    switch (icetImageGetColorFormat(image)) {
+      case ICET_IMAGE_COLOR_RGBA_UBYTE:
+          for (i = 0, ip = icetImageGetColorUInt(image); i<pixels; i++, ip++) {
+              ip[0] = i_bg_color;
+          }
+          break;
+      case ICET_IMAGE_COLOR_RGBA_FLOAT:
+          for (i = 0, fp = icetImageGetColorFloat(image); i<pixels;
+               i++, fp += 4) {
+              fp[0] = f_bg_color[0];
+              fp[1] = f_bg_color[1];
+              fp[2] = f_bg_color[2];
+              fp[3] = f_bg_color[3];
+          }
+          break;
+      case ICET_IMAGE_COLOR_NONE:
+        /* Nothing to do. */
+          break;
     }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        IceTUInt far_depth = getFarDepth(NULL);
-        IceTUInt *depth = icetGetImageDepthBuffer(image);
-        IceTUInt i;
-        for (i = 0; i < pixels; i++) {
-            depth[i] = far_depth;
-        }
+
+    switch (icetImageGetDepthFormat(image)) {
+      case ICET_IMAGE_DEPTH_FLOAT:
+          for (i = 0, fp = icetImageGetDepthFloat(image); i<pixels; i++, fp++) {
+              fp[0] = 1.0;
+          }
+          break;
+      case ICET_IMAGE_DEPTH_NONE:
+        /* Nothing to do. */
+          break;
     }
 }
 
@@ -475,7 +426,7 @@ void icetInputOutputBuffers(IceTEnum inputs, IceTEnum outputs)
     }
 
     if ((outputs & (ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT)) == 0) {
-        icetRaiseError("No output selected?  Why use ICE-T at all?  Ignoring.",
+        icetRaiseError("No output selected?  Why use IceT at all?  Ignoring.",
                        ICET_INVALID_VALUE);
         return;
     }
@@ -489,12 +440,25 @@ void icetGetTileImage(IceTInt tile, IceTImage buffer)
     IceTInt screen_viewport[4], target_viewport[4];
     IceTInt *viewports;
     IceTSizeType width, height;
+    IceTBitField input_buffers;
+    IceTEnum color_format, depth_format;
 
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
-    icetInitializeImage(buffer, width*height);
+    icetGetIntegerv(ICET_INPUT_BUFFERS, &input_buffers);
+    if (input_buffers & ICET_COLOR_BUFFER_BIT) {
+        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
+    } else {
+        color_format = ICET_IMAGE_COLOR_NONE;
+    }
+    if (input_buffers & ICET_DEPTH_BUFFER_BIT) {
+        icetGetIntegerv(ICET_GL_DEPTH_FORMAT, &depth_format);
+    } else {
+        depth_format = ICET_IMAGE_DEPTH_NONE;
+    }
+    icetImageInitalize(buffer, color_format, depth_format, width*height);
 
     renderTile(tile, screen_viewport, target_viewport);
 
@@ -514,14 +478,29 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
     IceTSizeType width, height;
     int space_left, space_right, space_bottom, space_top;
     IceTUInt compressedSize;
+    IceTEnum input_buffers;
+    IceTEnum color_format, depth_format;
 
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
     renderTile(tile, screen_viewport, target_viewport);
-    getBuffers((  *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))
-                | FULL_IMAGE_BASE_MAGIC_NUM),
+
+    icetGetIntegerv(ICET_INPUT_BUFFERS, &input_buffers);
+    if (input_buffers & ICET_COLOR_BUFFER_BIT) {
+        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
+    } else {
+        color_format = ICET_IMAGE_COLOR_NONE;
+    }
+    if (input_buffers & ICET_DEPTH_BUFFER_BIT) {
+        icetGetIntegerv(ICET_GL_DEPTH_FORMAT, &depth_format);
+    } else {
+        depth_format = ICET_IMAGE_DEPTH_NONE;
+    }
+    icetImageInitalize(buffer, color_format, depth_format, width*height);
+
+    getBuffers(color_format, depth_format,
                screen_viewport[2]*screen_viewport[3],
                &imageBuffer);
     readImage(screen_viewport[0], screen_viewport[1],
@@ -541,8 +520,10 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
         IceTUInt *depth = depthBuffer;
         if (colorBuffer) {
             IceTUInt *color = (IceTUInt*)colorBuffer;
-#define MAGIC_NUMBER            SPARSE_IMAGE_CD_MAGIC_NUM
+            HEREHERE and need to fix compress_func_body.h
 #define COMPRESSED_BUFFER       buffer
+#define COLOR_FORMAT            color_format
+#define DEPTH_FORMAT            depth_format
 #define PIXEL_COUNT             width*height
 #define ACTIVE()                (*depth != far_depth)
 #define WRITE_PIXEL(dest)       *(dest++) = *color;  *(dest++) = *depth;

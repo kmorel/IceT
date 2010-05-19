@@ -23,8 +23,9 @@ void icetGLInitialize(void)
 
     icetStateSetBoolean(ICET_GL_INITIALIZED, ICET_TRUE);
 
-    icetStateSetInteger(ICET_GL_READ_BUFFER, GL_BACK);
-    icetStateSetInteger(ICET_GL_COLOR_FORMAT, GL_RGBA);
+    icetGLSetReadBuffer(GL_BACK);
+    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 }
 
 void icetGLSetReadBuffer(GLenum mode)
@@ -38,5 +39,41 @@ void icetGLSetReadBuffer(GLenum mode)
         icetStateSetInteger(ICET_GL_READ_BUFFER, GL_BACK);
     } else {
         icetRaiseError("Invalid OpenGL read buffer.", ICET_INVALID_ENUM);
+    }
+}
+
+void icetGLSetColorFormat(IceTEnum color_format)
+{
+    if (mode == ICET_IMAGE_COLOR_NONE) {
+        icetRaiseError("Cannot set ICET_GL_COLOR_FORMAT to ICET_IMAGE_COLOR_NONE."
+                       " If don't want to read color buffers, turn off the"
+                       " input color buffer in icetInputOutputBuffers."
+                       " Ignoring",
+                       ICET_INVALID_ENUM);
+        return;
+    }
+    if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
+        || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) ) {
+        icetStateSet(ICET_GL_COLOR_FORMAT, color_format);
+    } else {
+        icetRaiseError("Invalid IceT color format.", ICET_INVALID_ENUM);
+    }
+}
+
+void icetGLSetDepthFormat(IceTEnum depth_format)
+{
+    if (mode == ICET_IMAGE_DEPTH_NONE) {
+        icetRaiseError("Cannot set ICET_GL_DEPTH_FORMAT to ICET_IMAGE_DEPTH_NONE."
+                       " If don't want to read depth buffers, turn off the"
+                       " input depth buffer in icetInputOutputBuffers."
+                       " Ignoring",
+                       ICET_INVALID_ENUM);
+        return;
+    }
+    if (   (depth_format == ICET_IMAGE_DEPTH_RGBA_UBYTE)
+        || (depth_format == ICET_IMAGE_DEPTH_RGBA_FLOAT) ) {
+        icetStateSet(ICET_GL_DEPTH_FORMAT, depth_format);
+    } else {
+        icetRaiseError("Invalid IceT depth format.", ICET_INVALID_ENUM);
     }
 }

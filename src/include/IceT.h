@@ -141,6 +141,7 @@ ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image_buffer);
 ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image_buffer);
 ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image_buffer);
 ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image_buffer);
+ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image_buffer);
 ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image_buffer);
 ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image_buffer);
 ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image_buffer,

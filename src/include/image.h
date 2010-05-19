@@ -32,19 +32,6 @@ ICET_EXPORT IceTSizeType icetSparseImageGetSize(
 ICET_EXPORT IceTSizeType icetSparseImageActualBufferSize(
                                             const IceTSparseImage image_buffer);
 
-/* Returns the size of buffers (in bytes) needed to hold data for images
-   for the given number of pixels. */
-#define icetSparseImageSize(pixels)                                     \
-    icetSparseImageTypeSize((pixels),                                   \
-                            *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))\
-                          | SPARSE_IMAGE_BASE_MAGIC_NUM)
-
-/* Sets up the magic number based on ICET_INPUT_BUFFERS and pixel_count. */
-ICET_EXPORT void   icetInitializeImage(IceTImage image, IceTUInt pixel_count);
-ICET_EXPORT void   icetInitializeImageType(IceTImage image, IceTUInt pixel_count,
-                                           IceTUInt type);
-
-/* Clears the buffers specified in ICET_OUTPUT_BUFFERS. */
 ICET_EXPORT void   icetClearImage(IceTImage image);
 
 ICET_EXPORT void   icetGetTileImage(IceTInt tile, IceTImage buffer);
