@@ -24,8 +24,6 @@
  *      WRITE_PIXEL(pointer) - writes the current pixel to the pointer and
  *              increments the pointer.
  *      INCREMENT_PIXEL() - Increments to the next pixel.
- *      COMPRESSED_SIZE - an l-value to place the resulting size of the
- *              buffer.
  *
  * The following macros are optional:
  *      PADDING - If defined, enables inactive pixels to be placed
@@ -61,6 +59,10 @@
 #error Need RUN_LENGTH_SIZE macro.  Is this included in image.c?
 #endif
 
+#ifdef COMPRESSED_SIZE
+#error No longer using COMPRESSED_SIZE.  Size stored directly in image.  Change code.  Delete this after everything is clear.
+#endif
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4127)
@@ -76,6 +78,7 @@
 #endif
     IceTDouble _timer;
     IceTDouble *_compress_time;
+    IceTSizeType _compressed_size;
 
     _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
@@ -210,10 +213,11 @@
 
     *_compress_time += icetWallTime() - _timer;
 
-    COMPRESSED_SIZE = (IceTUInt)(  (IceTPointerArithmetic)_dest
-                                 - (IceTPointerArithmetic)COMPRESSED_BUFFER);
-    icetRaiseDebug1("Compression: %d%%",
-                    (int)(100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8)));
+    _compressed_size
+        = (IceTSizeType)(  (IceTPointerArithmetic)_dest
+                         - (IceTPointerArithmetic)COMPRESSED_BUFFER);
+    ICET_IMAGE_HEADER(COMPRESSED_BUFFER)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+        = _compressed_size;
 }
 
 #ifdef _MSC_VER
