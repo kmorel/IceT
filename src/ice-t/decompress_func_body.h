@@ -66,7 +66,7 @@
 	const IceTUInt *_runlengths = _src++;
 	IceTUShort _rl;
       /* Set background pixels. */
-	_rl = INACTIVE_RUN_LENGTH(*_runlengths);
+	_rl = INACTIVE_RUN_LENGTH(_runlengths);
 	_p += _rl;
 	if (_p > _pixels) {
 	    icetRaiseError("Corrupt compressed image.", ICET_INVALID_VALUE);
@@ -75,7 +75,7 @@
 	INCREMENT_INACTIVE_PIXELS(_rl);
 
       /* Set active pixels. */
-	_rl = ACTIVE_RUN_LENGTH(*_runlengths);
+	_rl = ACTIVE_RUN_LENGTH(_runlengths);
 	_p += _rl;
 	if (_p > _pixels) {
 	    icetRaiseError("Corrupt compressed image.", ICET_INVALID_VALUE);

@@ -33,8 +33,9 @@
 #define ICET_IMAGE_DATA(buf) \
     ((IceTVoid *)&(ICET_IMAGE_HEADER(buf)[ICET_IMAGE_DATA_START_INDEX]))
 
-#define INACTIVE_RUN_LENGTH(rl) (((IceTUShort *)&(rl))[0])
-#define ACTIVE_RUN_LENGTH(rl)   (((IceTUShort *)&(rl))[1])
+#define INACTIVE_RUN_LENGTH(rl) (((IceTUShort *)(rl))[0])
+#define ACTIVE_RUN_LENGTH(rl)   (((IceTUShort *)(rl))[1])
+#define RUN_LENGTH_SIZE         (2*sizeof(IceTUShort))
 
 #ifndef MIN
 #define MIN(x, y)       ((x) < (y) ? (x) : (y))
@@ -472,8 +473,6 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
 {
     IceTInt screen_viewport[4], target_viewport[4];
     IceTImage imageBuffer;
-    IceTUByte *colorBuffer;
-    IceTUInt  *depthBuffer;
     IceTInt *viewports;
     IceTSizeType width, height;
     int space_left, space_right, space_bottom, space_top;
@@ -507,13 +506,52 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
               screen_viewport[2], screen_viewport[3],
               imageBuffer);
 
-    colorBuffer = icetGetImageColorBuffer(imageBuffer);
-    depthBuffer = icetGetImageDepthBuffer(imageBuffer);
+    color_format = icetImageGetColorFormat(imageBuffer);
+    depth_format = icetImageGetDepthFormat(imageBuffer);
 
     space_left = target_viewport[0];
     space_right = width - target_viewport[2] - space_left;
     space_bottom = target_viewport[1];
     space_top = height - target_viewport[3] - space_bottom;
+
+    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+      /* Use Z buffer for active pixel testing. */
+        IceTFloat *depth = icetImageGetDepthFloat(imageBuffer);
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUInt *color = icetImageGetColorUInt(imageBuffer);
+            IceTUInt *c_out;
+            IceTFloat *d_out;
+#define COMPRESSED_BUFFER       buffer
+#define COLOR_FORMAT            color_format
+#define DEPTH_FORMAT            depth_format
+#define PIXEL_COUNT             width*height
+#define ACTIVE()                (depth[0] >= 1.0)
+#define WRITE_PIXEL(dest)       c_out = (IceTUInt *)dest; \
+                                c_out[0] = color[0]; \
+                                dest += sizeof(IceTUInt); \
+                                d_out = (IceTFloat *)dest; \
+                                d_out[0] = depth[0]; \
+                                dest += sizeof(IceTFloat);
+#define INCREMENT_PIXEL()       color++;  depth++;
+#define COMPRESSED_SIZE         compressedSize
+#define PADDING
+#define SPACE_BOTTOM    space_bottom
+#define SPACE_TOP       space_top
+#define SPACE_LEFT      space_left
+#define SPACE_RIGHT     space_right
+#define FULL_WIDTH      width
+#define FULL_HEIGHT     height
+#include "compress_func_body.h"
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
+        }
+    } else /* depth_format == ICET_IMAGE_DEPTH_NONE */ {
+      /* No Z buffer.  Use alpha for active pixel testing. */
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
+        }
+    }
 
     if (depthBuffer) {
         IceTUInt far_depth = getFarDepth(depthBuffer);

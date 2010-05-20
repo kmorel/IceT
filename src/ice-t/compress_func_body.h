@@ -45,17 +45,20 @@
 #ifndef DEPTH_FORMAT
 #error Need DEPTH_FORMAT macro.  Is this included in image.c ?
 #endif
-#ifndef GET_PIXEL_COUNT
-#error Need GET_PIXEL_COUNT macro.  Is this included in image.c?
+#ifndef PIXEL_COUNT
+#error Need PIXEL_COUNT macro.  Is this included in image.c?
 #endif
-#ifndef GET_DATA_START
-#error Need GET_DATA_START macro.  Is this included in image.c?
+#ifndef ICET_IMAGE_DATA
+#error Need ICET_IMAGE_DATA macro.  Is this included in image.c?
 #endif
 #ifndef INACTIVE_RUN_LENGTH
 #error Need INACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 #ifndef ACTIVE_RUN_LENGTH
 #error Need ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
+#endif
+#ifndef RUN_LENGTH_SIZE
+#error Need RUN_LENGTH_SIZE macro.  Is this included in image.c?
 #endif
 
 #ifdef _MSC_VER
@@ -64,12 +67,12 @@
 #endif
 
 {
-    IceTUInt *_dest;
-    IceTUInt _pixels = PIXEL_COUNT;
-    IceTUInt _p;
-    IceTUInt _count;
+    IceTVoid *_dest;
+    IceTSizeType _pixels = PIXEL_COUNT;
+    IceTSizeType _p;
+    IceTSizeType _count;
 #ifdef DEBUG
-    IceTUInt _totalcount = 0;
+    IceTSizeType _totalcount = 0;
 #endif
     IceTDouble _timer;
     IceTDouble *_compress_time;
@@ -77,9 +80,9 @@
     _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
 
-    GET_MAGIC_NUM(COMPRESSED_BUFFER) = MAGIC_NUMBER;
-    GET_PIXEL_COUNT(COMPRESSED_BUFFER) = _pixels;
-    _dest = GET_DATA_START(COMPRESSED_BUFFER);
+    icetSparseImageInitialize(COMPRESSED_BUFFER, COLOR_FORMAT,
+                              DEPTH_FORMAT, _pixels);
+    _dest = ICET_IMAGE_DATA(COMPRESSED_BUFFER);
 
 #ifndef PADDING
     _count = 0;
@@ -103,15 +106,15 @@
                 if (_x >= _lastx) break;
                 _runlengths = _dest++;
                 while (_count > 0xFFFF) {
-                    INACTIVE_RUN_LENGTH(*_runlengths) = 0xFFFF;
-                    ACTIVE_RUN_LENGTH(*_runlengths) = 0;
+                    INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
+                    ACTIVE_RUN_LENGTH(_runlengths) = 0;
 #ifdef DEBUG
                     _totalcount += 0xFFFF;
 #endif
                     _count -= 0xFFFF;
                     _runlengths = _dest++;
                 }
-                INACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
+                INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
                 _totalcount += _count;
 #endif
@@ -122,7 +125,7 @@
                     _count++;
                     _x++;
                 }
-                ACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
+                ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
                 _totalcount += _count;
 #endif
@@ -145,15 +148,15 @@
                 INCREMENT_PIXEL();
             }
             while (_count > 0xFFFF) {
-                INACTIVE_RUN_LENGTH(*_runlengths) = 0xFFFF;
-                ACTIVE_RUN_LENGTH(*_runlengths) = 0;
+                INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
+                ACTIVE_RUN_LENGTH(_runlengths) = 0;
 #ifdef DEBUG
                 _totalcount += 0xFFFF;
 #endif
                 _count -= 0xFFFF;
                 _runlengths = _dest++;
             }
-            INACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
+            INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
             _totalcount += _count;
 #endif
@@ -166,7 +169,7 @@
                 _count++;
                 _p++;
             }
-            ACTIVE_RUN_LENGTH(*_runlengths) = (IceTUShort)_count;
+            ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
             _totalcount += _count;
 #endif
@@ -179,16 +182,16 @@
     _count += SPACE_TOP*FULL_WIDTH;
     if (_count > 0) {
         while (_count > 0xFFFF) {
-            INACTIVE_RUN_LENGTH(*_dest) = 0xFFFF;
-            ACTIVE_RUN_LENGTH(*_dest) = 0;
+            INACTIVE_RUN_LENGTH(_dest) = 0xFFFF;
+            ACTIVE_RUN_LENGTH(_dest) = 0;
             _dest++;
 #ifdef DEBUG
             _totalcount += 0xFFFF;
 #endif /*DEBUG*/
             _count -= 0xFFFF;
         }
-        INACTIVE_RUN_LENGTH(*_dest) = (IceTUShort)_count;
-        ACTIVE_RUN_LENGTH(*_dest) = 0;
+        INACTIVE_RUN_LENGTH(_dest) = (IceTUShort)_count;
+        ACTIVE_RUN_LENGTH(_dest) = 0;
         _dest++;
 #ifdef DEBUG
         _totalcount += _count;
@@ -208,7 +211,7 @@
     *_compress_time += icetWallTime() - _timer;
 
     COMPRESSED_SIZE = (IceTUInt)(  (IceTPointerArithmetic)_dest
-                               - (IceTPointerArithmetic)COMPRESSED_BUFFER);
+                                 - (IceTPointerArithmetic)COMPRESSED_BUFFER);
     icetRaiseDebug1("Compression: %d%%",
                     (int)(100 - (100*COMPRESSED_SIZE)/((_pixels+1)*8)));
 }
@@ -218,7 +221,8 @@
 #endif
 
 #undef COMPRESSED_BUFFER
-#undef MAGIC_NUMBER
+#undef COLOR_FORMAT
+#undef DEPTH_FORMAT
 #undef PIXEL_COUNT
 #undef ACTIVE
 #undef WRITE_PIXEL
