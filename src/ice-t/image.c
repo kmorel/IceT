@@ -448,18 +448,18 @@ void icetGetTileImage(IceTInt tile, IceTImage buffer)
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
-    icetGetIntegerv(ICET_INPUT_BUFFERS, &input_buffers);
+    icetGetBitFieldv(ICET_INPUT_BUFFERS, &input_buffers);
     if (input_buffers & ICET_COLOR_BUFFER_BIT) {
-        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
+        icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
     } else {
         color_format = ICET_IMAGE_COLOR_NONE;
     }
     if (input_buffers & ICET_DEPTH_BUFFER_BIT) {
-        icetGetIntegerv(ICET_GL_DEPTH_FORMAT, &depth_format);
+        icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
     } else {
         depth_format = ICET_IMAGE_DEPTH_NONE;
     }
-    icetImageInitalize(buffer, color_format, depth_format, width*height);
+    icetImageInitialize(buffer, color_format, depth_format, width*height);
 
     renderTile(tile, screen_viewport, target_viewport);
 
@@ -486,18 +486,18 @@ IceTUInt icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
 
     renderTile(tile, screen_viewport, target_viewport);
 
-    icetGetIntegerv(ICET_INPUT_BUFFERS, &input_buffers);
+    icetGetBitFieldv(ICET_INPUT_BUFFERS, &input_buffers);
     if (input_buffers & ICET_COLOR_BUFFER_BIT) {
-        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
+        icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
     } else {
         color_format = ICET_IMAGE_COLOR_NONE;
     }
     if (input_buffers & ICET_DEPTH_BUFFER_BIT) {
-        icetGetIntegerv(ICET_GL_DEPTH_FORMAT, &depth_format);
+        icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
     } else {
         depth_format = ICET_IMAGE_DEPTH_NONE;
     }
-    icetImageInitalize(buffer, color_format, depth_format, width*height);
+    icetImageInitialize(buffer, color_format, depth_format, width*height);
 
     getBuffers(color_format, depth_format,
                screen_viewport[2]*screen_viewport[3],

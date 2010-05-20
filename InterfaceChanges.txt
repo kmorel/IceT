@@ -39,3 +39,8 @@ floating point depth buffers to the range [0,1], so it should be OK to just
 assume that the max depth is 1.0.
 
 Removed the ICET_ABSOLUTE_FAR_DEPTH state variable (see above).
+
+Added icetGetEnumv and icetGetBitFieldv.  They are similar to
+icetGetIntegerv except that they disallow conversions from floating points
+and pointers.  They also get around errors conerning casting from unsigned
+to signed pointers.

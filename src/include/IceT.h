@@ -22,19 +22,19 @@ extern "C" {
 }
 #endif
 
-typedef IceTUnsignedInt32     IceTEnum;
-typedef IceTUnsignedInt32     IceTBitField;
-typedef IceTFloat64           IceTDouble;
-typedef IceTFloat32           IceTFloat;
-typedef IceTInt32             IceTInt;
-typedef IceTUnsignedInt32     IceTUInt;
-typedef IceTInt16             IceTShort;
-typedef IceTUnsignedInt16     IceTUShort;
-typedef IceTInt8              IceTByte;
-typedef IceTUnsignedInt8      IceTUByte;
-typedef IceTInt8              IceTBoolean;
-typedef void                  IceTVoid;
-typedef IceTPointerArithmetic IceTSizeType;
+typedef IceTUnsignedInt32       IceTEnum;
+typedef IceTUnsignedInt32       IceTBitField;
+typedef IceTFloat64             IceTDouble;
+typedef IceTFloat32             IceTFloat;
+typedef IceTInt32               IceTInt;
+typedef IceTUnsignedInt32       IceTUInt;
+typedef IceTInt16               IceTShort;
+typedef IceTUnsignedInt16       IceTUShort;
+typedef IceTInt8                IceTByte;
+typedef IceTUnsignedInt8        IceTUByte;
+typedef IceTUnsignedInt8        IceTBoolean;
+typedef void                    IceTVoid;
+typedef IceTPointerArithmetic   IceTSizeType;
 
 typedef IceTUnsignedInt32 IceTContext;
 
@@ -274,6 +274,8 @@ ICET_EXPORT void icetGetDoublev(IceTEnum pname, IceTDouble *params);
 ICET_EXPORT void icetGetFloatv(IceTEnum pname, IceTFloat *params);
 ICET_EXPORT void icetGetIntegerv(IceTEnum pname, IceTInt *params);
 ICET_EXPORT void icetGetBooleanv(IceTEnum pname, IceTBoolean *params);
+ICET_EXPORT void icetGetEnumv(IceTEnum pname, IceTEnum *params);
+ICET_EXPORT void icetGetBitFieldv(IceTEnum pname, IceTEnum *bitfield);
 ICET_EXPORT void icetGetPointerv(IceTEnum pname, IceTVoid **params);
 
 ICET_EXPORT void icetEnable(IceTEnum pname);

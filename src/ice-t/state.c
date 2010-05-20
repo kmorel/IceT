@@ -244,6 +244,27 @@ void icetGetIntegerv(IceTEnum pname, IceTInt *params)
     copyArray(IceTInt, params, value->type, value->data, value->size);
 }
 
+void icetGetEnumv(IceTEnum pname, IceTEnum *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTEnum, params, value->type, value->data, value->size);
+}
+void icetGetBitFieldv(IceTEnum pname, IceTBitField *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTBitField, params, value->type, value->data, value->size);
+}
+
 void icetGetPointerv(IceTEnum pname, IceTVoid **params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
