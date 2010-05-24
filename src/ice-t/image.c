@@ -512,8 +512,15 @@ IceTSizeType icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
     space_bottom = target_viewport[1];
     space_top = height - target_viewport[3] - space_bottom;
 
-#define INPUT_IMAGE imageBuffer
-#define OUTPUT_SPARSE_IMAGE buffer
+#define INPUT_IMAGE             imageBuffer
+#define OUTPUT_SPARSE_IMAGE     buffer
+#define PADDING
+#define SPACE_BOTTOM            space_bottom
+#define SPACE_TOP               space_top
+#define SPACE_LEFT              space_left
+#define SPACE_RIGHT             space_right
+#define FULL_WIDTH              width
+#define FULL_HEIGHT             height
 #include "compress_func_body.h"
 
     releaseBuffers();
@@ -524,55 +531,21 @@ IceTSizeType icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
 IceTSizeType icetCompressImage(const IceTImage imageBuffer,
                                IceTSparseImage compressedBuffer)
 {
-    return icetCompressSubImage(imageBuffer, 0, GET_PIXEL_COUNT(imageBuffer),
+    return icetCompressSubImage(imageBuffer, 0, icetImageGetSize(imageBuffer),
                                 compressedBuffer);
 }
 
-IceTUInt icetCompressSubImage(const IceTImage imageBuffer,
-                              IceTUInt offset, IceTUInt pixels,
-                              IceTSparseImage compressedBuffer)
+IceTSizeType icetCompressSubImage(const IceTImage imageBuffer,
+                                  IceTSizeType offset, IceTSizeType pixels,
+                                  IceTSparseImage compressedBuffer)
 {
-    const IceTUInt *color
-        = (IceTUInt *)icetGetImageColorBuffer((IceTImage)imageBuffer);
-    const IceTUInt *depth = icetGetImageDepthBuffer((IceTImage)imageBuffer);
-    IceTUInt compressedSize;
+#define INPUT_IMAGE             imageBuffer
+#define OUTPUT_SPARSE_IMAGE     compressedBuffer
+#define OFFSET                  offset
+#define PIXEL_COUNT             pixels
+#include "compress_func_body.h"
 
-    if (depth) {
-        IceTUInt far_depth = getFarDepth(depth);
-        depth += offset;
-        if (color) {
-            color += offset;
-#define MAGIC_NUMBER            SPARSE_IMAGE_CD_MAGIC_NUM
-#define COMPRESSED_BUFFER       compressedBuffer
-#define PIXEL_COUNT             pixels
-#define ACTIVE()                (*depth != far_depth)
-#define WRITE_PIXEL(dest)       *(dest++) = *color;  *(dest++) = *depth;
-#define INCREMENT_PIXEL()       color++;  depth++;
-#define COMPRESSED_SIZE         compressedSize
-#include "compress_func_body.h"
-        } else {
-#define MAGIC_NUMBER            SPARSE_IMAGE_D_MAGIC_NUM
-#define COMPRESSED_BUFFER       compressedBuffer
-#define PIXEL_COUNT             pixels
-#define ACTIVE()                (*depth != far_depth)
-#define WRITE_PIXEL(dest)       *(dest++) = *depth;
-#define INCREMENT_PIXEL()       depth++;
-#define COMPRESSED_SIZE         compressedSize
-#include "compress_func_body.h"
-        }
-    } else {
-        color += offset;
-#define MAGIC_NUMBER            SPARSE_IMAGE_C_MAGIC_NUM
-#define COMPRESSED_BUFFER       compressedBuffer
-#define PIXEL_COUNT             pixels
-#define ACTIVE()                (((IceTUByte*)color)[3] != 0x00)
-#define WRITE_PIXEL(dest)       *(dest++) = *color;
-#define INCREMENT_PIXEL()       color++;
-#define COMPRESSED_SIZE         compressedSize
-#include "compress_func_body.h"
-    }
-
-    return compressedSize;
+    return icetSparseImageGetCompressedBufferSize(compressedBuffer);
 }
 
 IceTUInt icetDecompressImage(const IceTSparseImage compressedBuffer,

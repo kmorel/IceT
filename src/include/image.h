@@ -43,7 +43,8 @@ ICET_EXPORT IceTSizeType icetCompressImage(const IceTImage imageBuffer,
                                            IceTSparseImage compressedBuffer);
 
 ICET_EXPORT IceTSizeType icetCompressSubImage(const IceTImage imageBuffer,
-                                              IceTUInt offset, IceTUInt pixels,
+                                              IceTSizeType offset,
+                                              IceTSizeType pixels,
                                               IceTSparseImage compressedBuffer);
 
 ICET_EXPORT IceTSizeType icetDecompressImage(
