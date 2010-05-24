@@ -496,166 +496,25 @@ IceTSizeType icetGetCompressedTileImage(IceTInt tile, IceTSparseImage buffer)
     } else {
         depth_format = ICET_IMAGE_DEPTH_NONE;
     }
-    icetImageInitialize(buffer, color_format, depth_format, width*height);
 
     getBuffers(color_format, depth_format,
                screen_viewport[2]*screen_viewport[3],
                &imageBuffer);
+
+    icetImageInitialize(imageBuffer, color_format, depth_format, width*height);
+
     readImage(screen_viewport[0], screen_viewport[1],
               screen_viewport[2], screen_viewport[3],
               imageBuffer);
-
-    color_format = icetImageGetColorFormat(imageBuffer);
-    depth_format = icetImageGetDepthFormat(imageBuffer);
 
     space_left = target_viewport[0];
     space_right = width - target_viewport[2] - space_left;
     space_bottom = target_viewport[1];
     space_top = height - target_viewport[3] - space_bottom;
 
-    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-      /* Use Z buffer for active pixel testing. */
-        IceTFloat *depth = icetImageGetDepthFloat(imageBuffer);
-        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *color = icetImageGetColorUInt(imageBuffer);
-            IceTUInt *c_out;
-            IceTFloat *d_out;
-#define COMPRESSED_BUFFER       buffer
-#define COLOR_FORMAT            color_format
-#define DEPTH_FORMAT            depth_format
-#define PIXEL_COUNT             width*height
-#define ACTIVE()                (depth[0] < 1.0)
-#define WRITE_PIXEL(dest)       c_out = (IceTUInt *)dest;       \
-                                c_out[0] = color[0];            \
-                                dest += sizeof(IceTUInt);       \
-                                d_out = (IceTFloat *)dest;      \
-                                d_out[0] = depth[0];            \
-                                dest += sizeof(IceTFloat);
-#define INCREMENT_PIXEL()       color++;  depth++;
-#define PADDING
-#define SPACE_BOTTOM    space_bottom
-#define SPACE_TOP       space_top
-#define SPACE_LEFT      space_left
-#define SPACE_RIGHT     space_right
-#define FULL_WIDTH      width
-#define FULL_HEIGHT     height
+#define INPUT_IMAGE imageBuffer
+#define OUTPUT_SPARSE_IMAGE buffer
 #include "compress_func_body.h"
-        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *color = icetImageGetColorFloat(imageBuffer);
-            IceTFloat *out;
-#define COMPRESSED_BUFFER       buffer
-#define COLOR_FORMAT            color_format
-#define DEPTH_FORMAT            depth_format
-#define PIXEL_COUNT             width*height
-#define ACTIVE()                (depth[0] < 1.0)
-#define WRITE_PIXEL(dest)       out = (IceTFloat *)dest;        \
-                                out[0] = color[0];              \
-                                out[1] = color[1];              \
-                                out[2] = color[2];              \
-                                out[3] = color[3];              \
-                                out[4] = depth[0];              \
-                                dest += 5*sizeof(IceTFloat);
-#define INCREMENT_PIXEL()       color += 4;  depth++;
-#define PADDING
-#define SPACE_BOTTOM    space_bottom
-#define SPACE_TOP       space_top
-#define SPACE_LEFT      space_left
-#define SPACE_RIGHT     space_right
-#define FULL_WIDTH      width
-#define FULL_HEIGHT     height
-#include "compress_func_body.h"
-        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
-            IceTFloat *out;
-#define COMPRESSED_BUFFER       buffer
-#define COLOR_FORMAT            color_format
-#define DEPTH_FORMAT            depth_format
-#define PIXEL_COUNT             width*height
-#define ACTIVE()                (depth[0] < 1.0)
-#define WRITE_PIXEL(dest)       out = (IceTFloat *)dest;        \
-                                out[0] = depth[0];              \
-                                dest += 1*sizeof(IceTFloat);
-#define INCREMENT_PIXEL()       depth++;
-#define PADDING
-#define SPACE_BOTTOM    space_bottom
-#define SPACE_TOP       space_top
-#define SPACE_LEFT      space_left
-#define SPACE_RIGHT     space_right
-#define FULL_WIDTH      width
-#define FULL_HEIGHT     height
-#include "compress_func_body.h"
-        }
-    } else /* depth_format == ICET_IMAGE_DEPTH_NONE */ {
-      /* No Z buffer.  Use alpha for active pixel testing. */
-        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *color = icetImageGetColorUInt(imageBuffer);
-            IceTUInt *out;
-#define COMPRESSED_BUFFER       buffer
-#define COLOR_FORMAT            color_format
-#define DEPTH_FORMAT            depth_format
-#define PIXEL_COUNT             width*height
-#define ACTIVE()                (((IceTUByte*)color)[3] != 0x00)
-#define WRITE_PIXEL(dest)       out = (IceTUInt *)dest;         \
-                                out[0] = color[0];              \
-                                dest += sizeof(IceTUInt);
-#define INCREMENT_PIXEL()       color++;
-#define PADDING
-#define SPACE_BOTTOM    space_bottom
-#define SPACE_TOP       space_top
-#define SPACE_LEFT      space_left
-#define SPACE_RIGHT     space_right
-#define FULL_WIDTH      width
-#define FULL_HEIGHT     height
-#include "compress_func_body.h"
-        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *color = icetImageGetColorFloat(imageBuffer);
-            IceTFloat *out;
-#define COMPRESSED_BUFFER       buffer
-#define COLOR_FORMAT            color_format
-#define DEPTH_FORMAT            depth_format
-#define PIXEL_COUNT             width*height
-#define ACTIVE()                (color[3] != 0.0)
-#define WRITE_PIXEL(dest)       out = (IceTFloat *)dest;        \
-                                out[0] = color[0];              \
-                                out[1] = color[1];              \
-                                out[2] = color[2];              \
-                                out[3] = color[3];              \
-                                dest += 4*sizeof(IceTUInt);
-#define INCREMENT_PIXEL()       color += 4;
-#define PADDING
-#define SPACE_BOTTOM    space_bottom
-#define SPACE_TOP       space_top
-#define SPACE_LEFT      space_left
-#define SPACE_RIGHT     space_right
-#define FULL_WIDTH      width
-#define FULL_HEIGHT     height
-#include "compress_func_body.h"
-        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
-            IceTUInt *out;
-            IceTSizeType runlength;
-            icetRaiseWarning("Compressing image with no data.",
-                             ICET_INVALID_OPERATION);
-            icetSparseImageInitialize(buffer, color_format, depth_format,
-                                      width*height);
-            out = ICET_IMAGE_DATA(buffer);
-            runlength = width*height;
-            while (runlength > 0xFFFF) {
-                INACTIVE_RUN_LENGTH(out) = 0xFFFF;
-                ACTIVE_RUN_LENGTH(out) = 0;
-                out++;
-                runlength -= 0xFFFF;
-            }
-            INACTIVE_RUN_LENGTH(out) = runlength;
-            ACTIVE_RUN_LENGTH(out) = 0;
-            out++;
-            ICET_IMAGE_HEADER(buffer)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-                = (IceTSizeType)(  (IceTPointerArithmetic)out
-                                 - (IceTPointerArithmetic)buffer);
-        }
-    }
-
-    icetRaiseDebug1("Compression: %d%%\n",
-                    100 - (  100*icetSparseImageGetCompressedBufferSize(buffer)
-                           / icetImageGetSize(imageBuffer) ));
 
     releaseBuffers();
 

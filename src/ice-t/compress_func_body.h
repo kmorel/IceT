@@ -1,237 +1,240 @@
 /* -*- c -*- *******************************************************/
 /*
- * Copyright (C) 2003 Sandia Corporation
+ * Copyright (C) 2010 Sandia Corporation
  * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
  * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
  */
 
-/* This is not a traditional header file, but rather a "macro" file that
- * defines the body of a compression function.  In general, there are many
- * flavors of the compression functionality which differ only slightly.
- * Rather than maintain lots of different code bases or try to debug big
- * macros, we just include this file with various parameters.
+/* This is not a traditional header file, but rather a "macro" file that defines
+ * a function body for a compression function.  (If this were C++, we would
+ * actually use templates to automatically generate all these cases.)  In
+ * general, there are many flavors of the compression functionality which differ
+ * only slightly.  Rather than maintain lots of different code bases or try to
+ * debug big macros, we just include this file with various parameters.
  *
  * The following macros must be defined:
- *      COMPRESSED_BUFFER - the buffer that will hold the compressed image.
- *      COLOR_FORMAT - color format IceTEnum for input and output
- *      DEPTH_FORMAT - depth format IceTEnum for input and output
- *      PIXEL_COUNT - the number of pixels in the original image (or a
- *              variable holding it.
- *      ACTIVE() - provides a true value if the current pixel is active.
- *      WRITE_PIXEL(pointer) - writes the current pixel to the pointer and
- *              increments the pointer.
- *      INCREMENT_PIXEL() - Increments to the next pixel.
+ *      INPUT_IMAGE - an IceTImage object containing the data to be compressed.
+ *      OUTPUT_SPARSE_IMAGE - the buffer that will hold the compressed image
+ *              (i.e. an allocated IceTSparseImage pointer).
  *
  * The following macros are optional:
  *      PADDING - If defined, enables inactive pixels to be placed
  *              around the file.  If defined, then SPACE_BOTTOM, SPACE_TOP,
  *              SPACE_LEFT, SPACE_RIGHT, FULL_WIDTH, and FULL_HEIGHT must
  *              all also be defined.
+ *      OFFSET - If defined to a number (or variable holding a number), skips
+ *              that many pixels at the beginning of the image.
+ *      PIXEL_COUNT - If defined to a number (or a variable holding a number),
+ *              uses this as the size of the image rather than the actual size
+ *              defined in the image.  This should be defined if OFFSET is
+ *              defined.
  *
  * All of the above macros are undefined at the end of this file.
  */
 
-#ifndef COMPRESSED_BUFFER
-#error Need COMPRESSED_BUFFER macro.  Is this included in image.c?
+#ifndef INPUT_IMAGE
+#error Need INPUT_IMAGE macro.  Is this included in image.c?
 #endif
-#ifndef COLOR_FORMAT
-#error Need COLOR_FORMAT macro.  Is this included in image.c?
-#endif
-#ifndef DEPTH_FORMAT
-#error Need DEPTH_FORMAT macro.  Is this included in image.c ?
-#endif
-#ifndef PIXEL_COUNT
-#error Need PIXEL_COUNT macro.  Is this included in image.c?
-#endif
-#ifndef ICET_IMAGE_DATA
-#error Need ICET_IMAGE_DATA macro.  Is this included in image.c?
+#ifndef OUTPUT_SPARSE_IMAGE
+#error Need OUTPUT_SPARSE_IMAGE macro.  Is this included in image.c?
 #endif
 #ifndef INACTIVE_RUN_LENGTH
 #error Need INACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 #ifndef ACTIVE_RUN_LENGTH
-#error Need ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
-#endif
-#ifndef RUN_LENGTH_SIZE
-#error Need RUN_LENGTH_SIZE macro.  Is this included in image.c?
-#endif
-
-#ifdef COMPRESSED_SIZE
-#error No longer using COMPRESSED_SIZE.  Size stored directly in image.  Change code.  Delete this after everything is clear.
-#endif
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4127)
+#error Need CT_ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 
 {
-    IceTVoid *_dest;
-    IceTSizeType _pixels = PIXEL_COUNT;
-    IceTSizeType _p;
-    IceTSizeType _count;
-#ifdef DEBUG
-    IceTSizeType _totalcount = 0;
-#endif
-    IceTDouble _timer;
-    IceTDouble *_compress_time;
-    IceTSizeType _compressed_size;
+    IceTEnum _color_format, _depth_format;
+    IceTSizeType _pixel_count;
 
-    _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
-    _timer = icetWallTime();
+    _color_format = icetImageGetColorFormat(INPUT_IMAGE);
+    _depth_format = icetImageGetDepthFormat(INPUT_IMAGE);
 
-    icetSparseImageInitialize(COMPRESSED_BUFFER, COLOR_FORMAT,
-                              DEPTH_FORMAT, _pixels);
-    _dest = ICET_IMAGE_DATA(COMPRESSED_BUFFER);
-
-#ifndef PADDING
-    _count = 0;
-#else /* PADDING */
-    _count = SPACE_BOTTOM*FULL_WIDTH;
-
-    if ((SPACE_LEFT != 0) || (SPACE_RIGHT != 0)) {
-        int _line, _lastline;
-        for (_line = SPACE_BOTTOM, _lastline = FULL_HEIGHT-SPACE_TOP;
-             _line < _lastline; _line++) {
-            int _x = SPACE_LEFT;
-            int _lastx = FULL_WIDTH-SPACE_RIGHT;
-            _count += SPACE_LEFT;
-            while (ICET_TRUE) {
-                IceTUInt *_runlengths;
-                while ((_x < _lastx) && (!ACTIVE())) {
-                    _x++;
-                    _count++;
-                    INCREMENT_PIXEL();
-                }
-                if (_x >= _lastx) break;
-                _runlengths = _dest++;
-                while (_count > 0xFFFF) {
-                    INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
-                    ACTIVE_RUN_LENGTH(_runlengths) = 0;
-#ifdef DEBUG
-                    _totalcount += 0xFFFF;
-#endif
-                    _count -= 0xFFFF;
-                    _runlengths = _dest++;
-                }
-                INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
-#ifdef DEBUG
-                _totalcount += _count;
-#endif
-                _count = 0;
-                while ((_x < _lastx) && ACTIVE() && (_count < 0xFFFF)) {
-                    WRITE_PIXEL(_dest);
-                    INCREMENT_PIXEL();
-                    _count++;
-                    _x++;
-                }
-                ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
-#ifdef DEBUG
-                _totalcount += _count;
-#endif
-                _count = 0;
-                if (_x >= _lastx) break;
-            }
-            _count += SPACE_RIGHT;
-        }
-    } else { /* SPACE_LEFT == SPACE_RIGHT == 0 */
-        _pixels = (FULL_HEIGHT-SPACE_BOTTOM-SPACE_TOP)*FULL_WIDTH;
-#endif /* PADDING */
-
-        _p = 0;
-        while (_p < _pixels) {
-            IceTUInt *_runlengths = _dest++;
-          /* Count background pixels. */
-            while ((_p < _pixels) && (!ACTIVE())) {
-                _p++;
-                _count++;
-                INCREMENT_PIXEL();
-            }
-            while (_count > 0xFFFF) {
-                INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
-                ACTIVE_RUN_LENGTH(_runlengths) = 0;
-#ifdef DEBUG
-                _totalcount += 0xFFFF;
-#endif
-                _count -= 0xFFFF;
-                _runlengths = _dest++;
-            }
-            INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
-#ifdef DEBUG
-            _totalcount += _count;
+#ifdef PIXEL_COUNT
+    _pixel_count = PIXEL_COUNT;
+#else
+    _pixel_count = icetImageGetSize(INPUT_IMAGE);
 #endif
 
-          /* Count and store active pixels. */
-            _count = 0;
-            while ((_p < _pixels) && ACTIVE() && (_count < 0xFFFF)) {
-                WRITE_PIXEL(_dest);
-                INCREMENT_PIXEL();
-                _count++;
-                _p++;
-            }
-            ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
-#ifdef DEBUG
-            _totalcount += _count;
+    if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+      /* Use Z buffer for active pixel testing. */
+        IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
+#ifdef OFFSET
+        _depth += OFFSET;
 #endif
-
-            _count = 0;
-        }
+        if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUInt *_color;
+            IceTUInt *_c_out;
+            IceTFloat *_d_out;
+            _color = icetImageGetColorUInt(imageBuffer);
+#ifdef OFFSET
+            _color += OFFSET;
+#endif
+#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (_depth[0] < 1.0)
+#define CT_WRITE_PIXEL(dest)    _c_out = (IceTUInt *)dest;      \
+                                _c_out[0] = _color[0];          \
+                                dest += sizeof(IceTUInt);       \
+                                _d_out = (IceTFloat *)dest;     \
+                                _d_out[0] = _depth[0];          \
+                                dest += sizeof(IceTFloat);
+#define CT_INCREMENT_PIXEL()    _color++;  _depth++;
 #ifdef PADDING
-    }
-
-    _count += SPACE_TOP*FULL_WIDTH;
-    if (_count > 0) {
-        while (_count > 0xFFFF) {
-            INACTIVE_RUN_LENGTH(_dest) = 0xFFFF;
-            ACTIVE_RUN_LENGTH(_dest) = 0;
-            _dest++;
-#ifdef DEBUG
-            _totalcount += 0xFFFF;
-#endif /*DEBUG*/
-            _count -= 0xFFFF;
-        }
-        INACTIVE_RUN_LENGTH(_dest) = (IceTUShort)_count;
-        ACTIVE_RUN_LENGTH(_dest) = 0;
-        _dest++;
-#ifdef DEBUG
-        _totalcount += _count;
-#endif /*DEBUG*/
-    }
-#endif /*PADDING*/
-
-#ifdef DEBUG
-    if (_totalcount != (IceTUInt)PIXEL_COUNT) {
-        char msg[256];
-        sprintf(msg, "Total run lengths don't equal pixel count: %d != %d",
-                (int)_totalcount, (int)(PIXEL_COUNT));
-        icetRaiseError(msg, ICET_SANITY_CHECK_FAIL);
-    }
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
+#include "compress_template_body.h"
+        } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            IceTFloat *_color;
+            IceTFloat *_out;
+            _color = icetImageGetColorFloat(imageBuffer);
+#ifdef OFFSET
+            _color += 4*(OFFSET);
+#endif
+#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (_depth[0] < 1.0)
+#define CT_WRITE_PIXEL(dest)    _out = (IceTFloat *)dest;       \
+                                _out[0] = _color[0];            \
+                                _out[1] = _color[1];            \
+                                _out[2] = _color[2];            \
+                                _out[3] = _color[3];            \
+                                _out[4] = _depth[0];            \
+                                dest += 5*sizeof(IceTFloat);
+#define CT_INCREMENT_PIXEL()    _color += 4;  _depth++;
+#ifdef PADDING
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
+#endif
+#include "compress_template_body.h"
+        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
+            IceTFloat *_out;
+#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (_depth[0] < 1.0)
+#define CT_WRITE_PIXEL(dest)    _out = (IceTFloat *)dest;       \
+                                _out[0] = _depth[0];            \
+                                dest += 1*sizeof(IceTFloat);
+#define CT_INCREMENT_PIXEL()    _depth++;
+#ifdef PADDING
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
+#endif
+#include "compress_template_body.h"
+        }
+    } else /* _depth_format == ICET_IMAGE_DEPTH_NONE */ {
+      /* No Z buffer.  Use alpha for active pixel testing. */
+        if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUInt *_color;
+            IceTUInt *_out;
+            _color = icetImageGetColorUInt(imageBuffer);
+#ifdef OFFSET
+            _color += OFFSET;
+#endif
+#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (((IceTUByte*)_color)[3] != 0x00)
+#define CT_WRITE_PIXEL(dest)    _out = (IceTUInt *)dest;        \
+                                _out[0] = _color[0];            \
+                                dest += sizeof(IceTUInt);
+#define CT_INCREMENT_PIXEL()    _color++;
+#ifdef PADDING
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
+#endif
+#include "compress_template_body.h"
+        } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            IceTFloat *_color;
+            IceTFloat *_out;
+            _color = icetImageGetColorFloat(imageBuffer);
+#ifdef OFFSET
+            _color += 4*(OFFSET);
+#endif
+#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (_color[3] != 0.0)
+#define CT_WRITE_PIXEL(dest)    _out = (IceTFloat *)dest;       \
+                                _out[0] = _color[0];            \
+                                _out[1] = _color[1];            \
+                                _out[2] = _color[2];            \
+                                _out[3] = _color[3];            \
+                                dest += 4*sizeof(IceTUInt);
+#define CT_INCREMENT_PIXEL()    _color += 4;
+#ifdef PADDING
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
+#endif
+#include "compress_template_body.h"
+        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
+            IceTUInt *_out;
+            IceTSizeType _runlength;
+            icetRaiseWarning("Compressing image with no data.",
+                             ICET_INVALID_OPERATION);
+            icetSparseImageInitialize(OUTPUT_SPARSE_IMAGE,
+                                      _color_format, _depth_format,
+                                      _pixel_count);
+            _out = ICET_IMAGE_DATA(OUTPUT_SPARSE_IMAGE);
+            _runlength = _pixel_count;
+            while (_runlength > 0xFFFF) {
+                INACTIVE_RUN_LENGTH(_out) = 0xFFFF;
+                ACTIVE_RUN_LENGTH(_out) = 0;
+                _out++;
+                _runlength -= 0xFFFF;
+            }
+            INACTIVE_RUN_LENGTH(_out) = _runlength;
+            ACTIVE_RUN_LENGTH(_out) = 0;
+            _out++;
+            ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+                = (IceTSizeType)(  (IceTPointerArithmetic)_out
+                                 - (IceTPointerArithmetic)(OUTPUT_SPARSE_IMAGE));
+        }
+    }
 
-    *_compress_time += icetWallTime() - _timer;
-
-    _compressed_size
-        = (IceTSizeType)(  (IceTPointerArithmetic)_dest
-                         - (IceTPointerArithmetic)COMPRESSED_BUFFER);
-    ICET_IMAGE_HEADER(COMPRESSED_BUFFER)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-        = _compressed_size;
+    icetRaiseDebug1("Compression: %d%%\n",
+        100 - (  100*icetSparseImageGetCompressedBufferSize(OUTPUT_SPARSE_IMAGE)
+               / icetImageBufferSize(_color_format, _depth_format, _pixel_count) ));
 }
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
-#undef COMPRESSED_BUFFER
-#undef COLOR_FORMAT
-#undef DEPTH_FORMAT
-#undef PIXEL_COUNT
-#undef ACTIVE
-#undef WRITE_PIXEL
-#undef INCREMENT_PIXEL
-#undef COMPRESSED_SIZE
+#undef INPUT_IMAGE
+#undef OUTPUT_SPARSE_IMAGE
 
 #ifdef PADDING
 #undef PADDING
@@ -241,4 +244,12 @@
 #undef SPACE_RIGHT
 #undef FULL_WIDTH
 #undef FULL_HEIGHT
+#endif
+
+#ifdef OFFSET
+#undef OFFSET
+#endif
+
+#ifdef PIXEL_COUNT
+#undef PIXEL_COUNT
 #endif
