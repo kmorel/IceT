@@ -14,7 +14,7 @@
 #include <IceT.h>
 #include "state.h"
 
-typedef IceTUInt *IceTSparseImage;
+typedef struct { IceTUnsignedInt32 opaque_internals; } *IceTSparseImage;
 
 ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
                                                    IceTEnum depth_format,

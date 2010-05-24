@@ -121,7 +121,7 @@ ICET_EXPORT int  icetAddTile(IceTInt x, IceTInt y,
 
 ICET_EXPORT void icetPhysicalRenderSize(IceTInt width, IceTInt height);
 
-typedef IceTVoid *IceTImage;
+typedef struct { IceTUnsignedInt32 opaque_internals; } *IceTImage;
 
 #define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
 #define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
