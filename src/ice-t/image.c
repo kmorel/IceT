@@ -551,69 +551,12 @@ IceTSizeType icetCompressSubImage(const IceTImage imageBuffer,
 IceTSizeType icetDecompressImage(const IceTSparseImage compressedBuffer,
                                  IceTImage imageBuffer)
 {
-    IceTUInt *color;
-    IceTUInt *depth;
-    IceTUInt background_color;
-    IceTUInt far_depth;
+#define INPUT_SPARSE_IMAGE      compressedBuffer
+#define OUTPUT_IMAGE            imageBuffer
+#define TIME_DECOMPRESSION
+#include "decompress_func_body.h"
 
-    switch (GET_MAGIC_NUM(compressedBuffer)) {
-      case SPARSE_IMAGE_CD_MAGIC_NUM:
-          icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
-                                  FULL_IMAGE_CD_MAGIC_NUM);
-          color = (IceTUInt *)icetGetImageColorBuffer(imageBuffer);
-          depth = icetGetImageDepthBuffer(imageBuffer);
-          icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
-                          (IceTInt *)&background_color);
-          far_depth = getFarDepth(NULL);
-#define COMPRESSED_BUFFER       compressedBuffer
-#define READ_PIXEL(src)         *color = *(src++);  *depth = *(src++);
-#define INCREMENT_PIXEL()       color++;  depth++;
-#define INCREMENT_INACTIVE_PIXELS(count)                \
-    for (_i = 0; _i < count; _i++) {                    \
-        *(color++) = background_color;                  \
-        *(depth++) = far_depth;                         \
-    }
-#define TIME_DECOMPRESSION
-#include "decompress_func_body.h"
-          break;
-      case SPARSE_IMAGE_C_MAGIC_NUM:
-          icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
-                                  FULL_IMAGE_C_MAGIC_NUM);
-          color = (IceTUInt *)icetGetImageColorBuffer(imageBuffer);
-          icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
-                          (IceTInt *)&background_color);
-#define COMPRESSED_BUFFER       compressedBuffer
-#define READ_PIXEL(src)         *color = *(src++);
-#define INCREMENT_PIXEL()       color++;
-#define INCREMENT_INACTIVE_PIXELS(count)                \
-    for (_i = 0; _i < count; _i++) {                    \
-        *(color++) = background_color;                  \
-    }
-#define TIME_DECOMPRESSION
-#include "decompress_func_body.h"
-          break;
-      case SPARSE_IMAGE_D_MAGIC_NUM:
-          icetInitializeImageType(imageBuffer,GET_PIXEL_COUNT(compressedBuffer),
-                                  FULL_IMAGE_D_MAGIC_NUM);
-          depth = icetGetImageDepthBuffer(imageBuffer);
-          far_depth = getFarDepth(NULL);
-#define COMPRESSED_BUFFER       compressedBuffer
-#define READ_PIXEL(src)         *depth = *(src++);
-#define INCREMENT_PIXEL()       depth++;
-#define INCREMENT_INACTIVE_PIXELS(count)                \
-    for (_i = 0; _i < count; _i++) {                    \
-        *(depth++) = far_depth;                         \
-    }
-#define TIME_DECOMPRESSION
-#include "decompress_func_body.h"
-          break;
-      default:
-          icetRaiseError("Tried to decompress something not compressed.",
-                         ICET_INVALID_VALUE);
-          return 0;
-    }
-
-    return GET_PIXEL_COUNT(imageBuffer);
+    return icetImageGetSize(imageBuffer);
 }
 
 

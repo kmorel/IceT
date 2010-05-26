@@ -42,7 +42,7 @@
 #error Need INACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 #ifndef ACTIVE_RUN_LENGTH
-#error Need CT_ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
+#error Need ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 
 {
@@ -60,15 +60,15 @@
 
     if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
       /* Use Z buffer for active pixel testing. */
-        IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
+        const IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
 #ifdef OFFSET
         _depth += OFFSET;
 #endif
         if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *_color;
+            const IceTUInt *_color;
             IceTUInt *_c_out;
             IceTFloat *_d_out;
-            _color = icetImageGetColorUInt(imageBuffer);
+            _color = icetImageGetColorUInt(INPUT_IMAGE);
 #ifdef OFFSET
             _color += OFFSET;
 #endif
@@ -95,9 +95,9 @@
 #endif
 #include "compress_template_body.h"
         } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *_color;
+            const IceTFloat *_color;
             IceTFloat *_out;
-            _color = icetImageGetColorFloat(imageBuffer);
+            _color = icetImageGetColorFloat(INPUT_IMAGE);
 #ifdef OFFSET
             _color += 4*(OFFSET);
 #endif
@@ -149,9 +149,9 @@
     } else /* _depth_format == ICET_IMAGE_DEPTH_NONE */ {
       /* No Z buffer.  Use alpha for active pixel testing. */
         if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *_color;
+            const IceTUInt *_color;
             IceTUInt *_out;
-            _color = icetImageGetColorUInt(imageBuffer);
+            _color = icetImageGetColorUInt(INPUT_IMAGE);
 #ifdef OFFSET
             _color += OFFSET;
 #endif
@@ -175,9 +175,9 @@
 #endif
 #include "compress_template_body.h"
         } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *_color;
+            const IceTFloat *_color;
             IceTFloat *_out;
-            _color = icetImageGetColorFloat(imageBuffer);
+            _color = icetImageGetColorFloat(INPUT_IMAGE);
 #ifdef OFFSET
             _color += 4*(OFFSET);
 #endif

@@ -56,7 +56,7 @@
 #error Need INACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 #ifndef ACTIVE_RUN_LENGTH
-#error Need CT_ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
+#error Need ACTIVE_RUN_LENGTH macro.  Is this included in image.c?
 #endif
 #ifndef RUN_LENGTH_SIZE
 #error Need RUN_LENGTH_SIZE macro.  Is this included in image.c?
