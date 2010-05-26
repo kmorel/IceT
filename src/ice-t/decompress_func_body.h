@@ -32,6 +32,13 @@
  *                      values.
  *              BLEND_RGBA_FLOAT(src, dest) - same as above except src and dest
  *                      are IceTFloat arrays.
+ *      OFFSET - If defined to a number (or variable holding a number), skips
+ *              that many pixels at the beginning of the image.  This probably
+ *              only makes sense when COMPOSITE is on.
+ *      PIXEL_COUNT - If defined to a number (or a variable holding a number),
+ *              uses this as the size of the image rather than the actual size
+ *              defined in the image.  This should be defined if OFFSET is
+ *              defined.
  *
  * All of the above macros are undefined at the end of this file.
  */
@@ -67,7 +74,12 @@
 #ifdef COMPOSITE
     if (   (_color_format != icetImageGetColorFormat(OUTPUT_IMAGE))
         || (_depth_format != icetImageGetDepthFormat(OUTPUT_IMAGE))
-        || (_pixel_count  != ietImageGetSize(OUTPUT_IMAGE)) )
+#ifdef PIXEL_COUNT
+        || (_pixel_count  != PIXEL_COUNT)
+#else
+        || (_pixel_count  != icetImageGetSize(OUTPUT_IMAGE))
+#endif
+           )
     {
         icetRaiseError("Input/output buffers do not agree for decompression.",
                        ICET_SANITY_CHECK_FAIL);
@@ -82,12 +94,18 @@
     if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
       /* Use Z buffer for active pixel testing and compositing. */
         IceTFloat *_depth = icetImageGetDepthFloat(OUTPUT_IMAGE);
+#ifdef OFFSET
+        _depth += OFFSET;
+#endif
         if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             IceTUInt *_color;
             const IceTUInt *_c_in;
             const IceTFloat *_d_in;
             IceTUInt _background_color;
             _color = icetImageGetColorUInt(OUTPUT_IMAGE);
+#ifdef OFFSET
+            _color += OFFSET;
+#endif
             icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
                             (IceTInt *)&_background_color);
 #ifdef COMPOSITE
@@ -125,6 +143,9 @@
             const IceTFloat *_d_in;
             IceTFloat _background_color[4];
             _color = icetImageGetColorFloat(OUTPUT_IMAGE);
+#ifdef OFFSET
+            _color += 4*(OFFSET);
+#endif
             icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
 #ifdef COMPOSITE
 #define COPY_PIXEL(c_src, c_dest, d_src, d_dest)                \
@@ -197,6 +218,9 @@
             const IceTUInt *_c_in;
             IceTUInt _background_color;
             _color = icetImageGetColorUInt(OUTPUT_IMAGE);
+#ifdef OFFSET
+            _color += OFFSET;
+#endif
             icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
                             (IceTInt *)&_background_color);
 #ifdef COMPOSITE
@@ -225,6 +249,9 @@
             const IceTFloat *_c_in;
             IceTFloat _background_color[4];
             _color = icetImageGetColorFloat(OUTPUT_IMAGE);
+#ifdef OFFSET
+            _color += 4*(OFFSET);
+#endif
             icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
 #ifdef COMPOSITE
 #define COPY_PIXEL(c_src, c_dest) BLEND_RGBA_FLOAT(c_src, c_dest);
@@ -274,4 +301,12 @@
 #undef COMPOSITE
 #undef BLEND_RGBA_UBYTE
 #undef BLEND_RGBA_FLOAT
+#endif
+
+#ifdef OFFSET
+#undef OFFSET
+#endif
+
+#ifdef PIXEL_COUNT
+#undef PIXEL_COUNT
 #endif

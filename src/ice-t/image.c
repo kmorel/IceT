@@ -663,7 +663,7 @@ void icetCompressedComposite(IceTImage destBuffer,
                              const IceTSparseImage srcBuffer,
                              int srcOnTop)
 {
-    icetCompressedSubComposite(destBuffer, 0, GET_PIXEL_COUNT(destBuffer),
+    icetCompressedSubComposite(destBuffer, 0, icetImageGetSize(destBuffer),
                                srcBuffer, srcOnTop);
 }
 void icetCompressedSubComposite(IceTImage destBuffer,
@@ -671,78 +671,30 @@ void icetCompressedSubComposite(IceTImage destBuffer,
                                 const IceTSparseImage srcBuffer,
                                 int srcOnTop)
 {
-    IceTUInt *destColor;
-    IceTUInt *destDepth;
     IceTDouble timer;
     IceTDouble *compare_time;
 
     compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
     timer = icetWallTime();
 
-    if (   (GET_MAGIC_NUM(srcBuffer) ^ SPARSE_IMAGE_BASE_MAGIC_NUM)
-        != (GET_MAGIC_NUM(destBuffer) ^ FULL_IMAGE_BASE_MAGIC_NUM) ) {
-        icetRaiseError("Source and destination buffer types do not match.",
-                       ICET_INVALID_VALUE);
-        return;
-    }
-    if (pixels != GET_PIXEL_COUNT(srcBuffer)) {
-        icetRaiseError("Sizes of src and dest do not agree.",
-                       ICET_SANITY_CHECK_FAIL);
-        return;
-    }
-
-    destColor = (IceTUInt *)icetGetImageColorBuffer(destBuffer) + offset;
-    destDepth = icetGetImageDepthBuffer(destBuffer) + offset;
-
-    switch (GET_MAGIC_NUM(srcBuffer)) {
-      case SPARSE_IMAGE_CD_MAGIC_NUM:
-#define COMPRESSED_BUFFER       srcBuffer
-#define READ_PIXEL(src)                                 \
-    if (src[1] < *destDepth) {                          \
-        *destColor = src[0];                            \
-        *destDepth = src[1];                            \
-    }                                                   \
-    src += 2;
-#define INCREMENT_PIXEL()       destColor++;  destDepth++;
-#define INCREMENT_INACTIVE_PIXELS(count) destColor += count; destDepth += count;
+    if (srcOnTop) {
+#define INPUT_SPARSE_IMAGE      srcBuffer
+#define OUTPUT_IMAGE            destBuffer
+#define OFFSET                  offset
+#define PIXEL_COUNT             pixels
+#define COMPOSITE
+#define BLEND_RGBA_UBYTE        ICET_OVER_UBYTE
+#define BLEND_RGBA_FLOAT        ICET_OVER_FLOAT
 #include "decompress_func_body.h"
-          break;
-      case SPARSE_IMAGE_D_MAGIC_NUM:
-#define COMPRESSED_BUFFER       srcBuffer
-#define READ_PIXEL(src)                                 \
-    if (src[0] < *destDepth) {                          \
-        *destDepth = src[0];                            \
-    }                                                   \
-    src += 1;
-#define INCREMENT_PIXEL()       destDepth++;
-#define INCREMENT_INACTIVE_PIXELS(count) destDepth += count;
+    } else {
+#define INPUT_SPARSE_IMAGE      srcBuffer
+#define OUTPUT_IMAGE            destBuffer
+#define OFFSET                  offset
+#define PIXEL_COUNT             pixels
+#define COMPOSITE
+#define BLEND_RGBA_UBYTE        ICET_UNDER_UBYTE
+#define BLEND_RGBA_FLOAT        ICET_UNDER_FLOAT
 #include "decompress_func_body.h"
-          break;
-      case SPARSE_IMAGE_C_MAGIC_NUM:
-          if (srcOnTop) {
-#define COMPRESSED_BUFFER       srcBuffer
-#define READ_PIXEL(srcColor)                                            \
-    {                                                                   \
-      /* The blending should probably be more flexible. */              \
-        ICET_OVER((IceTUByte *)(srcColor), (IceTUByte *)(destColor));       \
-    }                                                                   \
-    srcColor += 1;
-#define INCREMENT_PIXEL()       destColor++;
-#define INCREMENT_INACTIVE_PIXELS(count) destColor += count;
-#include "decompress_func_body.h"
-          } else {
-#define COMPRESSED_BUFFER       srcBuffer
-#define READ_PIXEL(srcColor)                                            \
-    {                                                                   \
-      /* The blending should probably be more flexible. */              \
-        ICET_UNDER((IceTUByte *)(srcColor), (IceTUByte *)(destColor));      \
-    }                                                                   \
-    srcColor += 1;
-#define INCREMENT_PIXEL()       destColor++;
-#define INCREMENT_INACTIVE_PIXELS(count) destColor += count;
-#include "decompress_func_body.h"
-          }
-          break;
     }
 }
 
