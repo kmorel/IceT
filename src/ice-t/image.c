@@ -82,7 +82,7 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
 /* Gets a static image buffer that is shared amongst all contexts (and
  * therefore not thread safe.  The buffer is resized as necessary. */
 static void getBuffers(IceTEnum color_format, IceTEnum depth_format,
-                       IceTUInt pixels, IceTImage *bufferp);
+                       IceTSizeType pixels, IceTImage *bufferp);
 /* Releases use of the buffers retreived with getBuffers.  Currently does
  * nothing as thread safty is not ensured. */
 static void releaseBuffers(void);
@@ -714,8 +714,6 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     IceTVoid *value;
     IceTDouble render_time;
     IceTDouble timer;
-    IceTUInt far_depth;
-    IceTInt readBuffer;
 
     icetRaiseDebug1("Rendering tile %d", tile);
     contained_viewport = icetUnsafeStateGetInteger(ICET_CONTAINED_VIEWPORT);
@@ -875,21 +873,6 @@ static void renderTile(int tile, IceTInt *screen_viewport,
   /* Now we can actually start to render an image. */
     glMatrixMode(GL_MODELVIEW);
 
-  /* This is a good place to check the far depth since we have been asked
-     to draw in the current OpenGL context. */
-    icetRaiseDebug("Checking depth.");
-    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
-    if (far_depth == 1) {       /* An unlikely initial value. */
-        icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
-        glReadBuffer(readBuffer);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glFlush();
-        glReadPixels(0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
-                     &far_depth);
-        icetRaiseDebug1("Setting far depth to 0x%X", (unsigned int)far_depth);
-        icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, far_depth);
-    }
-
   /* Draw the geometry. */
     icetRaiseDebug("Getting callback.");
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
@@ -922,11 +905,10 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     IceTDouble *read_time;
     IceTDouble timer;
     IceTUByte *colorBuffer;
-    IceTUInt *depthBuffer;
+    IceTFloat *depthBuffer;
     IceTInt physical_viewport[4];
     IceTInt x_offset, y_offset;
     IceTUInt background_color;
-    IceTUInt far_depth;
     IceTInt x, y;
 
     icetRaiseDebug4("Reading viewport %d %d %d %d", (int)fb_x, (int)fb_y,
@@ -936,19 +918,22 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                     (int)full_width, (int)full_height);
 
 #ifdef DEBUG
-    if (   (GET_MAGIC_NUM(buffer) & FULL_IMAGE_BASE_MAGIC_NUM)
-        != FULL_IMAGE_BASE_MAGIC_NUM) {
+    if (   (ICET_IMAGE_HEADER(buffer)[ICET_IMAGE_MAGIC_NUM_INDEX])
+        != ICET_IMAGE_MAGIC_NUM ) {
         icetRaiseError("Buffer magic number not set.", ICET_SANITY_CHECK_FAIL);
         return;
     }
-    if (GET_PIXEL_COUNT(buffer) != (IceTUInt)(full_width*full_height)) {
+    if (icetImageGetSize(buffer) != (IceTSizeType)(full_width*full_height)) {
         icetRaiseError("Buffer size was not set.", ICET_SANITY_CHECK_FAIL);
         return;
     }
 #endif /* DEBUG */
 
-    colorBuffer = icetGetImageColorBuffer(buffer);
-    depthBuffer = icetGetImageDepthBuffer(buffer);
+  /* TODO: Handle different color formats.  Do this when moving this to
+     the OpenGL layer.  Note, you will get errors when one of the buffers
+     does not exist, but it should still work. */
+    colorBuffer = icetImageGetColorUByte(buffer);
+    depthBuffer = icetImageGetDepthFloat(buffer);
 
     glPixelStorei(GL_PACK_ROW_LENGTH, full_width);
 
@@ -1006,21 +991,20 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     }
     if (depthBuffer != NULL) {
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
+                     GL_DEPTH_COMPONENT, GL_FLOAT,
                      depthBuffer + ib_x + full_width*ib_y);
 
-        far_depth = getFarDepth(NULL);
       /* Clear out bottom. */
         for (y = 0; y < ib_y; y++) {
             for (x = 0; x < full_width; x++) {
-                depthBuffer[y*full_width + x] = far_depth;
+                depthBuffer[y*full_width + x] = 1.0;
             }
         }
       /* Clear out left. */
         if (ib_x > 0) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = 0; x < ib_x; x++) {
-                    depthBuffer[y*full_width + x] = far_depth;
+                    depthBuffer[y*full_width + x] = 1.0;
                 }
             }
         }
@@ -1028,14 +1012,14 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
         if (ib_x + sub_width < full_width) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = ib_x+sub_width; x < full_width; x++) {
-                    depthBuffer[y*full_width + x] = far_depth;
+                    depthBuffer[y*full_width + x] = 1.0;
                 }
             }
         }
       /* Clear out top. */
         for (y = ib_y+sub_height; y < full_height; y++) {
             for (x = 0; x < full_width; x++) {
-                depthBuffer[y*full_width + x] = far_depth;
+                depthBuffer[y*full_width + x] = 1.0;
             }
         }
     }
@@ -1047,30 +1031,15 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
   /* glPixelStorei(GL_PACK_SKIP_ROWS, 0); */
 }
 
-static IceTUInt getFarDepth(const IceTUInt *depthBuffer)
-{
-    IceTUInt far_depth;
-
-    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (IceTInt *)&far_depth);
-    if ((depthBuffer != NULL) && (depthBuffer[0] > far_depth)) {
-        icetRaiseDebug("Far depth failed sanity check, resetting.");
-        icetRaiseDebug2("Old value: 0x%x,  New value: 0x%x",
-                        (unsigned int)far_depth, (unsigned int)depthBuffer[0]);
-        far_depth = depthBuffer[0];
-        icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, far_depth);
-    }
-    icetRaiseDebug1("Using far depth of 0x%x", (unsigned int)far_depth);
-
-    return far_depth;
-}
-
 /* Currently not thread safe. */
-static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp)
+static void getBuffers(IceTEnum color_format, IceTEnum depth_format,
+                       IceTSizeType pixels, IceTImage *bufferp)
 {
     static IceTImage buffer = NULL;
-    static IceTUInt bufferSize = 0;
+    static IceTSizeType bufferSize = 0;
 
-    IceTUInt newBufferSize = icetFullImageTypeSize(pixels, type);
+    IceTSizeType newBufferSize = icetImageBufferSize(color_format, depth_format,
+                                                     pixels);
 
     if (newBufferSize > bufferSize) {
         free(buffer);
@@ -1083,9 +1052,8 @@ static void getBuffers(IceTUInt type, IceTUInt pixels, IceTImage *bufferp)
         }
     }
 
-    icetInitializeImage(buffer, pixels);
-
     *bufferp = buffer;
+    icetImageInitialize(*bufferp, color_format, depth_format, pixels);
 }
 
 static void releaseBuffers(void)
