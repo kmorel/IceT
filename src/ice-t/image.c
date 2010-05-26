@@ -563,64 +563,96 @@ IceTSizeType icetDecompressImage(const IceTSparseImage compressedBuffer,
 void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                    int srcOnTop)
 {
-    IceTUInt *destColorBuffer;
-    IceTUInt *destDepthBuffer;
-    const IceTUInt *srcColorBuffer;
-    const IceTUInt *srcDepthBuffer;
-    IceTUInt pixels;
-    IceTUInt i;
+    IceTSizeType pixels;
+    IceTSizeType i;
+    IceTEnum color_format, depth_format;
     IceTDouble timer;
     IceTDouble *compare_time;
 
-    pixels = GET_PIXEL_COUNT(destBuffer);
-    if (pixels != GET_PIXEL_COUNT(srcBuffer)) {
+    pixels = icetImageGetSize(destBuffer);
+    if (pixels != icetImageGetSize(srcBuffer)) {
         icetRaiseError("Source and destination sizes don't match.",
                        ICET_SANITY_CHECK_FAIL);
         return;
     }
 
-    if (GET_MAGIC_NUM(destBuffer) != GET_MAGIC_NUM(srcBuffer)) {
+    color_format = icetImageGetColorFormat(destBuffer);
+    depth_format = icetImageGetDepthFormat(destBuffer);
+
+    if (   (color_format != icetImageGetColorFormat(srcBuffer))
+        || (depth_format != icetImageGetDepthFormat(srcBuffer)) ) {
         icetRaiseError("Source and destination types don't match.",
                        ICET_SANITY_CHECK_FAIL);
         return;
     }
 
-    destColorBuffer = (IceTUInt *)icetGetImageColorBuffer(destBuffer);
-    destDepthBuffer = icetGetImageDepthBuffer(destBuffer);
-    srcColorBuffer =(IceTUInt *)icetGetImageColorBuffer((IceTImage)srcBuffer);
-    srcDepthBuffer = icetGetImageDepthBuffer((IceTImage)srcBuffer);
-
     compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
     timer = icetWallTime();
 
-    if (srcDepthBuffer) {
-        if (srcColorBuffer) {
+    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+        const IceTFloat *srcDepthBuffer = icetImageGetDepthFloat(srcBuffer);
+        IceTFloat *destDepthBuffer = icetImageGetDepthFloat(destBuffer);
+
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            const IceTUInt *srcColorBuffer = icetImageGetColorUInt(srcBuffer);
+            IceTUInt *destColorBuffer = icetImageGetColorUInt(destBuffer);
             for (i = 0; i < pixels; i++) {
                 if (srcDepthBuffer[i] < destDepthBuffer[i]) {
                     destDepthBuffer[i] = srcDepthBuffer[i];
                     destColorBuffer[i] = srcColorBuffer[i];
                 }
             }
-        } else {
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            const IceTFloat *srcColorBuffer = icetImageGetColorFloat(srcBuffer);
+            IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
+            for (i = 0; i < pixels; i++) {
+                if (srcDepthBuffer[i] < destDepthBuffer[i]) {
+                    destDepthBuffer[i] = srcDepthBuffer[i];
+                    destColorBuffer[4*i+0] = srcColorBuffer[4*i+0];
+                    destColorBuffer[4*i+1] = srcColorBuffer[4*i+1];
+                    destColorBuffer[4*i+2] = srcColorBuffer[4*i+2];
+                    destColorBuffer[4*i+3] = srcColorBuffer[4*i+3];
+                }
+            }
+        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
             for (i = 0; i < pixels; i++) {
                 if (srcDepthBuffer[i] < destDepthBuffer[i]) {
                     destDepthBuffer[i] = srcDepthBuffer[i];
                 }
             }
         }
-    } else {
-        if (srcOnTop) {
-            for (i = 0; i < pixels; i++) {
-              /* The blending should probably be more flexible. */
-                ICET_OVER((IceTUByte *)(&srcColorBuffer[i]),
-                          (IceTUByte *)(&destColorBuffer[i]));
+    } else /* depth_format == ICET_IMAGE_DEPTH_NONE */ {
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            const IceTUByte *srcColorBuffer = icetImageGetColorUByte(srcBuffer);
+            IceTUByte *destColorBuffer = icetImageGetColorUByte(destBuffer);
+            if (srcOnTop) {
+                for (i = 0; i < pixels; i++) {
+                    ICET_OVER_UBYTE(srcColorBuffer + i*4,
+                                    destColorBuffer + i*4);
+                }
+            } else {
+                for (i = 0; i < pixels; i++) {
+                    ICET_UNDER_UBYTE(srcColorBuffer + i*4,
+                                     destColorBuffer + i*4);
+                }
             }
-        } else {
-            for (i = 0; i < pixels; i++) {
-              /* The blending should probably be more flexible. */
-                ICET_UNDER((IceTUByte *)(&srcColorBuffer[i]),
-                           (IceTUByte *)(&destColorBuffer[i]));
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            const IceTFloat *srcColorBuffer = icetImageGetColorFloat(srcBuffer);
+            IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
+            if (srcOnTop) {
+                for (i = 0; i < pixels; i++) {
+                    ICET_OVER_FLOAT(srcColorBuffer + i*4,
+                                    destColorBuffer + i*4);
+                }
+            } else {
+                for (i = 0; i < pixels; i++) {
+                    ICET_UNDER_FLOAT(srcColorBuffer + i*4,
+                                     destColorBuffer + i*4);
+                }
             }
+        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
+            icetRaiseWarning("Compositing image with no data.",
+                             ICET_INVALID_OPERATION);
         }
     }
 
