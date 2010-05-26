@@ -228,9 +228,9 @@
         }
     }
 
-    icetRaiseDebug1("Compression: %d%%\n",
-        100 - (  100*icetSparseImageGetCompressedBufferSize(OUTPUT_SPARSE_IMAGE)
-               / icetImageBufferSize(_color_format, _depth_format, _pixel_count) ));
+    icetRaiseDebug1("Compression: %f%%\n",
+        100.0f - (  100.0f*icetSparseImageGetCompressedBufferSize(OUTPUT_SPARSE_IMAGE)
+                  / icetImageBufferSize(_color_format, _depth_format, _pixel_count) ));
 }
 
 #undef INPUT_IMAGE

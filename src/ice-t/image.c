@@ -548,8 +548,8 @@ IceTSizeType icetCompressSubImage(const IceTImage imageBuffer,
     return icetSparseImageGetCompressedBufferSize(compressedBuffer);
 }
 
-IceTUInt icetDecompressImage(const IceTSparseImage compressedBuffer,
-                             IceTImage imageBuffer)
+IceTSizeType icetDecompressImage(const IceTSparseImage compressedBuffer,
+                                 IceTImage imageBuffer)
 {
     IceTUInt *color;
     IceTUInt *depth;
