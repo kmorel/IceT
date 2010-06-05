@@ -27,6 +27,18 @@ ICET_IMAGE_COLOR_* and ICET_IMAGE_DEPTH_* enumerations.  It also includes
 adding the functions icetImageBufferSize, icetImageInitialize, and
 icetImageGet*.
 
+Changed the IceTImage object from simply being a pointer to being a struct
+with opaque internals.  This provides several safety features.  First, it
+makes it a compile error to try to assign pretty much anything to an
+IceTImage that is not an IceTImage (and likewise for IceTSparseImage).
+Second, it decouples the idea of a buffer and an image so the two don't get
+mixed up.  Third, the icetImageInitialize now takes a buffer and returns an
+image object (likewise for sparse), so there is never any question about
+the initialization state.  It is either allocated and completely
+initialized or it is not.  Fourth, this also helps encourage me to build
+functions that take responsibility for "creating" images.  It can input a
+buffer and output an image.
+
 Changed icetDrawFrame to return an IceTImage.
 
 Removed icetGetColorBuffer and icetGetDepthBuffer functions.  Also removed

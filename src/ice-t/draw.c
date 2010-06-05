@@ -382,7 +382,8 @@ IceTImage icetDrawFrame(void)
     icetGetBooleanv(ICET_IS_DRAWING_FRAME, &isDrawing);
     if (isDrawing) {
         icetRaiseError("Recursive frame draw detected.",ICET_INVALID_OPERATION);
-        return NULL;
+        return icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
+                                   ICET_IMAGE_DEPTH_NONE, 0);
     }
 
     icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
@@ -661,13 +662,15 @@ IceTImage icetDrawFrame(void)
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     if (value == NULL) {
         icetRaiseError("Drawing function not set.", ICET_INVALID_OPERATION);
-        return NULL;
+        return icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
+                                   ICET_IMAGE_DEPTH_NONE, 0);
     }
     icetRaiseDebug("Calling strategy.compose");
     icetGetPointerv(ICET_STRATEGY_COMPOSE, &value);
     if (value == NULL) {
         icetRaiseError("Strategy not set.", ICET_INVALID_OPERATION);
-        return NULL;
+        return icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
+                                   ICET_IMAGE_DEPTH_NONE, 0);
     }
     strategy.compose = (IceTImage (*)(void))value;
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 1);

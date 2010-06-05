@@ -121,7 +121,7 @@ ICET_EXPORT int  icetAddTile(IceTInt x, IceTInt y,
 
 ICET_EXPORT void icetPhysicalRenderSize(IceTInt width, IceTInt height);
 
-typedef struct { IceTUnsignedInt32 opaque_internals; } *IceTImage;
+typedef struct { IceTVoid *opaque_internals; } IceTImage;
 
 #define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
 #define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
@@ -133,24 +133,24 @@ typedef struct { IceTUnsignedInt32 opaque_internals; } *IceTImage;
 ICET_EXPORT IceTSizeType icetImageBufferSize(IceTEnum color_format,
                                              IceTEnum depth_format,
                                              IceTSizeType num_pixels);
-ICET_EXPORT void icetImageInitialize(IceTImage image_buffer,
-                                     IceTEnum color_format,
-                                     IceTEnum depth_format,
-                                     IceTSizeType num_pixels);
-ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image_buffer);
-ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image_buffer);
-ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image_buffer);
-ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image_buffer);
-ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image_buffer);
-ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image_buffer);
-ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image_buffer);
-ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image_buffer,
+ICET_EXPORT IceTImage icetImageInitialize(IceTVoid *buffer,
+                                          IceTEnum color_format,
+                                          IceTEnum depth_format,
+                                          IceTSizeType num_pixels);
+ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image);
+ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
+ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image);
+ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image);
+ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image);
+ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image,
                                          IceTUByte *color_buffer,
                                          IceTEnum color_format);
-ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image_buffer,
+ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image,
                                          IceTFloat *color_buffer,
                                          IceTEnum color_format);
-ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image_buffer,
+ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
                                          IceTFloat *depth_buffer,
                                          IceTEnum depth_format);
 

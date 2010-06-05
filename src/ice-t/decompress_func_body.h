@@ -71,7 +71,6 @@
     _depth_format = icetSparseImageGetDepthFormat(INPUT_SPARSE_IMAGE);
     _pixel_count = icetSparseImageGetSize(INPUT_SPARSE_IMAGE);
 
-#ifdef COMPOSITE
     if (   (_color_format != icetImageGetColorFormat(OUTPUT_IMAGE))
         || (_depth_format != icetImageGetDepthFormat(OUTPUT_IMAGE))
 #ifdef PIXEL_COUNT
@@ -83,13 +82,7 @@
     {
         icetRaiseError("Input/output buffers do not agree for decompression.",
                        ICET_SANITY_CHECK_FAIL);
-        icetImageInitialize(OUTPUT_IMAGE,
-                            _color_format, _depth_format, _pixel_count);
     }
-#else
-    icetImageInitialize(OUTPUT_IMAGE,
-                        _color_format, _depth_format, _pixel_count);
-#endif
 
     if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
       /* Use Z buffer for active pixel testing and compositing. */
@@ -119,7 +112,7 @@
                                 c_dest[0] = c_src[0];           \
                                 d_dest[0] = d_src[0];
 #endif
-#define DT_COMPRESSED_BUFFER    INPUT_SPARSE_IMAGE
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
 #define DT_READ_PIXEL(src)      _c_in = (IceTUInt *)src;        \
                                 src += sizeof(IceTUInt);        \
                                 _d_in = (IceTFloat *)src;       \
@@ -164,7 +157,7 @@
                                 c_dest[3] = c_src[3];           \
                                 d_dest[0] = d_src[0];
 #endif
-#define DT_COMPRESSED_BUFFER    INPUT_SPARSE_IMAGE
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
 #define DT_READ_PIXEL(src)      _c_in = (IceTFloat *)src;       \
                                 src += 4*sizeof(IceTFloat);     \
                                 _d_in = (IceTFloat *)src;       \
@@ -196,7 +189,7 @@
 #define COPY_PIXEL(d_src, d_dest)                               \
                                 d_dest[0] = d_src[0];
 #endif
-#define DT_COMPRESSED_BUFFER    INPUT_SPARSE_IMAGE
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
 #define DT_READ_PIXEL(src)      _d_in = (IceTFloat *)src;       \
                                 src += sizeof(IceTFloat);       \
                                 COPY_PIXEL(_d_in, _depth);      \
@@ -230,7 +223,7 @@
 #define COPY_PIXEL(c_src, c_dest) \
             c_dest[0] = c_src[0];
 #endif
-#define DT_COMPRESSED_BUFFER    INPUT_SPARSE_IMAGE
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
 #define DT_READ_PIXEL(src)      _c_in = (IceTUInt *)src;        \
                                 src += sizeof(IceTUInt);        \
                                 COPY_PIXEL(_c_in, _color);      \
@@ -262,7 +255,7 @@
                                 c_dest[2] = c_src[2];           \
                                 c_dest[3] = c_src[3];
 #endif
-#define DT_COMPRESSED_BUFFER    INPUT_SPARSE_IMAGE
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
 #define DT_READ_PIXEL(src)      _c_in = (IceTFloat *)src;       \
                                 src += 4*sizeof(IceTFloat);     \
                                 COPY_PIXEL(_c_in, _color);      \

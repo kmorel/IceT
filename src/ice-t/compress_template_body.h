@@ -18,7 +18,7 @@
  * In general, this file should only be included by compress_func_body.h
  *
  * The following macros must be defined:
- *      CT_COMPRESSED_BUFFER - the buffer that will hold the compressed image.
+ *      CT_COMPRESSED_IMAGE - the object that will hold the compressed image.
  *      CT_COLOR_FORMAT - color format IceTEnum for input and output
  *      CT_DEPTH_FORMAT - depth format IceTEnum for input and output
  *      CT_PIXEL_COUNT - the number of pixels in the original image (or a
@@ -37,8 +37,8 @@
  * All of the above macros are undefined at the end of this file.
  */
 
-#ifndef CT_COMPRESSED_BUFFER
-#error Need CT_COMPRESSED_BUFFER macro.  Is this included in image.c?
+#ifndef CT_COMPRESSED_IMAGE
+#error Need CT_COMPRESSED_IMAGE macro.  Is this included in image.c?
 #endif
 #ifndef CT_COLOR_FORMAT
 #error Need CT_COLOR_FORMAT macro.  Is this included in image.c?
@@ -82,9 +82,7 @@
     _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
 
-    icetSparseImageInitialize(CT_COMPRESSED_BUFFER, CT_COLOR_FORMAT,
-                              CT_DEPTH_FORMAT, _pixels);
-    _dest = ICET_IMAGE_DATA(CT_COMPRESSED_BUFFER);
+    _dest = ICET_IMAGE_DATA(CT_COMPRESSED_IMAGE);
 
 #ifndef CT_PADDING
     _count = 0;
@@ -213,9 +211,10 @@
     *_compress_time += icetWallTime() - _timer;
 
     _compressed_size
-        = (IceTSizeType)(  (IceTPointerArithmetic)_dest
-                         - (IceTPointerArithmetic)CT_COMPRESSED_BUFFER);
-    ICET_IMAGE_HEADER(CT_COMPRESSED_BUFFER)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+        = (IceTSizeType)
+            (  (IceTPointerArithmetic)_dest
+             - (IceTPointerArithmetic)ICET_IMAGE_HEADER(CT_COMPRESSED_IMAGE));
+    ICET_IMAGE_HEADER(CT_COMPRESSED_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
         = _compressed_size;
 }
 
@@ -223,7 +222,7 @@
 #pragma warning(pop)
 #endif
 
-#undef CT_COMPRESSED_BUFFER
+#undef CT_COMPRESSED_IMAGE
 #undef CT_COLOR_FORMAT
 #undef CT_DEPTH_FORMAT
 #undef CT_PIXEL_COUNT

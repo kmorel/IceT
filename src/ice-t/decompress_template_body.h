@@ -16,7 +16,7 @@
  * file with various parameters.
  *
  * The following macros must be defined:
- *	DT_COMPRESSED_BUFFER - the buffer that holds the compressed image.
+ *	DT_COMPRESSED_IMAGE - the buffer that holds the compressed image.
  *	DT_READ_PIXEL(pointer) - reads the current pixel from the pointer and
  *		increments the pointer.
  *	DT_INCREMENT_INACTIVE_PIXELS(count) - Increments over count pixels,
@@ -41,8 +41,8 @@
     IceTSizeType _p;
     IceTSizeType _i;
 
-    _pixels = icetSparseImageGetSize(DT_COMPRESSED_BUFFER);
-    _src = ICET_IMAGE_DATA(DT_COMPRESSED_BUFFER);
+    _pixels = icetSparseImageGetSize(DT_COMPRESSED_IMAGE);
+    _src = ICET_IMAGE_DATA(DT_COMPRESSED_IMAGE);
 
     _p = 0;
     while (_p < _pixels) {
@@ -74,6 +74,6 @@
     }
 }
 
-#undef DT_COMPRESSED_BUFFER
+#undef DT_COMPRESSED_IMAGE
 #undef DT_READ_PIXEL
 #undef DT_INCREMENT_INACTIVE_PIXELS

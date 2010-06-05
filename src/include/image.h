@@ -14,42 +14,38 @@
 #include <IceT.h>
 #include "state.h"
 
-typedef struct { IceTUnsignedInt32 opaque_internals; } *IceTSparseImage;
+typedef struct { IceTVoid *opaque_internals; } IceTSparseImage;
 
 ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
                                                    IceTEnum depth_format,
                                                    IceTSizeType num_pixels);
-ICET_EXPORT void icetSparseImageInitialize(IceTSparseImage image_buffer,
-                                           IceTEnum color_format,
-                                           IceTEnum depth_format,
-                                           IceTSizeType num_pixels);
-ICET_EXPORT IceTEnum icetSparseImageGetColorFormat(
-                                            const IceTSparseImage image_buffer);
-ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(
-                                            const IceTSparseImage image_buffer);
-ICET_EXPORT IceTSizeType icetSparseImageGetSize(
-                                            const IceTSparseImage image_buffer);
+ICET_EXPORT IceTSparseImage icetSparseImageInitialize(IceTVoid *buffer,
+                                                      IceTEnum color_format,
+                                                      IceTEnum depth_format,
+                                                      IceTSizeType num_pixels);
+ICET_EXPORT IceTEnum icetSparseImageGetColorFormat(const IceTSparseImage image);
+ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image);
+ICET_EXPORT IceTSizeType icetSparseImageGetSize(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageCompressedBufferSize(
-                                            const IceTSparseImage image_buffer);
+                                                   const IceTSparseImage image);
 
-ICET_EXPORT void   icetClearImage(IceTImage image);
+ICET_EXPORT void icetClearImage(IceTImage image);
 
-ICET_EXPORT void   icetGetTileImage(IceTInt tile, IceTImage buffer);
+ICET_EXPORT IceTImage icetGetTileImage(IceTInt tile, IceTVoid *buffer);
 
-ICET_EXPORT IceTSizeType icetGetCompressedTileImage(IceTInt tile,
-                                                    IceTSparseImage buffer);
+ICET_EXPORT IceTSparseImage icetGetCompressedTileImage(IceTInt tile,
+                                                       IceTVoid *buffer);
 
-ICET_EXPORT IceTSizeType icetCompressImage(const IceTImage imageBuffer,
-                                           IceTSparseImage compressedBuffer);
+ICET_EXPORT IceTSparseImage icetCompressImage(const IceTImage image,
+                                              IceTVoid *compressedBuffer);
 
-ICET_EXPORT IceTSizeType icetCompressSubImage(const IceTImage imageBuffer,
-                                              IceTSizeType offset,
-                                              IceTSizeType pixels,
-                                              IceTSparseImage compressedBuffer);
+ICET_EXPORT IceTSparseImage icetCompressSubImage(const IceTImage image,
+                                                 IceTSizeType offset,
+                                                 IceTSizeType pixels,
+                                                 IceTVoid *compressedBuffer);
 
-ICET_EXPORT IceTSizeType icetDecompressImage(
-                                         const IceTSparseImage compressedBuffer,
-                                         IceTImage imageBuffer);
+ICET_EXPORT IceTImage icetDecompressImage(const IceTSparseImage compressedImage,
+                                          IceTVoid *imageBuffer);
 
 ICET_EXPORT void   icetComposite(IceTImage destBuffer,
                                  const IceTImage srcBuffer,

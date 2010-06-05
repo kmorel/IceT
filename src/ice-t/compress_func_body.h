@@ -58,6 +58,15 @@
     _pixel_count = icetImageGetSize(INPUT_IMAGE);
 #endif
 
+#ifdef DEBUG
+    if (   (icetSparseImageGetColorFormat(OUTPUT_SPARSE_IMAGE) != _color_format)
+        || (icetSparseImageGetDepthFormat(OUTPUT_SPARSE_IMAGE) != _depth_format)
+        || (icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE) != _pixel_count) ) {
+        icetRaiseError("Format of input and output to compress does not match.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+#endif
+
     if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
       /* Use Z buffer for active pixel testing. */
         const IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
@@ -72,7 +81,7 @@
 #ifdef OFFSET
             _color += OFFSET;
 #endif
-#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
 #define CT_PIXEL_COUNT          _pixel_count
@@ -101,7 +110,7 @@
 #ifdef OFFSET
             _color += 4*(OFFSET);
 #endif
-#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
 #define CT_PIXEL_COUNT          _pixel_count
@@ -126,7 +135,7 @@
 #include "compress_template_body.h"
         } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
             IceTFloat *_out;
-#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
 #define CT_PIXEL_COUNT          _pixel_count
@@ -155,7 +164,7 @@
 #ifdef OFFSET
             _color += OFFSET;
 #endif
-#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
 #define CT_PIXEL_COUNT          _pixel_count
@@ -181,7 +190,7 @@
 #ifdef OFFSET
             _color += 4*(OFFSET);
 #endif
-#define CT_COMPRESSED_BUFFER    OUTPUT_SPARSE_IMAGE
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
 #define CT_PIXEL_COUNT          _pixel_count
@@ -208,9 +217,6 @@
             IceTSizeType _runlength;
             icetRaiseWarning("Compressing image with no data.",
                              ICET_INVALID_OPERATION);
-            icetSparseImageInitialize(OUTPUT_SPARSE_IMAGE,
-                                      _color_format, _depth_format,
-                                      _pixel_count);
             _out = ICET_IMAGE_DATA(OUTPUT_SPARSE_IMAGE);
             _runlength = _pixel_count;
             while (_runlength > 0xFFFF) {
@@ -223,8 +229,9 @@
             ACTIVE_RUN_LENGTH(_out) = 0;
             _out++;
             ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-                = (IceTSizeType)(  (IceTPointerArithmetic)_out
-                                 - (IceTPointerArithmetic)(OUTPUT_SPARSE_IMAGE));
+                = (IceTSizeType)
+                  (  (IceTPointerArithmetic)_out
+                   - (IceTPointerArithmetic)ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE));
         }
     }
 
