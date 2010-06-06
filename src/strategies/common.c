@@ -24,27 +24,33 @@
 
 #define LARGE_MESSAGE 23
 
-static IceTImage rtfi_imageBuffer;
-static IceTSparseImage rtfi_inImage;
-static IceTSparseImage rtfi_outImage;
-static IceTInt rtfi_first;
-static void *rtfi_generateDataFunc(IceTInt id, IceTInt dest, IceTInt *size) {
+static IceTImage rtfi_image;
+static IceTVoid *rtfi_imageBuffer;
+static IceTVoid *rtfi_inSparseImageBuffer;
+static IceTVoid *rtfi_outSparseImageBuffer;
+static IceTBoolean rtfi_first;
+static IceTVoid *rtfi_generateDataFunc(IceTInt id, IceTInt dest,
+                                       IceTSizeType *size) {
     IceTInt rank;
     IceTInt *tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
+    IceTSparseImage outSparseImage;
+    IceTVoid *outBuffer;
 
     icetGetIntegerv(ICET_RANK, &rank);
     if (dest == rank) {
       /* Special case: sending to myself.
          Just get directly to color and depth buffers. */
-        icetGetTileImage(tile_list[id], rtfi_imageBuffer);
+        rtfi_image = icetGetTileImage(tile_list[id], rtfi_imageBuffer);
         *size = 0;
         return NULL;
     }
-    *size = icetGetCompressedTileImage(tile_list[id], rtfi_outImage);
-    return rtfi_outImage;
+    outSparseImage = icetGetCompressedTileImage(tile_list[id],
+                                                rtfi_outSparseImageBuffer);
+    icetSparseImagePackageForSend(outSparseImage, &outBuffer, size);
+    return outBuffer;
 }
-static void *rtfi_handleDataFunc(void *inImage, IceTInt src) {
-    if (inImage == NULL) {
+static void rtfi_handleDataFunc(void *inSparseImageBuffer, IceTInt src) {
+    if (inSparseImageBuffer == NULL) {
       /* Superfluous call from send to self. */
         if (!rtfi_first) {
             icetRaiseError("Unexpected callback order"
@@ -52,27 +58,28 @@ static void *rtfi_handleDataFunc(void *inImage, IceTInt src) {
                            ICET_SANITY_CHECK_FAIL);
         }
     } else {
+        IceTSparseImage inSparseImage
+            = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
         if (rtfi_first) {
-            icetDecompressImage(inImage, rtfi_imageBuffer);
+            rtfi_image = icetDecompressImage(inSparseImage, rtfi_imageBuffer);
         } else {
             IceTInt rank;
             IceTInt *process_orders;
             icetGetIntegerv(ICET_RANK, &rank);
             process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
-            icetCompressedComposite(rtfi_imageBuffer, inImage,
+            icetCompressedComposite(rtfi_image, inSparseImage,
                                     process_orders[src] < process_orders[rank]);
         }
     }
-    rtfi_first = 0;
-    return rtfi_inImage;
+    rtfi_first = ICET_FALSE;
 }
 static IceTInt *imageDestinations = NULL;
 static IceTInt allocatedTileSize = 0;
-void icetRenderTransferFullImages(IceTImage imageBuffer,
-                                  IceTSparseImage inImage,
-                                  IceTSparseImage outImage,
-                                  IceTInt num_receiving , 
-                                  IceTInt *tile_image_dest)
+IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
+                                       IceTVoid *inSparseImageBuffer,
+                                       IceTVoid *outSparseImageBuffer,
+                                       IceTInt num_receiving, 
+                                       IceTInt *tile_image_dest)
 {
     IceTInt num_sending;
     IceTInt *tile_list;
@@ -84,10 +91,12 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
     /* To remove warning */
     (void)num_receiving;
 
+    rtfi_image = icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
+                                     ICET_IMAGE_DEPTH_NONE, 0);
     rtfi_imageBuffer = imageBuffer;
-    rtfi_inImage = inImage;
-    rtfi_outImage = outImage;
-    rtfi_first = 1;
+    rtfi_inSparseImageBuffer = inSparseImageBuffer;
+    rtfi_outSparseImageBuffer = outSparseImageBuffer;
+    rtfi_first = ICET_TRUE;
 
     icetGetIntegerv(ICET_NUM_CONTAINED_TILES, &num_sending);
     tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
@@ -109,17 +118,18 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
     icetSendRecvLargeMessages(num_sending, imageDestinations,
                               icetIsEnabled(ICET_ORDERED_COMPOSITE),
                               rtfi_generateDataFunc, rtfi_handleDataFunc,
-                              inImage, icetSparseImageSize(max_pixels));
+                              inSparseImageBuffer,
+                              icetSparseImageBufferSize(max_pixels));
 }
 
-static void startLargeRecv(void *buf, IceTInt size, IceTInt src,
+static void startLargeRecv(void *buf, IceTSizeType size, IceTInt src,
                            IceTCommRequest *req) {
     *req = ICET_COMM_IRECV(buf, size, ICET_BYTE, src, LARGE_MESSAGE);
 }
 static void startLargeSend(IceTInt dest, IceTCommRequest *req,
                            IceTGenerateData callback, IceTInt *sendIds) {
-    IceTInt data_size;
-    void *data;
+    IceTSizeType data_size;
+    IceTVoid *data;
     data = (*callback)(sendIds[dest], dest, &data_size);
     icetAddSentBytes(data_size);
     *req = ICET_COMM_ISEND(data, data_size, ICET_BYTE, dest, LARGE_MESSAGE);
@@ -133,11 +143,11 @@ static IceTInt *recvFrom = NULL;
 static IceTInt allocatedCommSize = 0;
 void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTInt *messageDestinations,
-                               IceTInt messagesInOrder,
+                               IceTBoolean messagesInOrder,
                                IceTGenerateData generateDataFunc,
                                IceTHandleData handleDataFunc,
-                               void *incomingBuffer,
-                               IceTInt bufferSize)
+                               IceTVoid *incomingBuffer,
+                               IceTSizeType bufferSize)
 {
     IceTInt comm_size;
     IceTInt rank;
@@ -274,8 +284,8 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         requests[RECV_IDX] = ICET_COMM_REQUEST_NULL;
     }
     if (sendToSelf) {
-        IceTInt data_size;
-        void *data;
+        IceTSizeType data_size;
+        IceTVoid *data;
         icetRaiseDebug("Sending to self.");
         data = (*generateDataFunc)(sendIds[rank], rank, &data_size);
         (*handleDataFunc)(data, rank);
@@ -294,8 +304,7 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         switch (i) {
           case RECV_IDX:
               icetRaiseDebug1("Receive from %d finished", (int)recvQueue[rqi]);
-              incomingBuffer = (*handleDataFunc)(incomingBuffer,
-                                                 recvQueue[rqi]);
+              (*handleDataFunc)(incomingBuffer, recvQueue[rqi]);
               rqi++;
               if (rqi < numRecv) {
                   icetRaiseDebug1("Receiving from %d", (int)recvQueue[rqi]);

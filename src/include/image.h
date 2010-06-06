@@ -28,6 +28,11 @@ ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageGetSize(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageCompressedBufferSize(
                                                    const IceTSparseImage image);
+ICET_EXPORT void icetSparseImagePackageForSend(IceTSparseImage image,
+                                               IceTVoid **buffer,
+                                               IceTSizeType *size);
+ICET_EXPORT IceTSparseImage icetSparseImageUnpackageFromReceive(
+                                                              IceTVoid *buffer);
 
 ICET_EXPORT void icetClearImage(IceTImage image);
 

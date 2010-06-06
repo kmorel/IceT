@@ -153,6 +153,15 @@ ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image,
 ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
                                          IceTFloat *depth_buffer,
                                          IceTEnum depth_format);
+ICET_EXPORT void icetImageCopyPixels(const IceTImage in_image,
+                                     IceTSizeType in_offset,
+                                     IceTImage out_image,
+                                     IceTSizeType out_offset,
+                                     IceTSizeType num_pixels);
+ICET_EXPORT void icetImagePackageForSend(IceTImage image,
+                                         IceTVoid **buffer,
+                                         IceTSizeType *size);
+ICET_EXPORT IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer);
 
 typedef struct _IceTStrategy {
     const char *name;
