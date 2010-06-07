@@ -48,6 +48,9 @@
 {
     IceTEnum _color_format, _depth_format;
     IceTSizeType _pixel_count;
+    IceTEnum _composite_mode;
+
+    icetGetEnumv(ICET_COMPOSITE_MODE, &_composite_mode);
 
     _color_format = icetImageGetColorFormat(INPUT_IMAGE);
     _depth_format = icetImageGetDepthFormat(INPUT_IMAGE);
@@ -67,19 +70,20 @@
     }
 #endif
 
-    if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-      /* Use Z buffer for active pixel testing. */
-        const IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
+    if (_composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
+        if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+          /* Use Z buffer for active pixel testing. */
+            const IceTFloat *_depth = icetImageGetDepthFloat(INPUT_IMAGE);
 #ifdef OFFSET
-        _depth += OFFSET;
+            _depth += OFFSET;
 #endif
-        if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            const IceTUInt *_color;
-            IceTUInt *_c_out;
-            IceTFloat *_d_out;
-            _color = icetImageGetColorUInt(INPUT_IMAGE);
+            if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+                const IceTUInt *_color;
+                IceTUInt *_c_out;
+                IceTFloat *_d_out;
+                _color = icetImageGetColorUInt(INPUT_IMAGE);
 #ifdef OFFSET
-            _color += OFFSET;
+                _color += OFFSET;
 #endif
 #define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
@@ -103,12 +107,12 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
-        } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            const IceTFloat *_color;
-            IceTFloat *_out;
-            _color = icetImageGetColorFloat(INPUT_IMAGE);
+            } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+                const IceTFloat *_color;
+                IceTFloat *_out;
+                _color = icetImageGetColorFloat(INPUT_IMAGE);
 #ifdef OFFSET
-            _color += 4*(OFFSET);
+                _color += 4*(OFFSET);
 #endif
 #define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
@@ -133,8 +137,8 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
-        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
-            IceTFloat *_out;
+            } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
+                IceTFloat *_out;
 #define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
 #define CT_COLOR_FORMAT         _color_format
 #define CT_DEPTH_FORMAT         _depth_format
@@ -154,9 +158,24 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
+            } else {
+                icetRaiseError("Encountered invalid color format.",
+                               ICET_SANITY_CHECK_FAIL);
+            }
+        } else if (_depth_format == ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseError("Cannot use Z buffer compression with no"
+                           " Z buffer.", ICET_INVALID_OPERATION);
+        } else {
+            icetRaiseError("Encountered invalid depth format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
-    } else /* _depth_format == ICET_IMAGE_DEPTH_NONE */ {
-      /* No Z buffer.  Use alpha for active pixel testing. */
+    } else if (_composite_mode == ICET_COMPOSITE_MODE_BLEND) {
+      /* Use alpha for active pixel testing. */
+        if (_depth_format != ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseWarning("Z buffer ignored during blend compress"
+                             " operation.  Output z buffer meaningless.",
+                             ICET_INVALID_VALUE);
+        }
         if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             const IceTUInt *_color;
             IceTUInt *_out;
@@ -212,7 +231,7 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
-        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
+        } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
             IceTUInt *_out;
             IceTSizeType _runlength;
             icetRaiseWarning("Compressing image with no data.",
@@ -232,7 +251,13 @@
                 = (IceTSizeType)
                   (  (IceTPointerArithmetic)_out
                    - (IceTPointerArithmetic)ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE));
+        } else {
+            icetRaiseError("Encountered invalid color format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
+    } else {
+        icetRaiseError("Encountered invalid composite mode.",
+                       ICET_SANITY_CHECK_FAIL);
     }
 
     icetRaiseDebug1("Compression: %f%%\n",

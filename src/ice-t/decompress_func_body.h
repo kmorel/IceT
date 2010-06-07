@@ -59,6 +59,7 @@
 {
     IceTEnum _color_format, _depth_format;
     IceTSizeType _pixel_count;
+    IceTEnum _composite_mode;
 #ifdef TIME_DECOMPRESSION
     IceTDouble _timer;
     IceTDouble *_compress_time;
@@ -66,6 +67,8 @@
     _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
     _timer = icetWallTime();
 #endif /* TIME_DECOMPRESSION */
+
+    icetGetEnumv(ICET_COMPOSITE_MODE, &_composite_mode);
 
     _color_format = icetSparseImageGetColorFormat(INPUT_SPARSE_IMAGE);
     _depth_format = icetSparseImageGetDepthFormat(INPUT_SPARSE_IMAGE);
@@ -84,23 +87,24 @@
                        ICET_SANITY_CHECK_FAIL);
     }
 
-    if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-      /* Use Z buffer for active pixel testing and compositing. */
-        IceTFloat *_depth = icetImageGetDepthFloat(OUTPUT_IMAGE);
+    if (_composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
+        if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+          /* Use Z buffer for active pixel testing and compositing. */
+            IceTFloat *_depth = icetImageGetDepthFloat(OUTPUT_IMAGE);
 #ifdef OFFSET
-        _depth += OFFSET;
+            _depth += OFFSET;
 #endif
-        if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *_color;
-            const IceTUInt *_c_in;
-            const IceTFloat *_d_in;
-            IceTUInt _background_color;
-            _color = icetImageGetColorUInt(OUTPUT_IMAGE);
+            if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+                IceTUInt *_color;
+                const IceTUInt *_c_in;
+                const IceTFloat *_d_in;
+                IceTUInt _background_color;
+                _color = icetImageGetColorUInt(OUTPUT_IMAGE);
 #ifdef OFFSET
-            _color += OFFSET;
+                _color += OFFSET;
 #endif
-            icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
-                            (IceTInt *)&_background_color);
+                icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,
+                                (IceTInt *)&_background_color);
 #ifdef COMPOSITE
 #define COPY_PIXEL(c_src, c_dest, d_src, d_dest)                \
                                 if (d_src[0] < d_dest[0]) {     \
@@ -130,16 +134,16 @@
                                 }
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
-        } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *_color;
-            const IceTFloat *_c_in;
-            const IceTFloat *_d_in;
-            IceTFloat _background_color[4];
-            _color = icetImageGetColorFloat(OUTPUT_IMAGE);
+            } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+                IceTFloat *_color;
+                const IceTFloat *_c_in;
+                const IceTFloat *_d_in;
+                IceTFloat _background_color[4];
+                _color = icetImageGetColorFloat(OUTPUT_IMAGE);
 #ifdef OFFSET
-            _color += 4*(OFFSET);
+                _color += 4*(OFFSET);
 #endif
-            icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
+                icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
 #ifdef COMPOSITE
 #define COPY_PIXEL(c_src, c_dest, d_src, d_dest)                \
                                 if (d_src[0] < d_dest[0]) {     \
@@ -178,8 +182,8 @@
                                 }
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
-        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
-            const IceTFloat *_d_in;
+            } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
+                const IceTFloat *_d_in;
 #ifdef COMPOSITE
 #define COPY_PIXEL(d_src, d_dest)                               \
                                 if (d_src[0] < d_dest[0]) {     \
@@ -203,9 +207,24 @@
                                 }
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
+            } else {
+                icetRaiseError("Encountered invalid color format.",
+                               ICET_SANITY_CHECK_FAIL);
+            }
+        } else if (_depth_format == ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseError("Cannot use Z buffer compositing operation with no"
+                           " Z buffer.", ICET_INVALID_OPERATION);
+        } else {
+            icetRaiseError("Encountered invalid depth format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
-    } else /*_depth_format == ICET_IMAGE_DEPTH_NONE */ {
-      /* No Z buffer.  Use alpha for active pixel and compositing. */
+    } else if (_composite_mode == ICET_COMPOSITE_MODE_BLEND) {
+      /* Use alpha for active pixel and compositing. */
+        if (_depth_format != ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseWarning("Z buffer ignored during blend composite"
+                             " operation.  Output z buffer meaningless.",
+                             ICET_INVALID_VALUE);
+        }
         if (_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             IceTUInt *_color;
             const IceTUInt *_c_in;
@@ -272,10 +291,16 @@
                                 }
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
-        } else /* _color_format == ICET_IMAGE_COLOR_NONE */ {
+        } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
             icetRaiseWarning("Decompressing image with no data.",
                              ICET_INVALID_OPERATION);
+        } else {
+            icetRaiseError("Encountered invalid color format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
+    } else {
+        icetRaiseError("Encountered invalid composite mode.",
+                       ICET_SANITY_CHECK_FAIL);
     }
 
 #ifdef TIME_DECOMPRESSION

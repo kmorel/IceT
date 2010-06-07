@@ -760,6 +760,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
 {
     IceTSizeType pixels;
     IceTSizeType i;
+    IceTEnum composite_mode;
     IceTEnum color_format, depth_format;
     IceTDouble timer;
     IceTDouble *compare_time;
@@ -781,42 +782,61 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
         return;
     }
 
+    icetGetEnumv(ICET_COMPOSITE_MODE, &composite_mode);
+
     compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
     timer = icetWallTime();
 
-    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-        const IceTFloat *srcDepthBuffer = icetImageGetDepthFloat(srcBuffer);
-        IceTFloat *destDepthBuffer = icetImageGetDepthFloat(destBuffer);
+    if (composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
+        if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+            const IceTFloat *srcDepthBuffer = icetImageGetDepthFloat(srcBuffer);
+            IceTFloat *destDepthBuffer = icetImageGetDepthFloat(destBuffer);
 
-        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            const IceTUInt *srcColorBuffer = icetImageGetColorUInt(srcBuffer);
-            IceTUInt *destColorBuffer = icetImageGetColorUInt(destBuffer);
-            for (i = 0; i < pixels; i++) {
-                if (srcDepthBuffer[i] < destDepthBuffer[i]) {
-                    destDepthBuffer[i] = srcDepthBuffer[i];
-                    destColorBuffer[i] = srcColorBuffer[i];
+            if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+                const IceTUInt *srcColorBuffer=icetImageGetColorUInt(srcBuffer);
+                IceTUInt *destColorBuffer = icetImageGetColorUInt(destBuffer);
+                for (i = 0; i < pixels; i++) {
+                    if (srcDepthBuffer[i] < destDepthBuffer[i]) {
+                        destDepthBuffer[i] = srcDepthBuffer[i];
+                        destColorBuffer[i] = srcColorBuffer[i];
+                    }
                 }
-            }
-        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            const IceTFloat *srcColorBuffer = icetImageGetColorFloat(srcBuffer);
-            IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
-            for (i = 0; i < pixels; i++) {
-                if (srcDepthBuffer[i] < destDepthBuffer[i]) {
-                    destDepthBuffer[i] = srcDepthBuffer[i];
-                    destColorBuffer[4*i+0] = srcColorBuffer[4*i+0];
-                    destColorBuffer[4*i+1] = srcColorBuffer[4*i+1];
-                    destColorBuffer[4*i+2] = srcColorBuffer[4*i+2];
-                    destColorBuffer[4*i+3] = srcColorBuffer[4*i+3];
+            } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+                const IceTFloat *srcColorBuffer
+                    = icetImageGetColorFloat(srcBuffer);
+                IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
+                for (i = 0; i < pixels; i++) {
+                    if (srcDepthBuffer[i] < destDepthBuffer[i]) {
+                        destDepthBuffer[i] = srcDepthBuffer[i];
+                        destColorBuffer[4*i+0] = srcColorBuffer[4*i+0];
+                        destColorBuffer[4*i+1] = srcColorBuffer[4*i+1];
+                        destColorBuffer[4*i+2] = srcColorBuffer[4*i+2];
+                        destColorBuffer[4*i+3] = srcColorBuffer[4*i+3];
+                    }
                 }
-            }
-        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
-            for (i = 0; i < pixels; i++) {
-                if (srcDepthBuffer[i] < destDepthBuffer[i]) {
-                    destDepthBuffer[i] = srcDepthBuffer[i];
+            } else if (color_format == ICET_IMAGE_COLOR_NONE) {
+                for (i = 0; i < pixels; i++) {
+                    if (srcDepthBuffer[i] < destDepthBuffer[i]) {
+                        destDepthBuffer[i] = srcDepthBuffer[i];
+                    }
                 }
+            } else {
+                icetRaiseError("Encountered invalid color format.",
+                               ICET_SANITY_CHECK_FAIL);
             }
+        } else if (depth_format == ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseError("Cannot use Z buffer compositing operation with no"
+                           " Z buffer.", ICET_INVALID_OPERATION);
+        } else {
+            icetRaiseError("Encountered invalid depth format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
-    } else /* depth_format == ICET_IMAGE_DEPTH_NONE */ {
+    } else if (composite_mode == ICET_COMPOSITE_MODE_BLEND) {
+        if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseWarning("Z buffer ignored during blend composite"
+                             " operation.  Output z buffer meaningless.",
+                             ICET_INVALID_VALUE);
+        }
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             const IceTUByte *srcColorBuffer = icetImageGetColorUByte(srcBuffer);
             IceTUByte *destColorBuffer = icetImageGetColorUByte(destBuffer);
@@ -845,10 +865,16 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                                      destColorBuffer + i*4);
                 }
             }
-        } else /* color_format == ICET_IMAGE_COLOR_NONE */ {
+        } else if (color_format == ICET_IMAGE_COLOR_NONE) {
             icetRaiseWarning("Compositing image with no data.",
                              ICET_INVALID_OPERATION);
+        } else {
+            icetRaiseError("Encountered invalid color format.",
+                           ICET_SANITY_CHECK_FAIL);
         }
+    } else {
+        icetRaiseError("Encountered invalid composite mode.",
+                       ICET_SANITY_CHECK_FAIL);
     }
 
     *compare_time += icetWallTime() - timer;
