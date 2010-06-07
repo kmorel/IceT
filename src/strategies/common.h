@@ -139,16 +139,20 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
    image_dest - The location of where the final composed image should be
         placed.  It is an index into compose_group, not the actual rank
         of the process.
-   imageBuffer - The input image colors and/or depth to be used.  If this
+   image - The input image colors and/or depth to be used.  If this
         processor has rank compose_group[image_dest], any output data will
         be put in this buffer.  If the color or depth value is not to be
         computed or this processor is not rank compose_group[image_dest],
         the buffer has undefined partial results when the function returns.
-   compressedImageBuffer - a buffer for holding sparse image data in transit.
+   sparseImageBuffer - a buffer for holding sparse image data in transit.
+        It must be large enough to store any compressed buffer
+        of size ICET_MAX_PIXELS.  Use icetSparseImageMaxBufferSize to
+        compute the number of bytes to allocate.
 */
-void icetTreeCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
-                     IceTImage imageBuffer,
-                     IceTSparseImage compressedImageBuffer);
+void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
+                     IceTInt image_dest,
+                     IceTImage image,
+                     IceTVoid *sparseImageBuffer);
 
 #define icetAddSentBytes(num_sending)                                   \
     (icetUnsafeStateGetInteger(ICET_BYTES_SENT))[0] += (num_sending)
