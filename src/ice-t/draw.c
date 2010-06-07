@@ -50,7 +50,7 @@ void icetStrategy(IceTStrategy strategy)
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, (IceTVoid *)strategy.compose);
 }
 
-const IceTUByte *icetGetStrategyName(void)
+const char *icetGetStrategyName(void)
 {
     IceTVoid *name;
     if (icetStateType(ICET_STRATEGY_NAME) == ICET_NULL) {
@@ -59,6 +59,17 @@ const IceTUByte *icetGetStrategyName(void)
         icetGetPointerv(ICET_STRATEGY_NAME, &name);
     }
     return name;
+}
+
+void icetCompositeMode(IceTEnum mode)
+{
+    if (    (mode != ICET_COMPOSITE_MODE_Z_BUFFER)
+         && (mode != ICET_COMPOSITE_MODE_BLEND) ) {
+        icetRaiseError("Invalid composite mode.", ICET_INVALID_ENUM);
+        return;
+    }
+
+    icetStateSetInteger(ICET_COMPOSITE_MODE, mode);
 }
 
 void icetCompositeOrder(const IceTInt *process_ranks)
@@ -392,8 +403,8 @@ IceTImage icetDrawFrame(void)
     total_time = icetWallTime();
 
     color_blending =
-        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_INPUT_BUFFERS))
-                      == ICET_COLOR_BUFFER_BIT);
+        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_COMPOSITE_MODE))
+                      == ICET_COMPOSITE_MODE_BLEND);
 
   /* Update physical render size to actual OpenGL viewport. */
     glGetIntegerv(GL_VIEWPORT, physical_viewport);
@@ -709,11 +720,12 @@ IceTImage icetDrawFrame(void)
 
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
-        IceTEnum output_buffers;
+        IceTEnum color_format;
 
-        icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
+        icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
 
-        if (   ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0)
+      /* This needs to handle RGBA_FLOAT as well. */
+        if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
             && icetIsEnabled(ICET_DISPLAY) ) {
             IceTUByte *colorBuffer;
             IceTInt readBuffer;

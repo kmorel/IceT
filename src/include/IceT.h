@@ -133,6 +133,7 @@ typedef struct { IceTVoid *opaque_internals; } IceTImage;
 ICET_EXPORT IceTSizeType icetImageBufferSize(IceTEnum color_format,
                                              IceTEnum depth_format,
                                              IceTSizeType num_pixels);
+ICET_EXPORT IceTSizeType icetImageMaxBufferSize(IceTSizeType num_pixels);
 ICET_EXPORT IceTImage icetImageInitialize(IceTVoid *buffer,
                                           IceTEnum color_format,
                                           IceTEnum depth_format,
@@ -177,11 +178,11 @@ ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_VTREE;
 
 ICET_EXPORT void icetStrategy(IceTStrategy strategy);
 
-ICET_EXPORT const IceTUByte *icetGetStrategyName(void);
+ICET_EXPORT const char *icetGetStrategyName(void);
 
-#define ICET_COLOR_BUFFER_BIT   (IceTEnum)0x0100
-#define ICET_DEPTH_BUFFER_BIT   (IceTEnum)0x0200
-ICET_EXPORT void icetInputOutputBuffers(IceTEnum inputs, IceTEnum outputs);
+#define ICET_COMPOSITE_MODE_Z_BUFFER    (IceTEnum)0x0301
+#define ICET_COMPOSITE_MODE_BLEND       (IceTEnum)0x0302
+ICET_EXPORT void icetCompositeMode(IceTEnum mode);
 
 ICET_EXPORT void icetCompositeOrder(const IceTInt *process_ranks);
 
@@ -226,8 +227,7 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_NUM_BOUNDING_VERTS (ICET_STATE_ENGINE_START | (IceTEnum)0x0023)
 #define ICET_STRATEGY_NAME      (ICET_STATE_ENGINE_START | (IceTEnum)0x0024)
 #define ICET_STRATEGY_COMPOSE   (ICET_STATE_ENGINE_START | (IceTEnum)0x0025)
-#define ICET_INPUT_BUFFERS      (ICET_STATE_ENGINE_START | (IceTEnum)0x0026)
-#define ICET_OUTPUT_BUFFERS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0027)
+#define ICET_COMPOSITE_MODE     (ICET_STATE_ENGINE_START | (IceTEnum)0x0026)
 #define ICET_COMPOSITE_ORDER    (ICET_STATE_ENGINE_START | (IceTEnum)0x0028)
 #define ICET_PROCESS_ORDERS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0029)
 #define ICET_STRATEGY_SUPPORTS_ORDERING (ICET_STATE_ENGINE_START | (IceTEnum)0x002A)
@@ -271,7 +271,9 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_FLOATING_VIEWPORT  (ICET_STATE_ENABLE_START | (IceTEnum)0x0001)
 #define ICET_ORDERED_COMPOSITE  (ICET_STATE_ENABLE_START | (IceTEnum)0x0002)
 #define ICET_CORRECT_COLORED_BACKGROUND (ICET_STATE_ENABLE_START | (IceTEnum)0x0003)
+#define ICET_COMPOSITE_ONE_BUFFER (ICET_STATE_ENABLE_START | (IceTEnum)0x0004)
 
+/* These should go to GL layer. */
 #define ICET_DISPLAY            (ICET_STATE_ENABLE_START | (IceTEnum)0x0010)
 #define ICET_DISPLAY_COLORED_BACKGROUND (ICET_STATE_ENABLE_START | (IceTEnum)0x0011)
 #define ICET_DISPLAY_INFLATE    (ICET_STATE_ENABLE_START | (IceTEnum)0x0012)

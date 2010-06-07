@@ -101,8 +101,7 @@ void icetStateSetDefaults(void)
     icetStateSetDoublev(ICET_GEOMETRY_BOUNDS, 0, NULL);
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
-    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-                           ICET_COLOR_BUFFER_BIT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     int_array = malloc(ICET_COMM_SIZE() * sizeof(IceTInt));
     for (i = 0; i < ICET_COMM_SIZE(); i++) {
         int_array[i] = i;
@@ -120,6 +119,7 @@ void icetStateSetDefaults(void)
     icetEnable(ICET_FLOATING_VIEWPORT);
     icetDisable(ICET_ORDERED_COMPOSITE);
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
+    icetEnable(ICET_COMPOSITE_ONE_BUFFER);
     icetEnable(ICET_DISPLAY);
     icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_DISPLAY_INFLATE);
