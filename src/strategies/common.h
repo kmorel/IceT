@@ -24,11 +24,11 @@
 
    imageBuffer - A buffer big enough to hold color and/or depth values
         that is ICET_MAX_PIXELS big.  The size can be determined with
-        the icetFullImageSize function in image.h.
+        the icetImageMaxBufferSize function in IceT.h.
    inSparseImageBuffer, outSparseImageBuffer - Two buffers big enough
         to hold sparse color and depth information for an image that is
         ICET_MAX_PIXELS big.  The size can be determined with the
-        icetCompressedBufferSize macro in image.h
+        icetSparseImageMaxBufferSize function in image.h
    num_receiving - number of image this processor is receiving.
    tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
         rendered image for tile t is sent to tile_image_dest[t].
@@ -109,17 +109,22 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
    image_dest - The location of where the final composed image should be
         placed.  It is an index into compose_group, not the actual rank
         of the process.
-   imageBuffer - The input image colors and/or depth to be used.  If this
+   image - The input image colors and/or depth to be used.  If this
         processor has rank compose_group[compose_group], any output data
         will be put in this buffer.  If the color or depth value is not to
         be computed or this processor is not rank
         compose_group[compose_group], the buffer has undefined partial
         results when the function returns.
-   inImage/outImage - two buffers for holding sparse image data.
+   inSparseImageBuffer/outSparseImageBuffer - two buffers for holding sparse
+        image data.  They must be large enough to store any compressed buffer
+        of size ICET_MAX_PIXELS.  Use icetSparseImageMaxBufferSize to
+        compute the number of bytes to allocate.
 */
-void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
-                      IceTImage imageBuffer,
-                      IceTSparseImage inImage, IceTSparseImage outImage);
+void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
+                      IceTInt image_dest,
+                      IceTImage image,
+                      IceTVoid *inSparseImageBuffer,
+                      IceTVoid *outSparseImageBuffer);
 
 /* icetTreeCompose
 

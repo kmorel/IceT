@@ -52,10 +52,6 @@
 static IceTSizeType colorPixelSize(IceTEnum color_format);
 static IceTSizeType depthPixelSize(IceTEnum depth_format);
 
-/* Returns the pointer to the color/depth data regardless of type. */
-static IceTVoid *icetImageGetColor(IceTImage image);
-static IceTVoid *icetImageGetDepth(IceTImage image);
-
 /* Renders the geometry for a tile.  The geometry may not be projected
  * exactly into the tile.  screen_viewport gives the offset and dimensions
  * of the image in the OpenGL framebuffer.  tile_viewport gives the offset
@@ -279,8 +275,13 @@ IceTSizeType icetSparseImageGetCompressedBufferSize(
     return ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX];
 }
 
-IceTVoid *icetImageGetColor(IceTImage image)
+IceTVoid *icetImageGetColorVoid(IceTImage image, IceTSizeType *pixel_size)
 {
+    if (pixel_size) {
+        IceTEnum color_format = icetImageGetColorFormat(image);
+        *pixel_size = colorPixelSize(color_format);
+    }
+
     return ICET_IMAGE_DATA(image);
 }
 IceTUByte *icetImageGetColorUByte(IceTImage image)
@@ -293,7 +294,7 @@ IceTUByte *icetImageGetColorUByte(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetColor(image);
+    return icetImageGetColorVoid(image, NULL);
 }
 IceTUInt *icetImageGetColorUInt(IceTImage image)
 {
@@ -309,13 +310,18 @@ IceTFloat *icetImageGetColorFloat(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetColor(image);
+    return icetImageGetColorVoid(image, NULL);
 }
 
-IceTVoid *icetImageGetDepth(IceTImage image)
+IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
     IceTSizeType color_format_bytes;
+
+    if (pixel_size) {
+        IceTEnum depth_format = icetImageGetDepthFormat(image);
+        *pixel_size = depthPixelSize(depth_format);
+    }
 
     color_format_bytes = (  icetImageGetSize(image)
                           * colorPixelSize(color_format) );
@@ -332,7 +338,7 @@ IceTFloat *icetImageGetDepthFloat(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetDepth(image);
+    return icetImageGetDepthVoid(image, NULL);
 }
 
 void icetImageCopyColorUByte(const IceTImage image,
@@ -464,18 +470,22 @@ void icetImageCopyPixels(const IceTImage in_image, IceTSizeType in_offset,
     }
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
-        const IceTVoid *in_colors = icetImageGetColor(in_image);
-        IceTVoid *out_colors = icetImageGetDepth(out_image);
-        IceTSizeType pixel_size = colorPixelSize(color_format);
+        const IceTVoid *in_colors;
+        IceTVoid *out_colors;
+        IceTSizeType pixel_size;
+        in_colors = icetImageGetColorVoid(in_image, &pixel_size);
+        out_colors = icetImageGetColorVoid(out_image, NULL);
         memcpy(out_colors + pixel_size*out_offset,
                in_colors + pixel_size*in_offset,
                pixel_size*num_pixels);
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        const IceTVoid *in_depths = icetImageGetDepth(in_image);
-        IceTVoid *out_depths = icetImageGetDepth(out_image);
-        IceTSizeType pixel_size = depthPixelSize(depth_format);
+        const IceTVoid *in_depths;
+        IceTVoid *out_depths;
+        IceTSizeType pixel_size;
+        in_depths = icetImageGetDepthVoid(in_image, &pixel_size);
+        out_depths = icetImageGetDepthVoid(out_image, NULL);
         memcpy(out_depths + pixel_size*out_offset,
                in_depths + pixel_size*in_offset,
                pixel_size*num_pixels);

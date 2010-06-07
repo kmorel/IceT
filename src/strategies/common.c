@@ -119,7 +119,9 @@ IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
                               icetIsEnabled(ICET_ORDERED_COMPOSITE),
                               rtfi_generateDataFunc, rtfi_handleDataFunc,
                               inSparseImageBuffer,
-                              icetSparseImageBufferSize(max_pixels));
+                              icetSparseImageMaxBufferSize(max_pixels));
+
+    return rtfi_image;
 }
 
 static void startLargeRecv(void *buf, IceTSizeType size, IceTInt src,
@@ -338,29 +340,32 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
 }
 
 static void BswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
-                                    IceTInt group_rank, IceTImage imageBuffer,
-                                    IceTInt pixel_count)
+                                    IceTInt group_rank, IceTImage image,
+                                    IceTSizeType pixel_count)
 {
-    IceTEnum output_buffers;
+    IceTEnum color_format, depth_format;
     IceTCommRequest *requests;
     int i;
 
   /* All processors have the same number for pixels and their offset
    * is group_rank*offset. */
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
+    color_format = icetImageGetColorFormat(image);
+    depth_format = icetImageGetDepthFormat(image);
     requests = malloc((group_size)*sizeof(IceTCommRequest));
 
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        IceTUByte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        IceTVoid *colorBuffer;
+        IceTSizeType pixel_size;
+        colorBuffer = icetImageGetColorVoid(image, &pixel_size);
         icetRaiseDebug("Collecting image data.");
         for (i = 0; i < group_size; i++) {
             IceTInt src;
-          /* Actual peice is located at the bit reversal of i. */
+          /* Actual piece is located at the bit reversal of i. */
             BIT_REVERSE(src, i, group_size);
             if (src != group_rank) {
                 requests[i] =
-                    ICET_COMM_IRECV(colorBuffer + 4*pixel_count*i,
-                                    4*pixel_count, ICET_BYTE,
+                    ICET_COMM_IRECV(colorBuffer + pixel_size*pixel_count*i,
+                                    pixel_size*pixel_count, ICET_BYTE,
                                     compose_group[src], SWAP_IMAGE_DATA);
             } else {
                 requests[i] = ICET_COMM_REQUEST_NULL;
@@ -370,49 +375,74 @@ static void BswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
             ICET_COMM_WAIT(requests + i);
         }
     }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        IceTUInt *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
-        icetRaiseDebug("Collecting depth data.");
-        for (i = 0; i < group_size; i++) {
-            IceTInt src;
-          /* Actual peice is located at the bit reversal of i. */
-            BIT_REVERSE(src, i, group_size);
-            if (src != group_rank) {
-                requests[i] =
-                    ICET_COMM_IRECV(depthBuffer + pixel_count*i,
-                                    pixel_count, ICET_INT,
-                                    compose_group[src], SWAP_DEPTH_DATA);
-            } else {
-                requests[i] = ICET_COMM_REQUEST_NULL;
+
+  /* Do not collect both color and depth when ICET_COMPOSITE_ONE_BUFFER is
+     enabled. */
+    if (    (color_format == ICET_IMAGE_COLOR_NONE)
+         || !icetIsEnabled(ICET_COMPOSITE_ONE_BUFFER) ) {
+        if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+            IceTVoid *depthBuffer;
+            IceTSizeType pixel_size;
+            depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
+            icetRaiseDebug("Collecting depth data.");
+            for (i = 0; i < group_size; i++) {
+                IceTInt src;
+              /* Actual peice is located at the bit reversal of i. */
+                BIT_REVERSE(src, i, group_size);
+                if (src != group_rank) {
+                    requests[i] =
+                        ICET_COMM_IRECV(depthBuffer + pixel_size*pixel_count*i,
+                                        pixel_size*pixel_count, ICET_BYTE,
+                                        compose_group[src], SWAP_DEPTH_DATA);
+                } else {
+                    requests[i] = ICET_COMM_REQUEST_NULL;
+                }
             }
-        }
-        for (i = 0; i < group_size; i++) {
-            ICET_COMM_WAIT(requests + i);
+            for (i = 0; i < group_size; i++) {
+                ICET_COMM_WAIT(requests + i);
+            }
         }
     }
     free(requests);
 }
 
 static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
-                                IceTImage imageBuffer,
-                                IceTInt pixel_count, IceTInt offset)
+                                IceTImage image,
+                                IceTSizeType pixel_count, IceTSizeType offset)
 {
-    IceTEnum output_buffers;
+    IceTEnum color_format, depth_format;
 
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        IceTUByte *colorBuffer = icetGetImageColorBuffer(imageBuffer);
-            icetRaiseDebug("Sending image data.");
-            icetAddSentBytes(4*pixel_count);
-            ICET_COMM_SEND(colorBuffer + 4*offset, 4*pixel_count, ICET_BYTE,
-                           compose_group[image_dest], SWAP_IMAGE_DATA);
+    color_format = icetImageGetColorFormat(image);
+    depth_format = icetImageGetDepthFormat(image);
+
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        IceTVoid *colorBuffer;
+        IceTSizeType pixel_size;
+        colorBuffer = icetImageGetColorVoid(image, &pixel_size);
+        icetRaiseDebug("Sending image data.");
+        icetAddSentBytes(pixel_size*pixel_count);
+        ICET_COMM_SEND(colorBuffer + pixel_size*offset,
+                       pixel_size*pixel_count, ICET_BYTE,
+                       compose_group[image_dest], SWAP_IMAGE_DATA);
     }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        IceTUInt *depthBuffer = icetGetImageDepthBuffer(imageBuffer);
-        icetRaiseDebug("Sending depth data.");
-        icetAddSentBytes(4*pixel_count);
-        ICET_COMM_SEND(depthBuffer + offset, pixel_count, ICET_INT,
-                       compose_group[image_dest], SWAP_DEPTH_DATA);
+
+
+  /* Do not collect both color and depth when ICET_COMPOSITE_ONE_BUFFER is
+     enabled. */
+    if (    (color_format == ICET_IMAGE_COLOR_NONE)
+         || !icetIsEnabled(ICET_COMPOSITE_ONE_BUFFER) ) {
+        if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+            IceTVoid *depthBuffer;
+            IceTSizeType pixel_size;
+            depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
+            icetRaiseDebug("Sending depth data.");
+            icetAddSentBytes(pixel_size*pixel_count);
+            ICET_COMM_SEND(depthBuffer + pixel_size*offset,
+                           pixel_size*pixel_count, ICET_FLOAT,
+                           compose_group[image_dest], SWAP_DEPTH_DATA);
+        } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseError("Invalid depth format", ICET_SANITY_CHECK_FAIL);
+        }
     }
 }
 
@@ -427,9 +457,10 @@ static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
  * selected for outputs. */
 static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                                   IceTInt pow2size, IceTInt group_rank,
-                                  IceTImage imageBuffer, IceTInt pixels,
-                                  IceTSparseImage inImage,
-                                  IceTSparseImage outImage)
+                                  IceTImage image,
+                                  IceTSizeType pixel_count,
+                                  IceTVoid *inSparseImageBuffer,
+                                  IceTVoid *outSparseImageBuffer)
 {
     IceTInt extra_proc;   /* group_size - pow2size */
     IceTInt extra_pow2size;       /* extra_proc rounded down to nearest power of 2. */
@@ -443,7 +474,8 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
       /* I am part of the extra stuff.  Recurse to run bswap on my part. */
         BswapComposeNoCombine(compose_group + pow2size, extra_proc,
                               extra_pow2size, upper_group_rank,
-                              imageBuffer, pixels, inImage, outImage);
+                              image, pixel_count,
+                              inSparseImageBuffer, outSparseImageBuffer);
       /* Now I may have some image data to send to lower group. */
         if (upper_group_rank < extra_pow2size) {
             IceTInt num_pieces = pow2size/extra_pow2size;
@@ -452,19 +484,21 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
 
             BIT_REVERSE(offset, upper_group_rank, extra_pow2size);
             icetRaiseDebug1("My offset: %d", (int)offset);
-            offset *= pixels/extra_pow2size;
+            offset *= pixel_count/extra_pow2size;
 
           /* Trying to figure out what processes to send to is tricky.  We
-           * can do this by getting the peice number (bit reversal of
+           * can do this by getting the piece number (bit reversal of
            * upper_group_rank), multiply this by num_pieces, add the number
            * of each local piece to get the piece number for the lower
            * half, and finally reverse the bits again.  Equivocally, we can
            * just reverse the bits of the local piece num, multiply by
            * num_peices and add that to upper_group_rank to get the final
            * location. */
-            pixels = pixels/pow2size;
+            pixel_count = pixel_count/pow2size;
             for (i = 0; i < num_pieces; i++) {
-                IceTInt compressedSize;
+                IceTSparseImage compressed_image;
+                IceTVoid *package_buffer;
+                IceTSizeType package_size;
                 IceTInt dest_rank;
 
                 BIT_REVERSE(dest_rank, i, num_pieces);
@@ -472,13 +506,16 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                 icetRaiseDebug2("Sending piece %d to %d", i, (int)dest_rank);
 
               /* Is compression the right thing?  It's currently easier. */
-                compressedSize = icetCompressSubImage(imageBuffer,
-                                                      offset + i*pixels,
-                                                      pixels, outImage);
-                icetAddSentBytes(compressedSize);
+                compressed_image = icetCompressSubImage(image,
+                                                        offset + i*pixel_count,
+                                                        pixel_count,
+                                                        outSparseImageBuffer);
+                icetSparseImagePackageForSend(compressed_image,
+                                              &package_buffer, &package_size);
+                icetAddSentBytes(package_size);
               /* Send to processor in lower "half" that has same part of
                * image. */
-                ICET_COMM_SEND(outImage, compressedSize, ICET_BYTE,
+                ICET_COMM_SEND(package_buffer, package_size, ICET_BYTE,
                                compose_group[dest_rank],
                                SWAP_IMAGE_DATA);
             }
@@ -486,43 +523,60 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
         return;
     } else {
       /* I am part of the lower group.  Do the actual binary swap. */
+        IceTEnum color_format, depth_format;
+        int bitmask;
+        int offset;
+
+        color_format = icetImageGetColorFormat(image);
+        depth_format = icetImageGetDepthFormat(image);
+
       /* To do the ordering correct, at iteration i we must swap with a
        * process 2^i units away.  The easiest way to find the process to
        * pair with is to simply xor the group_rank with a value with the
        * ith bit set. */
-        int bitmask = 0x0001;
-        int offset = 0;
 
-        for (bitmask = 0x0001; bitmask < pow2size; bitmask <<= 1) {
+        for (bitmask = 0x0001, offset = 0; bitmask < pow2size; bitmask <<= 1) {
             IceTInt pair;
             IceTInt inOnTop;
-            IceTInt compressedSize;
+            IceTSparseImage compressed_image;
+            IceTVoid *package_buffer;
+            IceTSizeType package_size;
+            IceTSizeType incoming_size;
 
             pair = group_rank ^ bitmask;
 
-            pixels /= 2;
+            pixel_count /= 2;
 
             if (group_rank < pair) {
-                compressedSize = icetCompressSubImage(imageBuffer,
-                                                      offset + pixels, pixels,
-                                                      outImage);
+                compressed_image = icetCompressSubImage(image,
+                                                        offset + pixel_count,
+                                                        pixel_count,
+                                                        outSparseImageBuffer);
                 inOnTop = 0;
             } else {
-                compressedSize = icetCompressSubImage(imageBuffer,
-                                                      offset, pixels,
-                                                      outImage);
+                compressed_image = icetCompressSubImage(image,
+                                                        offset,
+                                                        pixel_count,
+                                                        outSparseImageBuffer);
                 inOnTop = 1;
-                offset += pixels;
+                offset += pixel_count;
             }
 
-            icetAddSentBytes(compressedSize);
-            ICET_COMM_SENDRECV(outImage, compressedSize,
+            icetSparseImagePackageForSend(compressed_image,
+                                          &package_buffer, &package_size);
+            icetAddSentBytes(package_size);
+            incoming_size = icetSparseImageBufferSize(color_format,
+                                                      depth_format,
+                                                      pixel_count);
+            ICET_COMM_SENDRECV(package_buffer, package_size,
                                ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA,
-                               inImage, icetSparseImageSize(pixels),
+                               inSparseImageBuffer, incoming_size,
                                ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA);
 
-            icetCompressedSubComposite(imageBuffer, offset, pixels,
-                                       inImage, inOnTop);
+            compressed_image
+                = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
+            icetCompressedSubComposite(image, offset, pixel_count,
+                                       compressed_image, inOnTop);
         }
 
       /* Now absorb any image that was part of extra stuff. */
@@ -531,24 +585,34 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
        * amount, and reverse the bits again.  However, the equivalent to
        * this is just clearing out the upper bits. */
         if (extra_pow2size > 0) {
-            IceTInt src = pow2size + (group_rank & (extra_pow2size-1));
+            IceTSizeType incoming_size;
+            IceTInt src;
+            IceTSparseImage compressed_image;
             icetRaiseDebug1("Absorbing image from %d", (int)src);
-            ICET_COMM_RECV(inImage, icetSparseImageSize(pixels),
+            incoming_size = icetSparseImageBufferSize(color_format,
+                                                      depth_format,
+                                                      pixel_count);
+            src = pow2size + (group_rank & (extra_pow2size-1));
+            ICET_COMM_RECV(inSparseImageBuffer, incoming_size,
                            ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
-            icetCompressedSubComposite(imageBuffer, offset, pixels,
-                                       inImage, 0);
+            compressed_image
+                = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
+            icetCompressedSubComposite(image, offset, pixel_count,
+                                       compressed_image, 0);
         }
     }
 }
 
-void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
-                      IceTImage imageBuffer,
-                      IceTSparseImage inImage, IceTSparseImage outImage)
+void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
+                      IceTInt image_dest,
+                      IceTImage image,
+                      IceTVoid *inSparseImageBuffer,
+                      IceTVoid *outSparseImageBuffer)
 {
     IceTInt group_rank;
     IceTInt rank;
     IceTInt pow2size;
-    IceTUInt pixels;
+    IceTUInt pixel_count;
 
     icetRaiseDebug("In icetBswapCompose");
 
@@ -559,25 +623,26 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_
     for (pow2size = 1; pow2size <= group_size; pow2size *= 2);
     pow2size /= 2;
 
-    pixels = icetGetImagePixelCount(imageBuffer);
+    pixel_count = icetImageGetSize(image);
   /* Make sure we can divide pixels evenly amongst processors. */
   /* WARNING: Will leave some pixels un-composed. */
-    pixels = (pixels/pow2size)*pow2size;
+    pixel_count = (pixel_count/pow2size)*pow2size;
 
   /* Do actual bswap. */
     BswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
-                          imageBuffer, pixels, inImage, outImage);
+                          image, pixel_count,
+                          inSparseImageBuffer, outSparseImageBuffer);
 
     if (group_rank == image_dest) {
       /* Collect image if I'm the destination. */
         BswapCollectFinalImages(compose_group, pow2size, group_rank,
-                                imageBuffer, pixels/pow2size);
+                                image, pixel_count/pow2size);
     } else if (group_rank < pow2size) {
       /* Send image to destination. */
-        IceTInt sub_image_size = pixels/pow2size;
+        IceTInt sub_image_size = pixel_count/pow2size;
         IceTInt piece_num;
         BIT_REVERSE(piece_num, group_rank, pow2size);
-        BswapSendFinalImage(compose_group, image_dest, imageBuffer,
+        BswapSendFinalImage(compose_group, image_dest, image,
                             sub_image_size, piece_num*sub_image_size);
     }
 }

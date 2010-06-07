@@ -14,6 +14,11 @@
 #include <IceT.h>
 #include "state.h"
 
+ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,
+                                            IceTSizeType *pixel_size);
+ICET_EXPORT IceTVoid *icetImageGetDepthVoid(IceTImage image,
+                                            IceTSizeType *pixel_size);
+
 typedef struct { IceTVoid *opaque_internals; } IceTSparseImage;
 
 ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
