@@ -193,6 +193,17 @@ IceTImage icetImageInitialize(IceTVoid *buffer,
     return image;
 }
 
+IceTImage icetImageNull(void)
+{
+    return icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
+                               ICET_IMAGE_DEPTH_NONE, 0);
+}
+
+IceTBoolean icetImageIsNull(const IceTImage image)
+{
+    return (image.opaque_internals == NULL);
+}
+
 IceTSparseImage icetSparseImageInitialize(IceTVoid *buffer,
                                           IceTEnum color_format,
                                           IceTEnum depth_format,

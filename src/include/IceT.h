@@ -138,6 +138,8 @@ ICET_EXPORT IceTImage icetImageInitialize(IceTVoid *buffer,
                                           IceTEnum color_format,
                                           IceTEnum depth_format,
                                           IceTSizeType num_pixels);
+ICET_EXPORT IceTImage icetImageNull(void);
+ICET_EXPORT IceTBoolean icetImageIsNull(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
 ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image);
