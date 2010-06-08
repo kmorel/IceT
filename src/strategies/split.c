@@ -37,12 +37,12 @@ static IceTImage splitStrategy(void)
     IceTInt rank;
     IceTInt num_proc;
     IceTInt num_tiles;
-    IceTInt max_pixels;
+    IceTSizeType max_pixels;
     IceTInt *tile_contribs;
     IceTInt total_image_count;
     IceTInt *display_nodes;
     IceTInt tile_displayed;
-    IceTEnum output_buffers;
+    IceTEnum color_format, depth_format;
 
     IceTInt num_contained_tiles;
     IceTInt *contained_tiles_list;
@@ -51,15 +51,23 @@ static IceTImage splitStrategy(void)
     int tile, image, node;
     int num_allocated;
 
-    IceTSparseImage *incoming;
+    IceTSparseImage incoming;
+    IceTVoid **incomingBuffers;
     IceTSparseImage outgoing;
+    IceTVoid *outgoingBuffer;
     IceTImage imageFragment;
+    IceTVoid *imageFragmentBuffer;
     IceTImage fullImage;
+    IceTVoid *fullImageBuffer;
+
+    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTSizeType fragmentRawImageSize, fragmentSparseImageSize;
+    IceTSizeType pixel_size;
 
     int num_requests;
     IceTCommRequest *requests;
 
-    int first_incoming = 1;
+    int first_incoming;
 
     icetRaiseDebug("In splitStrategy");
 
@@ -76,18 +84,15 @@ static IceTImage splitStrategy(void)
     all_contained_tiles_masks
         = icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
 
+    maxRawImageSize = icetImageMaxBufferSize(max_pixels);
+    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
+
+    fullImage = icetImageNull();
+
   /* Special case: no images rendered whatsoever. */
     if (total_image_count < 1) {
         icetRaiseDebug("Not rendering any images.  Quit early.");
-        if (tile_displayed >= 0) {
-            icetResizeBuffer(icetFullImageSize(max_pixels));
-            fullImage = icetReserveBufferMem(icetFullImageSize(max_pixels));
-            icetInitializeImage(fullImage, max_pixels);
-            icetClearImage(fullImage);
-        } else {
-            fullImage = NULL;
-        }
-        return fullImage;
+        return icetImageNull();
     }
 
     tile_groups = malloc(sizeof(int)*(num_tiles+1));
@@ -172,37 +177,33 @@ static IceTImage splitStrategy(void)
     fragment_size = max_pixels/group_size;
 
     num_requests = tile_contribs[my_tile];
-    if (num_requests < 2) num_requests = 2;
+    if (num_requests < 1) num_requests = 1;
 
-    icetResizeBuffer(  sizeof(IceTSparseImage)*tile_contribs[my_tile]
-                     + icetFullImageSize(fragment_size)
-                     + icetSparseImageSize(max_pixels)
-                     + icetFullImageSize(max_pixels)
-                     + icetSparseImageSize(fragment_size)*tile_contribs[my_tile]
+    fragmentRawImageSize    = icetImageMaxBufferSize(fragment_size);
+    fragmentSparseImageSize = icetSparseImageMaxBufferSize(fragment_size);
+
+    icetResizeBuffer(  sizeof(IceTVoid*)*tile_contribs[my_tile]
+                     + maxSparseImageSize
+                     + fragmentRawImageSize
+                     + maxRawImageSize
+                     + fragmentSparseImageSize*tile_contribs[my_tile]
                      + sizeof(IceTCommRequest)*num_requests);
-    incoming
-        = icetReserveBufferMem(sizeof(IceTSparseImage)*tile_contribs[my_tile]);
-    outgoing = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    imageFragment = icetReserveBufferMem(icetFullImageSize(fragment_size));
-    fullImage = icetReserveBufferMem(icetFullImageSize(max_pixels));
+    incomingBuffers
+        = icetReserveBufferMem(sizeof(IceTVoid*)*tile_contribs[my_tile]);
+    outgoingBuffer      = icetReserveBufferMem(maxSparseImageSize);
+    imageFragmentBuffer = icetReserveBufferMem(fragmentRawImageSize);
+    fullImageBuffer     = icetReserveBufferMem(maxRawImageSize);
     requests = icetReserveBufferMem(sizeof(IceTCommRequest)*num_requests);
 
   /* Set up asynchronous receives for all incoming image fragments. */
-/*      for (image = 0; image < tile_contribs[my_tile]; image++) { */
-/*          incoming[image] */
-/*              = icetReserveBufferMem(icetSparseImageSize(fragment_size)); */
-/*          MPI_Irecv(incoming[image], icetSparseImageSize(fragment_size), */
-/*                    MPI_BYTE, MPI_ANY_SOURCE, IMAGE_DATA, */
-/*                    icetGetCommunicator(), requests + image); */
-/*      } */
     for (image = 0, node = 0; image < tile_contribs[my_tile]; node++) {
         if (all_contained_tiles_masks[node*num_tiles + my_tile]) {
             icetRaiseDebug1("Setting up receive from node %d", node);
-            incoming[image]
-                = icetReserveBufferMem(icetSparseImageSize(fragment_size));
+            incomingBuffers[image]
+              = icetReserveBufferMem(fragmentSparseImageSize);
             requests[image] =
-                ICET_COMM_IRECV(incoming[image],
-                                icetSparseImageSize(fragment_size),
+                ICET_COMM_IRECV(incomingBuffers[image],
+                                fragmentSparseImageSize,
                                 ICET_BYTE, node, IMAGE_DATA);
             image++;
         }
@@ -210,85 +211,103 @@ static IceTImage splitStrategy(void)
 
   /* Render and send all tile images I am rendering. */
     for (image = 0; image < num_contained_tiles; image++) {
-        IceTUInt sending_frag_size;
-        IceTUInt compressedSize;
-        IceTUInt offset;
+        IceTSizeType sending_frag_size;
+        IceTSizeType offset;
 
         tile = contained_tiles_list[image];
-        icetGetTileImage(tile, fullImage);
+        fullImage = icetGetTileImage(tile, fullImageBuffer);
         icetRaiseDebug1("Rendered image for tile %d", tile);
         offset = 0;
         sending_frag_size = max_pixels/(tile_groups[tile+1]-tile_groups[tile]);
         for (node = tile_groups[tile]; node < tile_groups[tile+1]; node++) {
+            IceTVoid *package_buffer;
+            IceTSizeType package_size;
+
             icetRaiseDebug2("Sending tile %d to node %d", tile, node);
             icetRaiseDebug2("Pixels %d to %d", offset, sending_frag_size-1);
-            compressedSize = icetCompressSubImage(fullImage, offset,
-                                                  sending_frag_size, outgoing);
-            icetAddSentBytes(compressedSize);
-            ICET_COMM_SEND(outgoing, compressedSize,
+            outgoing = icetCompressSubImage(fullImage, offset,
+                                            sending_frag_size, outgoingBuffer);
+            icetSparseImagePackageForSend(outgoing,
+                                          &package_buffer, &package_size);
+            icetAddSentBytes(package_size);
+            ICET_COMM_SEND(package_buffer, package_size,
                            ICET_BYTE, node, IMAGE_DATA);
             offset += sending_frag_size;
         }
     }
 
   /* Wait for images to come in and Z compare them. */
+    first_incoming = 1;
     for (image = 0; image < tile_contribs[my_tile]; image++) {
         int idx;
         idx = ICET_COMM_WAITANY(tile_contribs[my_tile], requests);
+        incoming = icetSparseImageUnpackageFromReceive(incomingBuffers[idx]);
         if (first_incoming) {
             icetRaiseDebug1("Got first image (%d).", idx);
-            icetDecompressImage(incoming[idx], imageFragment);
+            imageFragment = icetDecompressImage(incoming, imageFragmentBuffer);
             first_incoming = 0;
         } else {
             icetRaiseDebug1("Got subsequent image (%d).", idx);
-            icetCompressedComposite(imageFragment,
-                                    incoming[idx], 1);
+            icetCompressedComposite(imageFragment, incoming, 1);
         }
     }
 
   /* Send composited fragment to display process. */
-    icetGetIntegerv(ICET_OUTPUT_BUFFERS, (IceTInt *)&output_buffers);
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        icetAddSentBytes(4*fragment_size);
-        requests[0] = ICET_COMM_ISEND(icetGetImageColorBuffer(imageFragment),
-                                      4*fragment_size,
-                                      ICET_BYTE, display_nodes[my_tile],
+    color_format = icetImageGetColorFormat(imageFragment);
+    depth_format = icetImageGetDepthFormat(imageFragment);
+    if (    (color_format != ICET_IMAGE_COLOR_NONE)
+         && icetIsEnabled(ICET_COMPOSITE_ONE_BUFFER) ) {
+        depth_format = ICET_IMAGE_DEPTH_NONE;
+    }
+
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        outgoingBuffer = icetImageGetColorVoid(imageFragment, &pixel_size);
+        icetAddSentBytes(pixel_size*fragment_size);
+        requests[0] = ICET_COMM_ISEND(outgoingBuffer,
+                                      pixel_size*fragment_size,
+                                      ICET_BYTE,
+                                      display_nodes[my_tile],
                                       COLOR_DATA);
     }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        icetAddSentBytes(4*fragment_size);
-        requests[1] = ICET_COMM_ISEND(icetGetImageDepthBuffer(imageFragment),
-                                      fragment_size, ICET_INT,
-                                      display_nodes[my_tile], DEPTH_DATA);
+    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        outgoingBuffer = icetImageGetDepthVoid(imageFragment, &pixel_size);
+        icetAddSentBytes(pixel_size*fragment_size);
+        requests[1] = ICET_COMM_ISEND(outgoingBuffer,
+                                      pixel_size*fragment_size,
+                                      ICET_BYTE,
+                                      display_nodes[my_tile],
+                                      DEPTH_DATA);
     }
 
   /* If I am displaying a tile, receive image data. */
     if (tile_displayed >= 0) {
-        icetInitializeImage(fullImage, max_pixels);
+        fullImage = icetImageInitialize(fullImageBuffer,
+                                        color_format, depth_format,
+                                        max_pixels);
       /* Check to make sure tile is not blank. */
         if (tile_groups[tile_displayed+1] > tile_groups[tile_displayed]) {
             int my_frag_size = max_pixels/(  tile_groups[tile_displayed+1]
                                            - tile_groups[tile_displayed]);
-            if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-                IceTUByte *cb = icetGetImageColorBuffer(fullImage);
+            if (color_format != ICET_IMAGE_COLOR_NONE) {
+                IceTVoid *cb = icetImageGetColorVoid(fullImage, &pixel_size);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final color fragment from %d",
                                     node);
-                    ICET_COMM_RECV(cb, 4*my_frag_size,
+                    ICET_COMM_RECV(cb, pixel_size*my_frag_size,
                                    ICET_BYTE, node, COLOR_DATA);
-                    cb += 4*my_frag_size;
+                    cb += pixel_size*my_frag_size;
                 }
             }
-            if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-                IceTUInt *db = icetGetImageDepthBuffer(fullImage);
+            if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+                IceTVoid *db = icetImageGetDepthVoid(fullImage, &pixel_size);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final depth fragment from %d",
                                     node);
-                    ICET_COMM_RECV(db, my_frag_size,
+                    ICET_COMM_RECV(db, pixel_size*my_frag_size,
                                    ICET_INT, node, DEPTH_DATA);
-                    db += my_frag_size;
+                    db += pixel_size*my_frag_size;
                 }
             }
         } else {
@@ -296,11 +315,11 @@ static IceTImage splitStrategy(void)
         }
     }
 
-    if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-        ICET_COMM_WAIT(requests);
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        ICET_COMM_WAIT(&requests[0]);
     }
-    if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-        ICET_COMM_WAIT(requests + 1);
+    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        ICET_COMM_WAIT(&requests[1]);
     }
 
     free(tile_groups);
