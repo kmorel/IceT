@@ -28,20 +28,22 @@ static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
                         IceTInt *group_image_destp,
                         IceTInt *num_receivingp,
-                        IceTInt buffer_size);
+                        IceTSizeType buffer_size);
 
 
 IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
 
 static IceTImage reduceCompose(void)
 {
-    IceTSparseImage inImage;
-    IceTSparseImage outImage;
+    IceTVoid *inSparseImageBuffer;
+    IceTVoid *outSparseImageBuffer;
+    IceTVoid *imageBuffer;
     IceTImage image;
     IceTInt max_pixels;
     IceTInt num_processes;
     IceTInt tile_displayed;
-    IceTInt buffer_size;
+    IceTSizeType image_size, sparse_image_size;
+    IceTSizeType buffer_size;
 
     IceTInt *tile_image_dest;
     IceTInt *compose_group, group_size, group_image_dest;
@@ -53,50 +55,52 @@ static IceTImage reduceCompose(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
 
-    buffer_size = (  2*icetSparseImageSize(max_pixels)
-		   + icetFullImageSize(max_pixels));
+    sparse_image_size = icetSparseImageMaxBufferSize(max_pixels);
+    image_size = icetImageMaxBufferSize(max_pixels);
+    buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
 			    &compose_group, &group_size, &group_image_dest,
 			    &num_receiving,
 			    buffer_size);
 
-    inImage  = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    outImage = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    image    = icetReserveBufferMem(icetFullImageSize(max_pixels));
+    inSparseImageBuffer  = icetReserveBufferMem(sparse_image_size);
+    outSparseImageBuffer = icetReserveBufferMem(sparse_image_size);
+    imageBuffer          = icetReserveBufferMem(image_size);
 
-    icetRenderTransferFullImages(image, inImage, outImage,
-				 num_receiving, tile_image_dest);
+    image = icetRenderTransferFullImages(imageBuffer,
+                                         inSparseImageBuffer,
+                                         outSparseImageBuffer,
+                                         num_receiving,
+                                         tile_image_dest);
 
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
 	icetBswapCompose(compose_group, group_size, group_image_dest,
-			 image, inImage, outImage);
+			 image, inSparseImageBuffer, outSparseImageBuffer);
     } else if (group_size > 0) {
 	icetRaiseDebug("Doing tree compose");
 	icetTreeCompose(compose_group, group_size, group_image_dest,
-			image, inImage);
+			image, inSparseImageBuffer);
     } else {
 	icetRaiseDebug("Clearing pixels");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        image = icetImageNull();
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
-      /* Clear tile if nothing drawn in it. */
+      /* Return empty image if nothing in this tile. */
 	icetRaiseDebug("Clearing pixels");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        image = icetImageNull();
     }
 
     return image;
 }
 
 static IceTInt delegate(IceTInt **tile_image_destp,
-		      IceTInt **compose_groupp, IceTInt *group_sizep,
-		      IceTInt *group_image_destp,
-		      IceTInt *num_receivingp,
-		      IceTInt buffer_size)
+                        IceTInt **compose_groupp, IceTInt *group_sizep,
+                        IceTInt *group_image_destp,
+                        IceTInt *num_receivingp,
+                        IceTSizeType buffer_size)
 {
     IceTBoolean *all_contained_tiles_masks;
     IceTInt *contrib_counts;
