@@ -33,6 +33,7 @@ static void draw(void)
 static int BlankTilesRun()
 {
     int i, j, x, y;
+    IceTImage image;
     IceTUByte *cb;
     int result = TEST_PASSED;
     IceTInt rank, num_proc;
@@ -44,6 +45,9 @@ static int BlankTilesRun()
 
     icetDrawFunc(draw);
     icetBoundingBoxf(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
+
+    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
         int tile_dim;
@@ -67,14 +71,14 @@ static int BlankTilesRun()
             glOrtho(-1, tile_dim*2-1, -1, tile_dim*2-1, -1, 1);
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
-            icetDrawFrame();
+            image = icetDrawFrame();
             swap_buffers();
 
             if (rank == 0) {
                 printf("Rank == 0, tile should have stuff in it.\n");
             } else if (rank < tile_dim*tile_dim) {
                 printf("Checking returned image.\n");
-                cb = icetGetColorBuffer();
+                cb = icetImageGetColorUByte(image);
                 for (j = 0; j < SCREEN_WIDTH*SCREEN_HEIGHT*4; j++) {
                     if (cb[j] != 0) {
                         printf("Found bad pixel!!!!!!!!\n");

@@ -42,8 +42,8 @@ IceTStrategy strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
-int SCREEN_WIDTH;
-int SCREEN_HEIGHT;
+IceTSizeType SCREEN_WIDTH;
+IceTSizeType SCREEN_HEIGHT;
 
 static int windowId;
 
