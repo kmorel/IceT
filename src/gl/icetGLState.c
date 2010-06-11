@@ -44,16 +44,9 @@ void icetGLSetReadBuffer(GLenum mode)
 
 void icetGLSetColorFormat(IceTEnum color_format)
 {
-    if (color_format == ICET_IMAGE_COLOR_NONE) {
-        icetRaiseError("Cannot set ICET_GL_COLOR_FORMAT to ICET_IMAGE_COLOR_NONE."
-                       " If don't want to read color buffers, turn off the"
-                       " input color buffer in icetInputOutputBuffers."
-                       " Ignoring",
-                       ICET_INVALID_ENUM);
-        return;
-    }
     if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
-        || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) ) {
+        || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
+        || (color_format == ICET_IMAGE_COLOR_NONE) ) {
         icetStateSetInteger(ICET_GL_COLOR_FORMAT, color_format);
     } else {
         icetRaiseError("Invalid IceT color format.", ICET_INVALID_ENUM);
@@ -62,15 +55,8 @@ void icetGLSetColorFormat(IceTEnum color_format)
 
 void icetGLSetDepthFormat(IceTEnum depth_format)
 {
-    if (depth_format == ICET_IMAGE_DEPTH_NONE) {
-        icetRaiseError("Cannot set ICET_GL_DEPTH_FORMAT to ICET_IMAGE_DEPTH_NONE."
-                       " If don't want to read depth buffers, turn off the"
-                       " input depth buffer in icetInputOutputBuffers."
-                       " Ignoring",
-                       ICET_INVALID_ENUM);
-        return;
-    }
-    if (   (depth_format == ICET_IMAGE_DEPTH_FLOAT) ) {
+    if (   (depth_format == ICET_IMAGE_DEPTH_FLOAT)
+        || (depth_format == ICET_IMAGE_DEPTH_NONE) ) {
         icetStateSetInteger(ICET_GL_DEPTH_FORMAT, depth_format);
     } else {
         icetRaiseError("Invalid IceT depth format.", ICET_INVALID_ENUM);

@@ -1143,14 +1143,12 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                          IceTSizeType full_width, IceTSizeType full_height)
 {
     IceTInt readBuffer;
-    IceTInt colorFormat;
+    IceTEnum color_format;
+    IceTEnum depth_format;
     IceTDouble *read_time;
     IceTDouble timer;
-    IceTUByte *colorBuffer;
-    IceTFloat *depthBuffer;
     IceTInt physical_viewport[4];
     IceTInt x_offset, y_offset;
-    IceTUInt background_color;
     IceTInt x, y;
 
     icetRaiseDebug4("Reading viewport %d %d %d %d", (int)fb_x, (int)fb_y,
@@ -1171,11 +1169,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     }
 #endif /* DEBUG */
 
-  /* TODO: Handle different color formats.  Do this when moving this to
-     the OpenGL layer.  Note, you will get errors when one of the buffers
-     does not exist, but it should still work. */
-    colorBuffer = icetImageGetColorUByte(buffer);
-    depthBuffer = icetImageGetDepthFloat(buffer);
+    icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
 
     glPixelStorei(GL_PACK_ROW_LENGTH, full_width);
 
@@ -1195,24 +1190,25 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     read_time = icetUnsafeStateGetDouble(ICET_BUFFER_READ_TIME);
     timer = icetWallTime();
 
-    if (colorBuffer != NULL) {
-        icetGetIntegerv(ICET_GL_COLOR_FORMAT, &colorFormat);
+    if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        IceTUInt *colorBuffer = icetImageGetColorUInt(buffer);
+        IceTUInt background_color;
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     colorFormat, GL_UNSIGNED_BYTE,
-                     colorBuffer + 4*(ib_x + full_width*ib_y));
+                     GL_RGBA, GL_UNSIGNED_BYTE,
+                     colorBuffer + (ib_x + full_width*ib_y));
 
         icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
       /* Clear out bottom. */
         for (y = 0; y < ib_y; y++) {
             for (x = 0; x < full_width; x++) {
-                ((IceTUInt *)colorBuffer)[y*full_width + x] = background_color;
+                colorBuffer[y*full_width + x] = background_color;
             }
         }
       /* Clear out left. */
         if (ib_x > 0) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = 0; x < ib_x; x++) {
-                    ((IceTUInt *)colorBuffer)[y*full_width + x] =background_color;
+                    colorBuffer[y*full_width + x] =background_color;
                 }
             }
         }
@@ -1220,18 +1216,70 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
         if (ib_x + sub_width < full_width) {
             for (y = ib_y; y < sub_height+ib_y; y++) {
                 for (x = ib_x+sub_width; x < full_width; x++) {
-                    ((IceTUInt *)colorBuffer)[y*full_width + x] =background_color;
+                    colorBuffer[y*full_width + x] =background_color;
                 }
             }
         }
       /* Clear out top. */
         for (y = ib_y+sub_height; y < full_height; y++) {
             for (x = 0; x < full_width; x++) {
-                ((IceTUInt *)colorBuffer)[y*full_width + x] = background_color;
+                colorBuffer[y*full_width + x] = background_color;
             }
         }
+    } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        IceTFloat *colorBuffer = icetImageGetColorFloat(buffer);
+        IceTFloat background_color[4];
+        glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
+                     GL_RGBA, GL_FLOAT,
+                     colorBuffer + 4*(ib_x + full_width*ib_y));
+
+        icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
+      /* Clear out bottom. */
+        for (y = 0; y < ib_y; y++) {
+            for (x = 0; x < full_width; x++) {
+                colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
+                colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
+                colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
+                colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
+            }
+        }
+      /* Clear out left. */
+        if (ib_x > 0) {
+            for (y = ib_y; y < sub_height+ib_y; y++) {
+                for (x = 0; x < ib_x; x++) {
+                    colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
+                    colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
+                    colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
+                    colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
+                }
+            }
+        }
+      /* Clear out right. */
+        if (ib_x + sub_width < full_width) {
+            for (y = ib_y; y < sub_height+ib_y; y++) {
+                for (x = ib_x+sub_width; x < full_width; x++) {
+                    colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
+                    colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
+                    colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
+                    colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
+                }
+            }
+        }
+      /* Clear out top. */
+        for (y = ib_y+sub_height; y < full_height; y++) {
+            for (x = 0; x < full_width; x++) {
+                colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
+                colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
+                colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
+                colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
+            }
+        }
+    } else if (color_format != ICET_IMAGE_COLOR_NONE) {
+        icetRaiseError("Invalid color format.", ICET_SANITY_CHECK_FAIL);
     }
-    if (depthBuffer != NULL) {
+
+    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+        IceTFloat *depthBuffer = icetImageGetDepthFloat(buffer);;
         glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
                      GL_DEPTH_COMPONENT, GL_FLOAT,
                      depthBuffer + ib_x + full_width*ib_y);
@@ -1264,6 +1312,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
                 depthBuffer[y*full_width + x] = 1.0;
             }
         }
+    } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        icetRaiseError("Invalid depth format.", ICET_SANITY_CHECK_FAIL);
     }
 
     *read_time += icetWallTime() - timer;

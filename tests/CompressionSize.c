@@ -233,6 +233,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
     icetDrawFunc(draw);
+    icetGLSetColorFormat(color_format);
+    icetGLSetDepthFormat(depth_format);
   /* Do a perfunctory draw to set other state variables. */
     icetDrawFrame();
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
@@ -288,22 +290,22 @@ static int CompressionSizeRun()
     if (result == TEST_PASSED) {
         result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
                                    ICET_IMAGE_DEPTH_FLOAT,
-                                   ICET_COMPOSITE_MODE_BLEND);
+                                   ICET_COMPOSITE_MODE_Z_BUFFER);
     } else {
         DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
                           ICET_IMAGE_DEPTH_FLOAT,
-                          ICET_COMPOSITE_MODE_BLEND);
+                          ICET_COMPOSITE_MODE_Z_BUFFER);
     }
 
     printf("\n\nCompress depth and 32-bit color.\n");
     if (result == TEST_PASSED) {
         result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
                                    ICET_IMAGE_DEPTH_FLOAT,
-                                   ICET_COMPOSITE_MODE_BLEND);
+                                   ICET_COMPOSITE_MODE_Z_BUFFER);
     } else {
         DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
                           ICET_IMAGE_DEPTH_FLOAT,
-                          ICET_COMPOSITE_MODE_BLEND);
+                          ICET_COMPOSITE_MODE_Z_BUFFER);
     }
 
     return result;
