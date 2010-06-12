@@ -184,6 +184,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetImageGetColorVoid(image, &color_pixel_size);
     icetImageGetDepthVoid(image, &depth_pixel_size);
     pixel_size = color_pixel_size + depth_pixel_size;
+    printf("Pixel size: color=%d, depth=%d, total=%d\n",
+           (int)color_pixel_size, (int)depth_pixel_size, (int)pixel_size);
 
     printf("\nCreating worst possible image (with respect to compression).\n");
     InitPathologicalImage(image);
@@ -192,7 +194,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     compressedimage = icetCompressImage(image, compressedbuffer);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)(pixel_size*(pixels/2)), (int)size);
+           (int)(pixel_size*(pixels/2) + 2*sizeof(IceTUShort)*(pixels/2)),
+           (int)size);
     if (   (size > compressedsize)
         || (size < pixel_size*(pixels/2)) ) {
         printf("Size differs from expected size!\n");
@@ -205,7 +208,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     compressedimage = icetCompressImage(image, compressedbuffer);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)imagesize, (int)size);
+           (int)compressedsize, (int)size);
     if ((size > compressedsize) || (size < pixel_size*pixels)) {
         printf("Size differs from expected size!\n");
         result = TEST_FAILED;

@@ -104,7 +104,8 @@
                     CT_INCREMENT_PIXEL();
                 }
                 if (_x >= _lastx) break;
-                _runlengths = _dest++;
+                _runlengths = _dest;
+                _dest += RUN_LENGTH_SIZE;
                 while (_count > 0xFFFF) {
                     INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
                     ACTIVE_RUN_LENGTH(_runlengths) = 0;
@@ -112,7 +113,8 @@
                     _totalcount += 0xFFFF;
 #endif
                     _count -= 0xFFFF;
-                    _runlengths = _dest++;
+                    _runlengths = _dest;
+                    _dest += RUN_LENGTH_SIZE;
                 }
                 INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
@@ -140,7 +142,8 @@
 
         _p = 0;
         while (_p < _pixels) {
-            IceTUInt *_runlengths = _dest++;
+            IceTUInt *_runlengths = _dest;
+            _dest += RUN_LENGTH_SIZE;
           /* Count background pixels. */
             while ((_p < _pixels) && (!CT_ACTIVE())) {
                 _p++;
@@ -154,7 +157,8 @@
                 _totalcount += 0xFFFF;
 #endif
                 _count -= 0xFFFF;
-                _runlengths = _dest++;
+                _runlengths = _dest;
+                _dest += RUN_LENGTH_SIZE;
             }
             INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
 #ifdef DEBUG
@@ -184,7 +188,7 @@
         while (_count > 0xFFFF) {
             INACTIVE_RUN_LENGTH(_dest) = 0xFFFF;
             ACTIVE_RUN_LENGTH(_dest) = 0;
-            _dest++;
+            _dest += RUN_LENGTH_SIZE;
 #ifdef DEBUG
             _totalcount += 0xFFFF;
 #endif /*DEBUG*/
@@ -192,7 +196,7 @@
         }
         INACTIVE_RUN_LENGTH(_dest) = (IceTUShort)_count;
         ACTIVE_RUN_LENGTH(_dest) = 0;
-        _dest++;
+        _dest += RUN_LENGTH_SIZE;
 #ifdef DEBUG
         _totalcount += _count;
 #endif /*DEBUG*/

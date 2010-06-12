@@ -103,7 +103,7 @@ static IceTSizeType colorPixelSize(IceTEnum color_format)
 static IceTSizeType depthPixelSize(IceTEnum depth_format)
 {
     switch (depth_format) {
-      case ICET_IMAGE_DEPTH_FLOAT: return 4*sizeof(IceTFloat);
+      case ICET_IMAGE_DEPTH_FLOAT: return sizeof(IceTFloat);
       case ICET_IMAGE_DEPTH_NONE:  return 0;
       default:
           icetRaiseError("Invalid depth format.", ICET_INVALID_ENUM);
@@ -134,14 +134,15 @@ IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
                                        IceTEnum depth_format,
                                        IceTSizeType num_pixels)
 {
-  /* Sparse images are designed to never take more than the same size of a
-     full image plus the space of 2 run lengths.  This occurs when there are
-     no inactive pixels (hence all data is stored plus 2 run lengths to tell
-     us that).  Even in the pathalogical case where every run length is 1,
-     we are still never any more than that because the 2 active/inactive run
-     lengths are packed into 2-bit shorts, which total takes no more space
-     than a color or depth value for a single pixel. */
-    return (  2*sizeof(IceTUShort)
+  /* Sparse images are designed to never take more than the same size of a full
+     image plus the space of 2 run lengths per 0xFFFF (65,535) pixels.  This
+     occurs when there are no inactive pixels (hence all data is stored plus the
+     necessary run lengths, where the largest run length is 0xFFFF so it can fit
+     into a 16-bit integer).  Even in the pathalogical case where every run
+     length is 1, we are still never any more than that because the 2
+     active/inactive run lengths are packed into 2-bit shorts, which total takes
+     no more space than a color or depth value for a single pixel. */
+    return (  2*sizeof(IceTUShort)*(num_pixels/0xFFFF + 1)
             + icetImageBufferSize(color_format, depth_format, num_pixels) );
 }
 IceTSizeType icetSparseImageMaxBufferSize(IceTSizeType num_pixels)

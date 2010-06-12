@@ -774,7 +774,7 @@ IceTImage icetDrawFrame(void)
             } else {
                 glDrawPixels(tile_viewports[display_tile*4+2],
                              tile_viewports[display_tile*4+3],
-                             color_format, GL_UNSIGNED_BYTE, colorBuffer);
+                             GL_RGBA, GL_UNSIGNED_BYTE, colorBuffer);
             }
             glPopAttrib();
 
