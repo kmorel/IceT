@@ -241,7 +241,7 @@ IceTSparseImage icetSparseImageInitialize(IceTVoid *buffer,
         depth_format = ICET_IMAGE_DEPTH_NONE;
     }
 
-    header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_IMAGE_MAGIC_NUM;
+    header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_SPARSE_IMAGE_MAGIC_NUM;
     header[ICET_IMAGE_COLOR_FORMAT_INDEX]       = color_format;
     header[ICET_IMAGE_DEPTH_FORMAT_INDEX]       = depth_format;
     header[ICET_IMAGE_SIZE_INDEX]               = num_pixels;
