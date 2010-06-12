@@ -147,7 +147,8 @@ IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
 }
 IceTSizeType icetSparseImageMaxBufferSize(IceTSizeType num_pixels)
 {
-    return (2*sizeof(IceTUShort) + icetImageMaxBufferSize(num_pixels));
+    return (  2*sizeof(IceTUShort)*(num_pixels/0xFFFF + 1)
+            + icetImageMaxBufferSize(num_pixels) );
 }
 
 IceTImage icetImageInitialize(IceTVoid *buffer,

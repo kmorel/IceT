@@ -165,7 +165,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Allocating memory for %d pixel image.\n", pixels);
     imagesize = icetImageBufferSize(color_format, depth_format, pixels);
     if (imagesize > icetImageMaxBufferSize(pixels)) {
-         printf("Current image format larger than max size!!!!\n");
+         printf("*** Current image format larger than max size!!!!\n");
          result = TEST_FAILED;
     }
     imagebuffer = malloc(imagesize);
@@ -174,7 +174,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     compressedsize
         = icetSparseImageBufferSize(color_format, depth_format, pixels);
     if (compressedsize > icetSparseImageMaxBufferSize(pixels)) {
-        printf("Current sparse image format larger than max size!!!!!\n");
+        printf("*** Current sparse image format larger than max size!!!!!\n");
         result = TEST_FAILED;
     }
     compressedbuffer = malloc(compressedsize);
@@ -198,7 +198,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
            (int)size);
     if (   (size > compressedsize)
         || (size < pixel_size*(pixels/2)) ) {
-        printf("Size differs from expected size!\n");
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
@@ -210,7 +210,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Expected size: %d.  Actual size: %d\n",
            (int)compressedsize, (int)size);
     if ((size > compressedsize) || (size < pixel_size*pixels)) {
-        printf("Size differs from expected size!\n");
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
@@ -222,7 +222,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
            (int)icetSparseImageBufferSize(color_format, depth_format, 0),
            (int)size);
     if (size > icetSparseImageBufferSize(color_format,depth_format,0)) {
-        printf("Size differs from expected size!\n");
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
@@ -247,7 +247,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Expected size: %d.  Actual size: %d\n",
            (int)compressedsize, (int)size);
     if ((size > compressedsize) || (size < pixel_size*pixels)) {
-        printf("Size differs from expected size!\n");
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
