@@ -37,7 +37,7 @@ static IceTImage splitStrategy(void)
     IceTInt rank;
     IceTInt num_proc;
     IceTInt num_tiles;
-    IceTSizeType max_pixels;
+    IceTInt max_pixels;
     IceTInt *tile_contribs;
     IceTInt total_image_count;
     IceTInt *display_nodes;
@@ -224,7 +224,8 @@ static IceTImage splitStrategy(void)
             IceTSizeType package_size;
 
             icetRaiseDebug2("Sending tile %d to node %d", tile, node);
-            icetRaiseDebug2("Pixels %d to %d", offset, sending_frag_size-1);
+            icetRaiseDebug2("Pixels %d to %d",
+                            (int)offset, (int)sending_frag_size-1);
             outgoing = icetCompressSubImage(fullImage, offset,
                                             sending_frag_size, outgoingBuffer);
             icetSparseImagePackageForSend(outgoing,
