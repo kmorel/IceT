@@ -121,14 +121,6 @@ IceTSizeType icetImageBufferSize(IceTEnum color_format,
     return (  ICET_IMAGE_DATA_START_INDEX*sizeof(IceTUInt)
             + num_pixels*(color_pixel_size + depth_pixel_size) );
 }
-IceTSizeType icetImageMaxBufferSize(IceTSizeType num_pixels)
-{
-  /* Maximum color and depth formats are ICET_IMAGE_COLOR_RGBA_FLOAT and
-     ICET_IMAGE_DEPTH_FLOAT, respectively. */
-    return icetImageBufferSize(ICET_IMAGE_COLOR_RGBA_FLOAT,
-                               ICET_IMAGE_DEPTH_FLOAT,
-                               num_pixels);
-}
 
 IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
                                        IceTEnum depth_format,
@@ -144,11 +136,6 @@ IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
      no more space than a color or depth value for a single pixel. */
     return (  2*sizeof(IceTUShort)*(num_pixels/0xFFFF + 1)
             + icetImageBufferSize(color_format, depth_format, num_pixels) );
-}
-IceTSizeType icetSparseImageMaxBufferSize(IceTSizeType num_pixels)
-{
-    return (  2*sizeof(IceTUShort)*(num_pixels/0xFFFF + 1)
-            + icetImageMaxBufferSize(num_pixels) );
 }
 
 IceTImage icetImageInitialize(IceTVoid *buffer,
@@ -657,6 +644,27 @@ void icetClearImage(IceTImage image)
     }
 }
 
+void icetSetColorFormat(IceTEnum color_format)
+{
+    if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
+        || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
+        || (color_format == ICET_IMAGE_COLOR_NONE) ) {
+        icetStateSetInteger(ICET_COLOR_FORMAT, color_format);
+    } else {
+        icetRaiseError("Invalid IceT color format.", ICET_INVALID_ENUM);
+    }
+}
+
+void icetSetDepthFormat(IceTEnum depth_format)
+{
+    if (   (depth_format == ICET_IMAGE_DEPTH_FLOAT)
+        || (depth_format == ICET_IMAGE_DEPTH_NONE) ) {
+        icetStateSetInteger(ICET_DEPTH_FORMAT, depth_format);
+    } else {
+        icetRaiseError("Invalid IceT depth format.", ICET_INVALID_ENUM);
+    }
+}
+
 IceTImage icetGetTileImage(IceTInt tile, IceTVoid *buffer)
 {
     IceTInt screen_viewport[4], target_viewport[4];
@@ -669,8 +677,8 @@ IceTImage icetGetTileImage(IceTInt tile, IceTVoid *buffer)
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
 
-    icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
-    icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
     image = icetImageInitialize(buffer, color_format, depth_format,
                                 width*height);
 
@@ -700,8 +708,8 @@ IceTSparseImage icetGetCompressedTileImage(IceTInt tile, IceTVoid *buffer)
 
     renderTile(tile, screen_viewport, target_viewport);
 
-    icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
-    icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
     raw_image = getInternalSharedImage(color_format, depth_format,
                                        screen_viewport[2]*screen_viewport[3]);
@@ -1171,8 +1179,8 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
     }
 #endif /* DEBUG */
 
-    icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
-    icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
     glPixelStorei(GL_PACK_ROW_LENGTH, full_width);
 

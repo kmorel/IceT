@@ -130,10 +130,12 @@ typedef struct { IceTVoid *opaque_internals; } IceTImage;
 #define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001
 #define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0x0000
 
+ICET_EXPORT void icetSetColorFormat(IceTEnum color_format);
+ICET_EXPORT void icetSetDepthFormat(IceTEnum depth_format);
+
 ICET_EXPORT IceTSizeType icetImageBufferSize(IceTEnum color_format,
                                              IceTEnum depth_format,
                                              IceTSizeType num_pixels);
-ICET_EXPORT IceTSizeType icetImageMaxBufferSize(IceTSizeType num_pixels);
 ICET_EXPORT IceTImage icetImageInitialize(IceTVoid *buffer,
                                           IceTEnum color_format,
                                           IceTEnum depth_format,
@@ -215,6 +217,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_BACKGROUND_COLOR_WORD (ICET_STATE_ENGINE_START | (IceTEnum)0x0006)
 #define ICET_PHYSICAL_RENDER_WIDTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0007)
 #define ICET_PHYSICAL_RENDER_HEIGHT (ICET_STATE_ENGINE_START| (IceTEnum)0x0008)
+#define ICET_COLOR_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x0009)
+#define ICET_DEPTH_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x000A)
 
 #define ICET_NUM_TILES          (ICET_STATE_ENGINE_START | (IceTEnum)0x0010)
 #define ICET_TILE_VIEWPORTS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0011)

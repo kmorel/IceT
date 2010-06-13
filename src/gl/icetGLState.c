@@ -41,24 +41,3 @@ void icetGLSetReadBuffer(GLenum mode)
         icetRaiseError("Invalid OpenGL read buffer.", ICET_INVALID_ENUM);
     }
 }
-
-void icetGLSetColorFormat(IceTEnum color_format)
-{
-    if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
-        || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
-        || (color_format == ICET_IMAGE_COLOR_NONE) ) {
-        icetStateSetInteger(ICET_GL_COLOR_FORMAT, color_format);
-    } else {
-        icetRaiseError("Invalid IceT color format.", ICET_INVALID_ENUM);
-    }
-}
-
-void icetGLSetDepthFormat(IceTEnum depth_format)
-{
-    if (   (depth_format == ICET_IMAGE_DEPTH_FLOAT)
-        || (depth_format == ICET_IMAGE_DEPTH_NONE) ) {
-        icetStateSetInteger(ICET_GL_DEPTH_FORMAT, depth_format);
-    } else {
-        icetRaiseError("Invalid IceT depth format.", ICET_INVALID_ENUM);
-    }
-}

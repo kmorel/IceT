@@ -31,8 +31,9 @@ static IceTImage serialCompose(void)
     IceTImage myImage;
     IceTVoid *imageBuffer;
     IceTVoid *inSparseImageBuffer, *outSparseImageBuffer;
-    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *compose_group;
+    IceTEnum color_format, depth_format;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
@@ -41,16 +42,20 @@ static IceTImage serialCompose(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
-    maxRawImageSize    = icetImageMaxBufferSize(max_pixels);
-    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
+    rawImageSize    = icetImageBufferSize(color_format, depth_format,
+                                          max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(color_format, depth_format,
+                                                max_pixels);
 
-    icetResizeBuffer(  maxRawImageSize*2
-		     + maxSparseImageSize*2
+    icetResizeBuffer(  rawImageSize*2
+		     + sparseImageSize*2
 		     + sizeof(int)*num_proc);
-    imageBuffer          = icetReserveBufferMem(maxRawImageSize);
-    inSparseImageBuffer  = icetReserveBufferMem(maxSparseImageSize);
-    outSparseImageBuffer = icetReserveBufferMem(maxSparseImageSize);
+    imageBuffer          = icetReserveBufferMem(rawImageSize);
+    inSparseImageBuffer  = icetReserveBufferMem(sparseImageSize);
+    outSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
     compose_group = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
 
     myImage = icetImageNull();
@@ -83,7 +88,7 @@ static IceTImage serialCompose(void)
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
 	if (d_node == rank) {
-	    ibuf = icetReserveBufferMem(maxRawImageSize);
+	    ibuf = icetReserveBufferMem(rawImageSize);
 	} else {
 	    ibuf = imageBuffer;
 	}

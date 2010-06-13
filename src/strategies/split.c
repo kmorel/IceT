@@ -60,7 +60,7 @@ static IceTImage splitStrategy(void)
     IceTImage fullImage;
     IceTVoid *fullImageBuffer;
 
-    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTSizeType rawImageSize, sparseImageSize;
     IceTSizeType fragmentRawImageSize, fragmentSparseImageSize;
     IceTSizeType pixel_size;
 
@@ -83,16 +83,27 @@ static IceTImage splitStrategy(void)
     contained_tiles_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     all_contained_tiles_masks
         = icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
-    maxRawImageSize = icetImageMaxBufferSize(max_pixels);
-    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
+    rawImageSize = icetImageBufferSize(color_format, depth_format, max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(color_format, depth_format,
+                                                max_pixels);
 
     fullImage = icetImageNull();
 
   /* Special case: no images rendered whatsoever. */
     if (total_image_count < 1) {
         icetRaiseDebug("Not rendering any images.  Quit early.");
-        return icetImageNull();
+        if (tile_displayed >= 0) {
+            icetResizeBuffer(rawImageSize);
+            fullImageBuffer = icetReserveBufferMem(rawImageSize);
+            fullImage = icetImageInitialize(fullImageBuffer,
+                                            color_format, depth_format,
+                                            max_pixels);
+            icetClearImage(fullImage);
+        }
+        return fullImage;
     }
 
     tile_groups = malloc(sizeof(int)*(num_tiles+1));
@@ -179,20 +190,23 @@ static IceTImage splitStrategy(void)
     num_requests = tile_contribs[my_tile];
     if (num_requests < 1) num_requests = 1;
 
-    fragmentRawImageSize    = icetImageMaxBufferSize(fragment_size);
-    fragmentSparseImageSize = icetSparseImageMaxBufferSize(fragment_size);
+    fragmentRawImageSize    = icetImageBufferSize(color_format, depth_format,
+                                                  fragment_size);
+    fragmentSparseImageSize = icetSparseImageBufferSize(color_format,
+                                                        depth_format,
+                                                        fragment_size);
 
     icetResizeBuffer(  sizeof(IceTVoid*)*tile_contribs[my_tile]
-                     + maxSparseImageSize
+                     + sparseImageSize
                      + fragmentRawImageSize
-                     + maxRawImageSize
+                     + rawImageSize
                      + fragmentSparseImageSize*tile_contribs[my_tile]
                      + sizeof(IceTCommRequest)*num_requests);
     incomingBuffers
         = icetReserveBufferMem(sizeof(IceTVoid*)*tile_contribs[my_tile]);
-    outgoingBuffer      = icetReserveBufferMem(maxSparseImageSize);
+    outgoingBuffer      = icetReserveBufferMem(sparseImageSize);
     imageFragmentBuffer = icetReserveBufferMem(fragmentRawImageSize);
-    fullImageBuffer     = icetReserveBufferMem(maxRawImageSize);
+    fullImageBuffer     = icetReserveBufferMem(rawImageSize);
     requests = icetReserveBufferMem(sizeof(IceTCommRequest)*num_requests);
 
   /* Set up asynchronous receives for all incoming image fragments. */

@@ -85,14 +85,14 @@ IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
     IceTInt *tile_list;
     IceTInt max_pixels;
     IceTInt num_tiles;
+    IceTEnum color_format, depth_format;
 
     IceTInt i;
 
     /* To remove warning */
     (void)num_receiving;
 
-    rtfi_image = icetImageInitialize(NULL, ICET_IMAGE_COLOR_NONE,
-                                     ICET_IMAGE_DEPTH_NONE, 0);
+    rtfi_image = icetImageNull();
     rtfi_imageBuffer = imageBuffer;
     rtfi_inSparseImageBuffer = inSparseImageBuffer;
     rtfi_outSparseImageBuffer = outSparseImageBuffer;
@@ -102,6 +102,8 @@ IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
     tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
     if (allocatedTileSize < num_tiles) {
         free(imageDestinations);
@@ -119,7 +121,9 @@ IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
                               icetIsEnabled(ICET_ORDERED_COMPOSITE),
                               rtfi_generateDataFunc, rtfi_handleDataFunc,
                               inSparseImageBuffer,
-                              icetSparseImageMaxBufferSize(max_pixels));
+                              icetSparseImageBufferSize(color_format,
+                                                        depth_format,
+                                                        max_pixels));
 
     return rtfi_image;
 }

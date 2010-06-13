@@ -49,14 +49,16 @@ static IceTImage reduceCompose(void)
     IceTInt *compose_group, group_size, group_image_dest;
     IceTInt num_receiving;
     IceTInt compose_tile;
+    IceTEnum color_format, depth_format;
 
     icetRaiseDebug("In reduceCompose");
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
 
-    sparse_image_size = icetSparseImageMaxBufferSize(max_pixels);
-    image_size = icetImageMaxBufferSize(max_pixels);
+    sparse_image_size = icetSparseImageBufferSize(color_format, depth_format,
+                                                  max_pixels);
+    image_size = icetImageBufferSize(color_format, depth_format, max_pixels);
     buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
 			    &compose_group, &group_size, &group_image_dest,
@@ -83,14 +85,18 @@ static IceTImage reduceCompose(void)
 			image, inSparseImageBuffer);
     } else {
 	icetRaiseDebug("Clearing pixels");
-        image = icetImageNull();
+        image = icetImageInitialize(imageBuffer, color_format,
+                                    depth_format, max_pixels);
+        icetClearImage(image);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
       /* Return empty image if nothing in this tile. */
 	icetRaiseDebug("Clearing pixels");
-        image = icetImageNull();
+        image = icetImageInitialize(imageBuffer, color_format,
+                                    depth_format, max_pixels);
+        icetClearImage(image);
     }
 
     return image;

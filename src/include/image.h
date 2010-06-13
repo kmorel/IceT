@@ -24,7 +24,6 @@ typedef struct { IceTVoid *opaque_internals; } IceTSparseImage;
 ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTEnum color_format,
                                                    IceTEnum depth_format,
                                                    IceTSizeType num_pixels);
-ICET_EXPORT IceTSizeType icetSparseImageMaxBufferSize(IceTSizeType num_pixels);
 ICET_EXPORT IceTSparseImage icetSparseImageInitialize(IceTVoid *buffer,
                                                       IceTEnum color_format,
                                                       IceTEnum depth_format,

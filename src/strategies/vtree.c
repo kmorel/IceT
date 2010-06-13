@@ -62,12 +62,13 @@ static IceTImage vtreeCompose(void)
     IceTImage image;
     IceTVoid *imageBuffer;
     IceTVoid *inSparseImageBuffer, *outSparseImageBuffer;
-    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTSizeType rawImageSize, sparseImageSize;
     struct node_info *info;
     struct node_info *my_info;
     int tile, node;
     int tiles_transfered;
     int tile_held = -1;
+    IceTEnum color_format, depth_format;
 
     icetRaiseDebug("In vtreeCompose");
 
@@ -79,17 +80,20 @@ static IceTImage vtreeCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
   /* Allocate buffers. */
-    maxRawImageSize = icetImageMaxBufferSize(max_pixels);
-    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
-    icetResizeBuffer(  maxRawImageSize
-                     + maxSparseImageSize*2
+    rawImageSize = icetImageBufferSize(color_format, depth_format, max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(color_format, depth_format,
+                                                max_pixels);
+    icetResizeBuffer(  rawImageSize
+                     + sparseImageSize*2
                      + sizeof(struct node_info)*num_proc
                      + sizeof(IceTBoolean)*num_proc*num_tiles);
-    imageBuffer          = icetReserveBufferMem(maxRawImageSize);
-    inSparseImageBuffer  = icetReserveBufferMem(maxSparseImageSize);
-    outSparseImageBuffer = icetReserveBufferMem(maxSparseImageSize);
+    imageBuffer          = icetReserveBufferMem(rawImageSize);
+    inSparseImageBuffer  = icetReserveBufferMem(sparseImageSize);
+    outSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
     info                 = icetReserveBufferMem(
                                              sizeof(struct node_info)*num_proc);
     all_contained_tmasks = icetReserveBufferMem(
@@ -233,7 +237,9 @@ static IceTImage vtreeCompose(void)
         } else {
           /* "This" tile is blank. */
             icetRaiseDebug("Returning blank image.");
-            image = icetImageNull();
+            image = icetImageInitialize(imageBuffer, color_format,
+                                        depth_format, max_pixels);
+            icetClearImage(image);
         }
     }
 
@@ -341,6 +347,10 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
     IceTSparseImage out_image, in_image;
     IceTVoid *package_buffer;
     IceTSizeType package_size;
+    IceTEnum color_format, depth_format;
+
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
     if (my_info->tile_sending != -1) {
         icetRaiseDebug2("Sending tile %d to node %d.", my_info->tile_sending,
@@ -372,11 +382,14 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
             ICET_COMM_SENDRECV(package_buffer, package_size, ICET_BYTE,
                                my_info->send_dest, VTREE_IMAGE_DATA,
                                inSparseImageBuffer,
-                               icetSparseImageMaxBufferSize(max_pixels),
+                               icetSparseImageBufferSize(color_format,
+                                                         depth_format,
+                                                         max_pixels),
                                ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         } else {
             ICET_COMM_RECV(inSparseImageBuffer,
-                           icetSparseImageMaxBufferSize(max_pixels),
+                           icetSparseImageBufferSize(color_format, depth_format,
+                                                     max_pixels),
                            ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         }
         in_image = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
