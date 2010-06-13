@@ -64,11 +64,25 @@
 #ifdef DEBUG
     if (   (icetSparseImageGetColorFormat(OUTPUT_SPARSE_IMAGE) != _color_format)
         || (icetSparseImageGetDepthFormat(OUTPUT_SPARSE_IMAGE) != _depth_format)
-        || (icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE) != _pixel_count) ) {
-        icetRaiseError("Format of input and output to compress does not match.",
+           ) {
+        icetRaiseError("Format of input and output to compress do not match.",
                        ICET_SANITY_CHECK_FAIL);
     }
-#endif
+#ifdef PADDING
+    if (   icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE)
+        != (  _pixel_count + (FULL_WIDTH)*(SPACE_TOP+SPACE_BOTTOM)
+            + ((FULL_HEIGHT)-(SPACE_TOP+SPACE_BOTTOM))*(SPACE_LEFT+SPACE_RIGHT))
+           ) {
+        icetRaiseError("Size of input and output to compress do not match.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+#else /*PADDING*/
+    if (icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE) != _pixel_count) {
+        icetRaiseError("Size of input and output to compress do not match.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+#endif /*PADDING*/
+#endif /*DEBUG*/
 
     if (_composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
         if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {

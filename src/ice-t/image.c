@@ -687,7 +687,7 @@ IceTImage icetGetTileImage(IceTInt tile, IceTVoid *buffer)
 IceTSparseImage icetGetCompressedTileImage(IceTInt tile, IceTVoid *buffer)
 {
     IceTInt screen_viewport[4], target_viewport[4];
-    IceTImage full_image;
+    IceTImage raw_image;
     IceTSparseImage compressed_image;
     IceTInt *viewports;
     IceTSizeType width, height;
@@ -703,12 +703,12 @@ IceTSparseImage icetGetCompressedTileImage(IceTInt tile, IceTVoid *buffer)
     icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
     icetGetEnumv(ICET_GL_DEPTH_FORMAT, &depth_format);
 
-    full_image = getInternalSharedImage(color_format, depth_format,
-                                        screen_viewport[2]*screen_viewport[3]);
+    raw_image = getInternalSharedImage(color_format, depth_format,
+                                       screen_viewport[2]*screen_viewport[3]);
 
     readImage(screen_viewport[0], screen_viewport[1],
               screen_viewport[2], screen_viewport[3],
-              full_image);
+              raw_image);
 
     compressed_image = icetSparseImageInitialize(buffer, color_format,
                                                  depth_format, width*height);
@@ -718,7 +718,7 @@ IceTSparseImage icetGetCompressedTileImage(IceTInt tile, IceTVoid *buffer)
     space_bottom = target_viewport[1];
     space_top = height - target_viewport[3] - space_bottom;
 
-#define INPUT_IMAGE             full_image
+#define INPUT_IMAGE             raw_image
 #define OUTPUT_SPARSE_IMAGE     compressed_image
 #define PADDING
 #define SPACE_BOTTOM            space_bottom
