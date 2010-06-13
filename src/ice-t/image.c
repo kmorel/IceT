@@ -603,7 +603,7 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
 
     if (   icetSparseImageBufferSize(color_format, depth_format,
                                      icetSparseImageGetSize(image))
-         > ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX] ) {
+         < ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX] ) {
         icetRaiseError("Inconsistent sizes in image data.", ICET_INVALID_VALUE);
         image.opaque_internals = NULL;
         return image;
