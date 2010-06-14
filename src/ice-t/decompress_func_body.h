@@ -124,6 +124,9 @@
                                 COPY_PIXEL(_c_in, _color,       \
                                            _d_in, _depth);      \
                                 _color++;  _depth++;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += count;  _depth += count;
+#else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
                                     IceTSizeType __i;                   \
@@ -132,6 +135,7 @@
                                         *(_depth++) = 1.0;              \
                                     }                                   \
                                 }
+#endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -169,6 +173,9 @@
                                 COPY_PIXEL(_c_in, _color,       \
                                            _d_in, _depth);      \
                                 _color += 4;  _depth++;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 4*count;  _depth += count;
+#else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
                                     IceTSizeType __i;                   \
@@ -177,9 +184,11 @@
                                         _color[1] =_background_color[1];\
                                         _color[2] =_background_color[2];\
                                         _color[3] =_background_color[3];\
+                                        _color += 4;                    \
                                         *(_depth++) = 1.0;              \
                                     }                                   \
                                 }
+#endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
@@ -198,6 +207,9 @@
                                 src += sizeof(IceTFloat);       \
                                 COPY_PIXEL(_d_in, _depth);      \
                                 _depth++;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _depth += count;
+#else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
                                     IceTSizeType __i;                   \
@@ -205,6 +217,7 @@
                                         *(_depth++) = 1.0;              \
                                     }                                   \
                                 }
+#endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
             } else {
@@ -247,6 +260,9 @@
                                 src += sizeof(IceTUInt);        \
                                 COPY_PIXEL(_c_in, _color);      \
                                 _color++;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 4;
+#else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
                                     IceTSizeType __i;                   \
@@ -254,6 +270,7 @@
                                         *(_color++) = _background_color;\
                                     }                                   \
                                 }
+#endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
         } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -279,6 +296,9 @@
                                 src += 4*sizeof(IceTFloat);     \
                                 COPY_PIXEL(_c_in, _color);      \
                                 _color += 4;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 4*count;
+#else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
                                     IceTSizeType __i;                   \
@@ -287,8 +307,10 @@
                                         _color[1] =_background_color[1];\
                                         _color[2] =_background_color[2];\
                                         _color[3] =_background_color[3];\
+                                        _color += 4;                    \
                                     }                                   \
                                 }
+#endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
         } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
