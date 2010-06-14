@@ -411,7 +411,7 @@ static int RandomTransformRun()
     refbuf2 = malloc(icetImageBufferSize(icetImageGetColorFormat(image),
                                          icetImageGetDepthFormat(image),
                                          icetImageGetSize(image)));
-    refimage2 = icetImageInitialize(refbuf,
+    refimage2 = icetImageInitialize(refbuf2,
                                     icetImageGetColorFormat(image),
                                     icetImageGetDepthFormat(image),
                                     icetImageGetSize(image));

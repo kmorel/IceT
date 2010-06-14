@@ -17,8 +17,8 @@
 #include <IceTGL.h>
 
 void write_ppm(const char *filename,
-	       const IceTUByte *image,
-	       int width, int height)
+               const IceTUByte *image,
+               int width, int height)
 {
     FILE *fd;
     int x, y;
@@ -32,12 +32,11 @@ void write_ppm(const char *filename,
     fprintf(fd, "255\n");
 
     for (y = height-1; y >= 0; y--) {
-	color = image + y*width*4;
-	for (x = 0; x < width; x++) {
+        color = image + y*width*4;
+        for (x = 0; x < width; x++) {
             fwrite(color, 1, 3, fd);
-            break;
-	    color += 4;
-	}
+            color += 4;
+        }
     }
 
     fclose(fd);
