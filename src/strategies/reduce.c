@@ -56,6 +56,9 @@ static IceTImage reduceCompose(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
 
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
+
     sparse_image_size = icetSparseImageBufferSize(color_format, depth_format,
                                                   max_pixels);
     image_size = icetImageBufferSize(color_format, depth_format, max_pixels);
