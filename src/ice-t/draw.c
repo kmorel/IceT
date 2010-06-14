@@ -667,7 +667,7 @@ IceTImage icetDrawFrame(void)
                  background_color[2], background_color[3]);
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-        IceTSizeType pixels = icetImageGetSize(image);
+        IceTSizeType pixels = icetImageGetNumPixels(image);
         IceTEnum color_format = icetImageGetColorFormat(image);
         IceTDouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
@@ -695,9 +695,7 @@ IceTImage icetDrawFrame(void)
 
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
-        IceTEnum color_format;
-
-        icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+        IceTEnum color_format = icetImageGetColorFormat(image);
 
         if (   (color_format != ICET_IMAGE_COLOR_NONE)
             && icetIsEnabled(ICET_DISPLAY) ) {
@@ -723,7 +721,7 @@ IceTImage icetDrawFrame(void)
             if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
                 colorBuffer = icetImageGetColorUByte(image);
             } else {
-                colorBuffer = (IceTUByte *)malloc(4*icetImageGetSize(image));
+                colorBuffer = malloc(4*icetImageGetNumPixels(image));
                 icetImageCopyColorUByte(image, colorBuffer,
                                         ICET_IMAGE_COLOR_RGBA_UBYTE);
             }
@@ -788,16 +786,13 @@ static void inflateBuffer(IceTUByte *buffer,
                           IceTSizeType width, IceTSizeType height)
 {
     IceTInt display_width, display_height;
-    IceTInt color_format;
 
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &display_width);
     icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &display_height);
 
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
-
     if ((display_width <= width) && (display_height <= height)) {
       /* No need to inflate image. */
-        glDrawPixels(width, height, color_format, GL_UNSIGNED_BYTE, buffer);
+        glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     } else {
         IceTSizeType x, y;
         IceTSizeType x_div, y_div;
@@ -876,7 +871,7 @@ static void inflateBuffer(IceTUByte *buffer,
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target_width, target_height,
-                         0, color_format, GL_UNSIGNED_BYTE, display_buffer);
+                         0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer);
 
           /* Setup geometry. */
             glMatrixMode(GL_PROJECTION);
@@ -897,7 +892,7 @@ static void inflateBuffer(IceTUByte *buffer,
           /* Clean up. */
             glPopMatrix();
         } else {
-            glDrawPixels(target_width, target_height, color_format,
+            glDrawPixels(target_width, target_height, GL_RGBA,
                          GL_UNSIGNED_BYTE, display_buffer);
         }
     }

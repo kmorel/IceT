@@ -58,7 +58,7 @@
 #ifdef PIXEL_COUNT
     _pixel_count = PIXEL_COUNT;
 #else
-    _pixel_count = icetImageGetSize(INPUT_IMAGE);
+    _pixel_count = icetImageGetNumPixels(INPUT_IMAGE);
 #endif
 
 #ifdef DEBUG
@@ -69,7 +69,7 @@
                        ICET_SANITY_CHECK_FAIL);
     }
 #ifdef PADDING
-    if (   icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE)
+    if (   icetSparseImageGetNumPixels(OUTPUT_SPARSE_IMAGE)
         != (  _pixel_count + (FULL_WIDTH)*(SPACE_TOP+SPACE_BOTTOM)
             + ((FULL_HEIGHT)-(SPACE_TOP+SPACE_BOTTOM))*(SPACE_LEFT+SPACE_RIGHT))
            ) {
@@ -77,7 +77,7 @@
                        ICET_SANITY_CHECK_FAIL);
     }
 #else /*PADDING*/
-    if (icetSparseImageGetSize(OUTPUT_SPARSE_IMAGE) != _pixel_count) {
+    if (icetSparseImageGetNumPixels(OUTPUT_SPARSE_IMAGE) != _pixel_count) {
         icetRaiseError("Size of input and output to compress do not match.",
                        ICET_SANITY_CHECK_FAIL);
     }
@@ -276,7 +276,7 @@
 
     icetRaiseDebug1("Compression: %f%%\n",
         100.0f - (  100.0f*icetSparseImageGetCompressedBufferSize(OUTPUT_SPARSE_IMAGE)
-                  / icetImageBufferSize(_color_format, _depth_format, _pixel_count) ));
+                  / icetImageBufferSizeType(_color_format, _depth_format, _pixel_count) ));
 }
 
 #undef INPUT_IMAGE

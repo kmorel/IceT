@@ -23,10 +23,9 @@ IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
 
 static IceTImage directCompose(void)
 {
-    IceTVoid *imageBuffer;
-    IceTVoid *inSparseImageBuffer;
-    IceTVoid *outSparseImageBuffer;
     IceTImage image;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
     IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *contrib_counts;
     IceTInt *display_nodes;
@@ -36,26 +35,21 @@ static IceTImage directCompose(void)
     IceTInt display_tile;
     IceTInt tile;
     IceTInt *tile_image_dest;
-    IceTEnum color_format, depth_format;
     icetRaiseDebug("In Direct Compose");
 
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
-    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
 
-    rawImageSize = icetImageBufferSize(color_format, depth_format,
-                                       max_pixels);
-    sparseImageSize = icetSparseImageBufferSize(color_format, depth_format,
-                                                max_pixels);
+    rawImageSize = icetImageBufferSize(max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(max_pixels);
 
     icetResizeBuffer(  rawImageSize
 		     + 2*sparseImageSize
 		     + num_tiles*sizeof(IceTInt));
-    imageBuffer          = icetReserveBufferMem(rawImageSize);
-    inSparseImageBuffer  = icetReserveBufferMem(sparseImageSize);
-    outSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
-    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
+    image               = icetReserveBufferImage(max_pixels);
+    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
+    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    tile_image_dest     = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
@@ -71,16 +65,14 @@ static IceTImage directCompose(void)
     }
 
     icetRaiseDebug("Rendering and transferring images.");
-    image = icetRenderTransferFullImages(imageBuffer,
-                                         inSparseImageBuffer,
-                                         outSparseImageBuffer,
-                                         num_contributors, tile_image_dest);
+    icetRenderTransferFullImages(image,
+                                 inSparseImageBuffer,
+                                 outSparseImage,
+                                 tile_image_dest);
 
     if ((display_tile >= 0) && (num_contributors < 1)) {
       /* Must be displaying a blank tile. */
 	icetRaiseDebug("Returning blank tile.");
-        image = icetImageInitialize(imageBuffer,
-                                    color_format, depth_format, max_pixels);
         icetClearImage(image);
     }
 

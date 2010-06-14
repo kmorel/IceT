@@ -41,7 +41,7 @@
     IceTSizeType _p;
     IceTSizeType _i;
 
-    _pixels = icetSparseImageGetSize(DT_COMPRESSED_IMAGE);
+    _pixels = icetSparseImageGetNumPixels(DT_COMPRESSED_IMAGE);
     _src = ICET_IMAGE_DATA(DT_COMPRESSED_IMAGE);
 
     _p = 0;

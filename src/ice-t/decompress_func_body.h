@@ -72,14 +72,14 @@
 
     _color_format = icetSparseImageGetColorFormat(INPUT_SPARSE_IMAGE);
     _depth_format = icetSparseImageGetDepthFormat(INPUT_SPARSE_IMAGE);
-    _pixel_count = icetSparseImageGetSize(INPUT_SPARSE_IMAGE);
+    _pixel_count = icetSparseImageGetNumPixels(INPUT_SPARSE_IMAGE);
 
     if (   (_color_format != icetImageGetColorFormat(OUTPUT_IMAGE))
         || (_depth_format != icetImageGetDepthFormat(OUTPUT_IMAGE))
 #ifdef PIXEL_COUNT
         || (_pixel_count  != PIXEL_COUNT)
 #else
-        || (_pixel_count  != icetImageGetSize(OUTPUT_IMAGE))
+        || (_pixel_count  != icetImageGetNumPixels(OUTPUT_IMAGE))
 #endif
            )
     {
