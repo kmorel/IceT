@@ -94,6 +94,8 @@ void icetStateSetDefaults(void)
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
     icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
     icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     icetResetTiles();
     icetStateSetIntegerv(ICET_DISPLAY_NODES, 0, NULL);

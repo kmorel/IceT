@@ -46,8 +46,8 @@ static int BlankTilesRun()
     icetDrawFunc(draw);
     icetBoundingBoxf(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
 
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
         int tile_dim;

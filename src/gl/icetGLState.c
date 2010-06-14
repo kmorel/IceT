@@ -24,8 +24,6 @@ void icetGLInitialize(void)
     icetStateSetBoolean(ICET_GL_INITIALIZED, ICET_TRUE);
 
     icetGLSetReadBuffer(GL_BACK);
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 }
 
 void icetGLSetReadBuffer(GLenum mode)

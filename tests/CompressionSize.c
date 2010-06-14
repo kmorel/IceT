@@ -164,19 +164,11 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
 
     printf("Allocating memory for %d pixel image.\n", pixels);
     imagesize = icetImageBufferSize(color_format, depth_format, pixels);
-    if (imagesize > icetImageMaxBufferSize(pixels)) {
-         printf("*** Current image format larger than max size!!!!\n");
-         result = TEST_FAILED;
-    }
     imagebuffer = malloc(imagesize);
     image = icetImageInitialize(imagebuffer,color_format,depth_format,pixels);
 
     compressedsize
         = icetSparseImageBufferSize(color_format, depth_format, pixels);
-    if (compressedsize > icetSparseImageMaxBufferSize(pixels)) {
-        printf("*** Current sparse image format larger than max size!!!!!\n");
-        result = TEST_FAILED;
-    }
     compressedbuffer = malloc(compressedsize);
 
   /* Get the number of bytes per pixel.  This is used in checking the
@@ -236,8 +228,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
     icetDrawFunc(draw);
-    icetGLSetColorFormat(color_format);
-    icetGLSetDepthFormat(depth_format);
+    icetSetColorFormat(color_format);
+    icetSetDepthFormat(depth_format);
   /* Do a perfunctory draw to set other state variables. */
     icetDrawFrame();
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
