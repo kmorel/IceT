@@ -86,6 +86,10 @@ static IceTImage serialCompose(void)
             tileImage = icetReserveBufferImage(max_pixels);
 	} else {
 	    tileImage = image;
+          /* A previous iteration may have changed the image buffer to remove
+             the depth.  This command restores that so that both buffers are
+             read in for the next pass. */
+            icetImageAdjustForInput(tileImage);
 	}
 
 	icetGetTileImage(i, tileImage);

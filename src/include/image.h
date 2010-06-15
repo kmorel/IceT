@@ -21,6 +21,7 @@ ICET_EXPORT IceTSizeType icetImageBufferSizeType(IceTEnum color_format,
 ICET_EXPORT IceTImage icetImageAssignBuffer(IceTVoid *buffer,
                                             IceTSizeType num_pixels);
 ICET_EXPORT void icetImageAdjustForOutput(IceTImage image);
+ICET_EXPORT void icetImageAdjustForInput(IceTImage image);
 ICET_EXPORT void icetImageSetNumPixels(IceTImage image,
                                        IceTSizeType num_pixels);
 ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,

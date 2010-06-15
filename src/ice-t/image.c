@@ -264,10 +264,28 @@ void icetImageAdjustForOutput(IceTImage image)
     if (icetIsEnabled(ICET_COMPOSITE_ONE_BUFFER)) {
         color_format = icetImageGetColorFormat(image);
         if (color_format != ICET_IMAGE_COLOR_NONE) {
+          /* Set to no depth information. */
             ICET_IMAGE_HEADER(image)[ICET_IMAGE_DEPTH_FORMAT_INDEX]
                 = ICET_IMAGE_DEPTH_NONE;
+          /* Reset the image size (changes actual buffer size). */
+            icetImageSetNumPixels(image, icetImageGetNumPixels(image));
         }
     }
+}
+
+void icetImageAdjustForInput(IceTImage image)
+{
+    IceTEnum color_format, depth_format;
+
+    icetGetEnumv(ICET_COLOR_FORMAT, &color_format);
+    icetGetEnumv(ICET_DEPTH_FORMAT, &depth_format);
+
+  /* Reset to the specified image format. */
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_COLOR_FORMAT_INDEX] = color_format;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_DEPTH_FORMAT_INDEX] = depth_format;
+
+  /* Reset the image size (changes actual buffer size). */
+    icetImageSetNumPixels(image, icetImageGetNumPixels(image));
 }
 
 IceTEnum icetImageGetColorFormat(const IceTImage image)
@@ -571,6 +589,13 @@ void icetImagePackageForSend(IceTImage image,
 {
     *buffer = image.opaque_internals;
     *size = ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX];
+
+    if (*size != icetImageBufferSizeType(icetImageGetColorFormat(image),
+                                         icetImageGetDepthFormat(image),
+                                         icetImageGetNumPixels(image))) {
+        icetRaiseError("Inconsistent buffer size detected.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
 }
 
 IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer)
