@@ -56,8 +56,7 @@ static IceTImage splitStrategy(void)
     IceTImage imageFragment;
     IceTImage fullImage;
 
-    IceTSizeType rawImageSize, sparseImageSize;
-    IceTSizeType fragmentRawImageSize, fragmentSparseImageSize;
+    IceTSizeType fragmentSparseImageSize;
     IceTSizeType pixel_size;
 
     IceTEnum color_format, depth_format;
@@ -82,16 +81,13 @@ static IceTImage splitStrategy(void)
     all_contained_tiles_masks
         = icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
 
-    rawImageSize = icetImageBufferSize(max_pixels);
-    sparseImageSize = icetSparseImageBufferSize(max_pixels);
-
     fullImage = icetImageNull();
 
   /* Special case: no images rendered whatsoever. */
     if (total_image_count < 1) {
         icetRaiseDebug("Not rendering any images.  Quit early.");
         if (tile_displayed >= 0) {
-            icetResizeBuffer(rawImageSize);
+            icetResizeBuffer(icetImageBufferSize(max_pixels));
             fullImage = icetReserveBufferImage(max_pixels);
             icetClearImage(fullImage);
         }
@@ -182,18 +178,17 @@ static IceTImage splitStrategy(void)
     num_requests = tile_contribs[my_tile];
     if (num_requests < 1) num_requests = 1;
 
-    fragmentRawImageSize    = icetImageBufferSize(fragment_size);
     fragmentSparseImageSize = icetSparseImageBufferSize(fragment_size);
 
     icetResizeBuffer(  sizeof(IceTVoid*)*tile_contribs[my_tile]
-                     + sparseImageSize
-                     + fragmentRawImageSize
-                     + rawImageSize
+                     + icetSparseImageBufferSize(max_pixels)
+                     + icetImageBufferSize(fragment_size)
+                     + icetImageBufferSize(max_pixels)
                      + fragmentSparseImageSize*tile_contribs[my_tile]
                      + sizeof(IceTCommRequest)*num_requests);
     incomingBuffers
         = icetReserveBufferMem(sizeof(IceTVoid*)*tile_contribs[my_tile]);
-    outgoing      = icetReserveBufferSparseImage(fragment_size);
+    outgoing      = icetReserveBufferSparseImage(max_pixels);
     imageFragment = icetReserveBufferImage(fragment_size);
     fullImage     = icetReserveBufferImage(max_pixels);
     requests = icetReserveBufferMem(sizeof(IceTCommRequest)*num_requests);
