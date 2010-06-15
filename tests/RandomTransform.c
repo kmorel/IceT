@@ -267,13 +267,12 @@ static int RandomTransformRun()
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
-    seed = time(NULL) + 10*num_proc*rank;
-    printf("Process %d seeding random numbers with %u\n", rank, seed);
-    srand(seed);
-
   /* Decide on an image order and data replication group size. */
     image_order = malloc(num_proc * sizeof(IceTInt));
     if (rank == 0) {
+        seed = time(NULL);
+        printf("Base seed = %u\n", seed);
+        srand(seed);
         for (i = 0; i < num_proc; i++) image_order[i] = i;
         printf("Image order:\n");
         for (i = 0; i < num_proc; i++) {
@@ -292,12 +291,15 @@ static int RandomTransformRun()
         }
         printf("Data replication group sizes: %d\n", rep_group_size);
         for (i = 1; i < num_proc; i++) {
+            ICET_COMM_SEND(&seed, 1, ICET_INT, i, 29);
             ICET_COMM_SEND(image_order, num_proc, ICET_INT, i, 30);
             ICET_COMM_SEND(&rep_group_size, 1, ICET_INT, i, 31);
         }
     } else {
+        ICET_COMM_RECV(&seed, 1, ICET_INT, 0, 29);
         ICET_COMM_RECV(image_order, num_proc, ICET_INT, 0, 30);
         ICET_COMM_RECV(&rep_group_size, 1, ICET_INT, 0, 31);
+        srand(seed + rank);
     }
     icetCompositeOrder(image_order);
 
