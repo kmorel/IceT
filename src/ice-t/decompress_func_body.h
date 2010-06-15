@@ -261,7 +261,7 @@
                                 COPY_PIXEL(_c_in, _color);      \
                                 _color++;
 #ifdef COMPOSITE
-#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 4;
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += count;
 #else
 #define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
                                 {                                       \
