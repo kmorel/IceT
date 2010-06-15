@@ -64,8 +64,8 @@ static int DisplayNoDrawRun()
 
     icetDrawFunc(draw);
 
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     if (rank == 0) {
         icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);

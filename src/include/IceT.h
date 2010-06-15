@@ -130,19 +130,14 @@ typedef struct { IceTVoid *opaque_internals; } IceTImage;
 #define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001
 #define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0x0000
 
-ICET_EXPORT IceTSizeType icetImageBufferSize(IceTEnum color_format,
-                                             IceTEnum depth_format,
-                                             IceTSizeType num_pixels);
-ICET_EXPORT IceTSizeType icetImageMaxBufferSize(IceTSizeType num_pixels);
-ICET_EXPORT IceTImage icetImageInitialize(IceTVoid *buffer,
-                                          IceTEnum color_format,
-                                          IceTEnum depth_format,
-                                          IceTSizeType num_pixels);
+ICET_EXPORT void icetSetColorFormat(IceTEnum color_format);
+ICET_EXPORT void icetSetDepthFormat(IceTEnum depth_format);
+
 ICET_EXPORT IceTImage icetImageNull(void);
 ICET_EXPORT IceTBoolean icetImageIsNull(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
-ICET_EXPORT IceTSizeType icetImageGetSize(const IceTImage image);
+ICET_EXPORT IceTSizeType icetImageGetNumPixels(const IceTImage image);
 ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image);
 ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image);
 ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image);
@@ -156,15 +151,6 @@ ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image,
 ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
                                          IceTFloat *depth_buffer,
                                          IceTEnum depth_format);
-ICET_EXPORT void icetImageCopyPixels(const IceTImage in_image,
-                                     IceTSizeType in_offset,
-                                     IceTImage out_image,
-                                     IceTSizeType out_offset,
-                                     IceTSizeType num_pixels);
-ICET_EXPORT void icetImagePackageForSend(IceTImage image,
-                                         IceTVoid **buffer,
-                                         IceTSizeType *size);
-ICET_EXPORT IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer);
 
 typedef struct _IceTStrategy {
     const char *name;
@@ -215,6 +201,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_BACKGROUND_COLOR_WORD (ICET_STATE_ENGINE_START | (IceTEnum)0x0006)
 #define ICET_PHYSICAL_RENDER_WIDTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0007)
 #define ICET_PHYSICAL_RENDER_HEIGHT (ICET_STATE_ENGINE_START| (IceTEnum)0x0008)
+#define ICET_COLOR_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x0009)
+#define ICET_DEPTH_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x000A)
 
 #define ICET_NUM_TILES          (ICET_STATE_ENGINE_START | (IceTEnum)0x0010)
 #define ICET_TILE_VIEWPORTS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0011)

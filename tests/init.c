@@ -139,6 +139,14 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     rank = (*comm->Comm_rank)(comm);
     num_proc = (*comm->Comm_size)(comm);
 
+  /* This is convenient code to attach a debugger to a particular process at the
+     start of a test. */
+    /* if (rank == 1) { */
+    /*     int i = 0; */
+    /*     printf("Waiting in process %d\n", getpid()); */
+    /*     while (i == 0) sleep(1); */
+    /* } */
+
   /* Let Glut have first pass at the arguments to grab any that it can use. */
     glutInit(argcp, *argvp);
 

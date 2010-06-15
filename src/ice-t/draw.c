@@ -376,7 +376,6 @@ IceTImage icetDrawFrame(void)
     IceTImage image;
     IceTInt display_tile;
     IceTInt *display_nodes;
-    IceTInt color_format;
     IceTDouble render_time;
     IceTDouble buf_read_time;
     IceTDouble buf_write_time;
@@ -396,8 +395,6 @@ IceTImage icetDrawFrame(void)
         return icetImageNull();
     }
 
-    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
-
     icetStateResetTiming();
     total_time = icetWallTime();
 
@@ -411,33 +408,14 @@ IceTImage icetDrawFrame(void)
 
   /* Make sure background color is up to date. */
     glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
-    switch (color_format) {
-      case GL_RGBA:
-      default:
-          ((IceTUByte *)&background_color_word)[0]
-              = (IceTUByte)(255*background_color[0]);
-          ((IceTUByte *)&background_color_word)[1]
-              = (IceTUByte)(255*background_color[1]);
-          ((IceTUByte *)&background_color_word)[2]
-              = (IceTUByte)(255*background_color[2]);
-          ((IceTUByte *)&background_color_word)[3]
-              = (IceTUByte)(255*background_color[3]);
-          break;
-#if defined(GL_BGRA)
-      case GL_BGRA:
-#elif defined(GL_BGRA_EXT)
-      case GL_BGRA_EXT:
-#endif
-          ((IceTUByte *)&background_color_word)[0]
-              = (IceTUByte)(255*background_color[2]);
-          ((IceTUByte *)&background_color_word)[1]
-              = (IceTUByte)(255*background_color[1]);
-          ((IceTUByte *)&background_color_word)[2]
-              = (IceTUByte)(255*background_color[0]);
-          ((IceTUByte *)&background_color_word)[3]
-              = (IceTUByte)(255*background_color[3]);
-          break;
-    }
+    ((IceTUByte *)&background_color_word)[0]
+      = (IceTUByte)(255*background_color[0]);
+    ((IceTUByte *)&background_color_word)[1]
+      = (IceTUByte)(255*background_color[1]);
+    ((IceTUByte *)&background_color_word)[2]
+      = (IceTUByte)(255*background_color[2]);
+    ((IceTUByte *)&background_color_word)[3]
+      = (IceTUByte)(255*background_color[3]);
     if (color_blending && (   icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND)
                            || icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND))) {
       /* We need to correct the background color by zeroing it out at
@@ -689,7 +667,7 @@ IceTImage icetDrawFrame(void)
                  background_color[2], background_color[3]);
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-        IceTSizeType pixels = icetImageGetSize(image);
+        IceTSizeType pixels = icetImageGetNumPixels(image);
         IceTEnum color_format = icetImageGetColorFormat(image);
         IceTDouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
@@ -717,12 +695,9 @@ IceTImage icetDrawFrame(void)
 
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
-        IceTEnum color_format;
+        IceTEnum color_format = icetImageGetColorFormat(image);
 
-        icetGetEnumv(ICET_GL_COLOR_FORMAT, &color_format);
-
-      /* This needs to handle RGBA_FLOAT as well. */
-        if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
+        if (   (color_format != ICET_IMAGE_COLOR_NONE)
             && icetIsEnabled(ICET_DISPLAY) ) {
             IceTUByte *colorBuffer;
             IceTInt readBuffer;
@@ -746,7 +721,7 @@ IceTImage icetDrawFrame(void)
             if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
                 colorBuffer = icetImageGetColorUByte(image);
             } else {
-                colorBuffer = (IceTUByte *)malloc(4*icetImageGetSize(image));
+                colorBuffer = malloc(4*icetImageGetNumPixels(image));
                 icetImageCopyColorUByte(image, colorBuffer,
                                         ICET_IMAGE_COLOR_RGBA_UBYTE);
             }
@@ -811,16 +786,13 @@ static void inflateBuffer(IceTUByte *buffer,
                           IceTSizeType width, IceTSizeType height)
 {
     IceTInt display_width, display_height;
-    IceTInt color_format;
 
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &display_width);
     icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &display_height);
 
-    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
-
     if ((display_width <= width) && (display_height <= height)) {
       /* No need to inflate image. */
-        glDrawPixels(width, height, color_format, GL_UNSIGNED_BYTE, buffer);
+        glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     } else {
         IceTSizeType x, y;
         IceTSizeType x_div, y_div;
@@ -899,7 +871,7 @@ static void inflateBuffer(IceTUByte *buffer,
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target_width, target_height,
-                         0, color_format, GL_UNSIGNED_BYTE, display_buffer);
+                         0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer);
 
           /* Setup geometry. */
             glMatrixMode(GL_PROJECTION);
@@ -920,7 +892,7 @@ static void inflateBuffer(IceTUByte *buffer,
           /* Clean up. */
             glPopMatrix();
         } else {
-            glDrawPixels(target_width, target_height, color_format,
+            glDrawPixels(target_width, target_height, GL_RGBA,
                          GL_UNSIGNED_BYTE, display_buffer);
         }
     }

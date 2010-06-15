@@ -22,13 +22,15 @@
    uses memory given with the buffer arguments, and will make its best
    efforts to get the graphics and network hardware to run in parallel.
 
-   imageBuffer - A buffer big enough to hold color and/or depth values
-        that is ICET_MAX_PIXELS big.  The size can be determined with
-        the icetImageMaxBufferSize function in IceT.h.
-   inSparseImageBuffer, outSparseImageBuffer - Two buffers big enough
-        to hold sparse color and depth information for an image that is
-        ICET_MAX_PIXELS big.  The size can be determined with the
-        icetSparseImageMaxBufferSize function in image.h
+   imageBuffer - An image big enough to hold color and/or depth values
+        that is ICET_MAX_PIXELS big.  The results will be put in this
+        image.
+   inSparseImageBuffer - A buffer big enough to hold sparse color and
+        depth information for an image that is ICET_MAX_PIXELS big.
+        The size can be determined with the icetSparseImageBufferSize
+        function in image.h.
+   outSparseImage - A sparse image big enough to hold color and/or depth
+        values that is ICET_MAX_PIXELS big.
    num_receiving - number of image this processor is receiving.
    tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
         rendered image for tile t is sent to tile_image_dest[t].
@@ -37,11 +39,10 @@
    containing the composited image send to this process.  The contents
    are undefined if nothing sent to this process.
 */
-IceTImage icetRenderTransferFullImages(IceTVoid *imageBuffer,
-                                       IceTVoid *inSparseImageBuffer,
-                                       IceTVoid *outSparseImageImage,
-                                       IceTInt num_receiving,
-                                       IceTInt *tile_image_dest);
+void icetRenderTransferFullImages(IceTImage image,
+                                  IceTVoid *inSparseImageBuffer,
+                                  IceTSparseImage outSparseImage,
+                                  IceTInt *tile_image_dest);
 
 
 /* icetSendRecvLargeMessages
@@ -115,16 +116,16 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         be computed or this processor is not rank
         compose_group[compose_group], the buffer has undefined partial
         results when the function returns.
-   inSparseImageBuffer/outSparseImageBuffer - two buffers for holding sparse
+   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
         image data.  They must be large enough to store any compressed buffer
-        of size ICET_MAX_PIXELS.  Use icetSparseImageMaxBufferSize to
+        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
         compute the number of bytes to allocate.
 */
 void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
                       IceTInt image_dest,
                       IceTImage image,
                       IceTVoid *inSparseImageBuffer,
-                      IceTVoid *outSparseImageBuffer);
+                      IceTSparseImage outSparseImage);
 
 /* icetTreeCompose
 
@@ -144,15 +145,16 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
         be put in this buffer.  If the color or depth value is not to be
         computed or this processor is not rank compose_group[image_dest],
         the buffer has undefined partial results when the function returns.
-   sparseImageBuffer - a buffer for holding sparse image data in transit.
-        It must be large enough to store any compressed buffer
-        of size ICET_MAX_PIXELS.  Use icetSparseImageMaxBufferSize to
+   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
+        image data.  They must be large enough to store any compressed buffer
+        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
         compute the number of bytes to allocate.
 */
 void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
                      IceTInt image_dest,
                      IceTImage image,
-                     IceTVoid *sparseImageBuffer);
+                     IceTVoid *inSparseImageBuffer,
+                     IceTSparseImage outSparseImage);
 
 #define icetAddSentBytes(num_sending)                                   \
     (icetUnsafeStateGetInteger(ICET_BYTES_SENT))[0] += (num_sending)

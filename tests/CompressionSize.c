@@ -49,7 +49,7 @@ static void InitPathologicalImage(IceTImage image)
     IceTEnum format;
     IceTSizeType num_pixels;
 
-    num_pixels = icetImageGetSize(image);
+    num_pixels = icetImageGetNumPixels(image);
 
     format = icetImageGetColorFormat(image);
     if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
@@ -97,7 +97,7 @@ static void InitActiveImage(IceTImage image)
     seed = time(NULL);
     srand(seed);
 
-    num_pixels = icetImageGetSize(image);
+    num_pixels = icetImageGetNumPixels(image);
 
     format = icetImageGetColorFormat(image);
     if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
@@ -157,27 +157,21 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Using depth format of 0x%x\n", (int)depth_format);
     printf("Using composite mode of 0x%x\n", (int)composite_mode);
 
+    icetSetColorFormat(color_format);
+    icetSetDepthFormat(depth_format);
     icetCompositeMode(composite_mode);
 
     glGetIntegerv(GL_VIEWPORT, viewport);
     pixels = viewport[2]*viewport[3];
 
     printf("Allocating memory for %d pixel image.\n", pixels);
-    imagesize = icetImageBufferSize(color_format, depth_format, pixels);
-    if (imagesize > icetImageMaxBufferSize(pixels)) {
-         printf("*** Current image format larger than max size!!!!\n");
-         result = TEST_FAILED;
-    }
+    imagesize = icetImageBufferSize(pixels);
     imagebuffer = malloc(imagesize);
-    image = icetImageInitialize(imagebuffer,color_format,depth_format,pixels);
+    image = icetImageAssignBuffer(imagebuffer, pixels);
 
-    compressedsize
-        = icetSparseImageBufferSize(color_format, depth_format, pixels);
-    if (compressedsize > icetSparseImageMaxBufferSize(pixels)) {
-        printf("*** Current sparse image format larger than max size!!!!!\n");
-        result = TEST_FAILED;
-    }
+    compressedsize = icetSparseImageBufferSize(pixels);
     compressedbuffer = malloc(compressedsize);
+    compressedimage = icetSparseImageAssignBuffer(compressedbuffer, pixels);
 
   /* Get the number of bytes per pixel.  This is used in checking the
      size of compressed images. */
@@ -191,7 +185,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     InitPathologicalImage(image);
 
     printf("Compressing image.\n");
-    compressedimage = icetCompressImage(image, compressedbuffer);
+    icetCompressImage(image, compressedimage);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
            (int)(pixel_size*(pixels/2) + 2*sizeof(IceTUShort)*(pixels/2)),
@@ -205,7 +199,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("\nCreating a different worst possible image.\n");
     InitActiveImage(image);
     printf("Compressing image.\n");
-    compressedimage = icetCompressImage(image, compressedbuffer);
+    icetCompressImage(image, compressedimage);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
            (int)compressedsize, (int)size);
@@ -215,13 +209,12 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     }
 
     printf("\nCompressing zero size image.\n");
-    image = icetImageInitialize(imagebuffer, color_format, depth_format, 0);
-    compressedimage = icetCompressImage(image, compressedbuffer);
+    icetImageSetNumPixels(image, 0);
+    icetCompressImage(image, compressedimage);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageBufferSize(color_format, depth_format, 0),
-           (int)size);
-    if (size > icetSparseImageBufferSize(color_format,depth_format,0)) {
+           (int)icetSparseImageBufferSize(0), (int)size);
+    if (size > icetSparseImageBufferSize(0)) {
         printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
@@ -236,13 +229,11 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
     icetDrawFunc(draw);
-    icetGLSetColorFormat(color_format);
-    icetGLSetDepthFormat(depth_format);
   /* Do a perfunctory draw to set other state variables. */
     icetDrawFrame();
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
-    compressedimage = icetGetCompressedTileImage(0, compressedbuffer);
+    icetGetCompressedTileImage(0, compressedimage);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
            (int)compressedsize, (int)size);

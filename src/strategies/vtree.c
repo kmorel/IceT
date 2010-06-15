@@ -43,9 +43,9 @@ static int find_receiver(struct node_info *info, int num_proc,
 static void do_send_receive(const struct node_info *my_info, int tile_held,
                             IceTInt max_pixels, IceTInt num_tiles,
                             IceTBoolean *all_contained_tmasks,
-                            IceTImage *image, IceTVoid *imageBuffer,
+                            IceTImage image,
                             IceTVoid *inSparseImageBuffer,
-                            IceTVoid *outSparseImageBuffer);
+                            IceTSparseImage outSparseImage);
 
 IceTStrategy ICET_STRATEGY_VTREE
     = { "Virtual Trees", ICET_FALSE, vtreeCompose };
@@ -60,9 +60,9 @@ static IceTImage vtreeCompose(void)
     IceTBoolean *all_contained_tmasks;
     IceTInt *tile_viewports;
     IceTImage image;
-    IceTVoid *imageBuffer;
-    IceTVoid *inSparseImageBuffer, *outSparseImageBuffer;
-    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType rawImageSize, sparseImageSize;
     struct node_info *info;
     struct node_info *my_info;
     int tile, node;
@@ -81,15 +81,15 @@ static IceTImage vtreeCompose(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
 
   /* Allocate buffers. */
-    maxRawImageSize = icetImageMaxBufferSize(max_pixels);
-    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
-    icetResizeBuffer(  maxRawImageSize
-                     + maxSparseImageSize*2
+    rawImageSize = icetImageBufferSize(max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(max_pixels);
+    icetResizeBuffer(  rawImageSize
+                     + sparseImageSize*2
                      + sizeof(struct node_info)*num_proc
                      + sizeof(IceTBoolean)*num_proc*num_tiles);
-    imageBuffer          = icetReserveBufferMem(maxRawImageSize);
-    inSparseImageBuffer  = icetReserveBufferMem(maxSparseImageSize);
-    outSparseImageBuffer = icetReserveBufferMem(maxSparseImageSize);
+    image                = icetReserveBufferImage(max_pixels);
+    inSparseImageBuffer  = icetReserveBufferMem(sparseImageSize);
+    outSparseImage       = icetReserveBufferSparseImage(max_pixels);
     info                 = icetReserveBufferMem(
                                              sizeof(struct node_info)*num_proc);
     all_contained_tmasks = icetReserveBufferMem(
@@ -179,8 +179,7 @@ static IceTImage vtreeCompose(void)
 
         do_send_receive(my_info, tile_held, max_pixels, num_tiles,
                         all_contained_tmasks,
-                        &image, imageBuffer,
-                        inSparseImageBuffer, outSparseImageBuffer);
+                        image, inSparseImageBuffer, outSparseImage);
 
         tile_held = my_info->tile_held;
 
@@ -216,8 +215,7 @@ static IceTImage vtreeCompose(void)
     }
     do_send_receive(my_info, tile_held,
                     max_pixels, num_tiles, all_contained_tmasks,
-                    &image, imageBuffer,
-                    inSparseImageBuffer, outSparseImageBuffer);
+                    image, inSparseImageBuffer, outSparseImage);
     tile_held = my_info->tile_held;
 
   /* Hacks for when "this" tile was not rendered. */
@@ -229,11 +227,11 @@ static IceTImage vtreeCompose(void)
             icetRaiseDebug("Rendering tile to display.");
           /* This may uncessarily read a buffer if not outputing an input
              buffer */
-            image = icetGetTileImage(tile_displayed, imageBuffer);
+            icetGetTileImage(tile_displayed, image);
         } else {
           /* "This" tile is blank. */
             icetRaiseDebug("Returning blank image.");
-            image = icetImageNull();
+            icetClearImage(image);
         }
     }
 
@@ -334,11 +332,11 @@ static void sort_by_contained(struct node_info *info, int size)
 static void do_send_receive(const struct node_info *my_info, int tile_held,
                             IceTInt max_pixels, IceTInt num_tiles,
                             IceTBoolean *all_contained_tmasks,
-                            IceTImage *image, IceTVoid *imageBuffer,
+                            IceTImage image,
                             IceTVoid *inSparseImageBuffer,
-                            IceTVoid *outSparseImageBuffer)
+                            IceTSparseImage outSparseImage)
 {
-    IceTSparseImage out_image, in_image;
+    IceTSparseImage inSparseImage;
     IceTVoid *package_buffer;
     IceTSizeType package_size;
 
@@ -346,13 +344,13 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
         icetRaiseDebug2("Sending tile %d to node %d.", my_info->tile_sending,
                         my_info->send_dest);
         if (tile_held == my_info->tile_sending) {
-            out_image = icetCompressImage(*image, outSparseImageBuffer);
+            icetCompressImage(image, outSparseImage);
             tile_held = -1;
         } else {
-            out_image = icetGetCompressedTileImage(my_info->tile_sending,
-                                                   outSparseImageBuffer);
+            icetGetCompressedTileImage(my_info->tile_sending,
+                                       outSparseImage);
         }
-        icetSparseImagePackageForSend(out_image,
+        icetSparseImagePackageForSend(outSparseImage,
                                       &package_buffer, &package_size);
     }
 
@@ -363,7 +361,7 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
             && all_contained_tmasks[my_info->rank*num_tiles
                                    +my_info->tile_receiving])
         {
-            *image = icetGetTileImage(my_info->tile_receiving, imageBuffer);
+            icetGetTileImage(my_info->tile_receiving, image);
             tile_held = my_info->tile_receiving;
         }
 
@@ -372,19 +370,19 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
             ICET_COMM_SENDRECV(package_buffer, package_size, ICET_BYTE,
                                my_info->send_dest, VTREE_IMAGE_DATA,
                                inSparseImageBuffer,
-                               icetSparseImageMaxBufferSize(max_pixels),
+                               icetSparseImageBufferSize(max_pixels),
                                ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         } else {
             ICET_COMM_RECV(inSparseImageBuffer,
-                           icetSparseImageMaxBufferSize(max_pixels),
+                           icetSparseImageBufferSize(max_pixels),
                            ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         }
-        in_image = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
+        inSparseImage =icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
 
         if (tile_held == my_info->tile_receiving) {
-            icetCompressedComposite(*image, in_image, 1);
+            icetCompressedComposite(image, inSparseImage, 1);
         } else {
-            *image = icetDecompressImage(in_image, imageBuffer);
+            icetDecompressImage(inSparseImage, image);
         }
 
     } else if (my_info->tile_sending != -1) {

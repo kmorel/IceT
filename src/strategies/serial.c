@@ -29,9 +29,10 @@ static IceTImage serialCompose(void)
     IceTInt *display_nodes;
     IceTBoolean ordered_composite;
     IceTImage myImage;
-    IceTVoid *imageBuffer;
-    IceTVoid *inSparseImageBuffer, *outSparseImageBuffer;
-    IceTSizeType maxRawImageSize, maxSparseImageSize;
+    IceTImage image;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *compose_group;
     int i;
 
@@ -42,16 +43,16 @@ static IceTImage serialCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    maxRawImageSize    = icetImageMaxBufferSize(max_pixels);
-    maxSparseImageSize = icetSparseImageMaxBufferSize(max_pixels);
+    rawImageSize    = icetImageBufferSize(max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(max_pixels);
 
-    icetResizeBuffer(  maxRawImageSize*2
-		     + maxSparseImageSize*2
+    icetResizeBuffer(  rawImageSize*2
+		     + sparseImageSize*2
 		     + sizeof(int)*num_proc);
-    imageBuffer          = icetReserveBufferMem(maxRawImageSize);
-    inSparseImageBuffer  = icetReserveBufferMem(maxSparseImageSize);
-    outSparseImageBuffer = icetReserveBufferMem(maxSparseImageSize);
-    compose_group = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+    image               = icetReserveBufferImage(max_pixels);
+    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
+    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    compose_group       = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
 
     myImage = icetImageNull();
 
@@ -65,8 +66,7 @@ static IceTImage serialCompose(void)
 
   /* Render and compose every tile. */
     for (i = 0; i < num_tiles; i++) {
-	IceTVoid *ibuf;
-        IceTImage image;
+        IceTImage tileImage;
 	int d_node = display_nodes[i];
 	int image_dest;
 
@@ -83,17 +83,17 @@ static IceTImage serialCompose(void)
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
 	if (d_node == rank) {
-	    ibuf = icetReserveBufferMem(maxRawImageSize);
+            tileImage = icetReserveBufferImage(max_pixels);
 	} else {
-	    ibuf = imageBuffer;
+	    tileImage = image;
 	}
 
-	image = icetGetTileImage(i, ibuf);
+	icetGetTileImage(i, tileImage);
 	icetBswapCompose(compose_group, num_proc, image_dest,
-			 image, inSparseImageBuffer, outSparseImageBuffer);
+			 tileImage, inSparseImageBuffer, outSparseImage);
 
         if (d_node == rank) {
-            myImage = image;
+            myImage = tileImage;
         }
     }
 

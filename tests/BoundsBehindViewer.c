@@ -55,8 +55,8 @@ static int BoundsBehindViewerRun()
 
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);
 
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
   /* We're just going to use one tile. */
     icetResetTiles();

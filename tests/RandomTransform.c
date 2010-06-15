@@ -380,8 +380,8 @@ static int RandomTransformRun()
     }
 
     printf("\nGetting base images for z compare.\n");
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     icetDisable(ICET_COMPOSITE_ONE_BUFFER);
     glColor4f(color[0], color[1], color[2], 1.0);
@@ -390,32 +390,22 @@ static int RandomTransformRun()
     image = icetDrawFrame();
     swap_buffers();
 
-    refbuf = malloc(icetImageBufferSize(icetImageGetColorFormat(image),
-                                        icetImageGetDepthFormat(image),
-                                        icetImageGetSize(image)));
-    refimage = icetImageInitialize(refbuf,
-                                   icetImageGetColorFormat(image),
-                                   icetImageGetDepthFormat(image),
-                                   icetImageGetSize(image));
-    icetImageCopyPixels(image, 0, refimage, 0, icetImageGetSize(image));
+    refbuf = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
+    refimage = icetImageAssignBuffer(refbuf, icetImageGetNumPixels(image));
+    icetImageCopyPixels(image, 0, refimage, 0, icetImageGetNumPixels(image));
 
     printf("Getting base image for color blend.\n");
-    icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetGLSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
     icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
     icetEnable(ICET_ORDERED_COMPOSITE);
     glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
     image = icetDrawFrame();
     swap_buffers();
 
-    refbuf2 = malloc(icetImageBufferSize(icetImageGetColorFormat(image),
-                                         icetImageGetDepthFormat(image),
-                                         icetImageGetSize(image)));
-    refimage2 = icetImageInitialize(refbuf,
-                                    icetImageGetColorFormat(image),
-                                    icetImageGetDepthFormat(image),
-                                    icetImageGetSize(image));
-    icetImageCopyPixels(image, 0, refimage2, 0, icetImageGetSize(image));
+    refbuf2 = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
+    refimage2 = icetImageAssignBuffer(refbuf2, icetImageGetNumPixels(image));
+    icetImageCopyPixels(image, 0, refimage2, 0, icetImageGetNumPixels(image));
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -462,8 +452,8 @@ static int RandomTransformRun()
 /*          glViewport(0, 0, local_width, local_height); */
 
             printf("\nDoing color buffer.\n");
-            icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-            icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+            icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
             icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
             icetDisable(ICET_COMPOSITE_ONE_BUFFER);
             icetDisable(ICET_ORDERED_COMPOSITE);
@@ -491,8 +481,8 @@ static int RandomTransformRun()
             check_results(result);
 
             printf("\nDoing depth buffer.\n");
-            icetGLSetColorFormat(ICET_IMAGE_COLOR_NONE);
-            icetGLSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+            icetSetColorFormat(ICET_IMAGE_COLOR_NONE);
+            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
             icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
             icetDisable(ICET_ORDERED_COMPOSITE);
 
@@ -519,8 +509,8 @@ static int RandomTransformRun()
 
             if (test_ordering) {
                 printf("\nDoing blended color buffer.\n");
-                icetGLSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-                icetGLSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+                icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+                icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
                 icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
                 icetEnable(ICET_ORDERED_COMPOSITE);
 

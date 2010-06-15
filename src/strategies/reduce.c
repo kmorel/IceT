@@ -27,7 +27,6 @@ static IceTImage reduceCompose(void);
 static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
                         IceTInt *group_image_destp,
-                        IceTInt *num_receivingp,
                         IceTSizeType buffer_size);
 
 
@@ -36,8 +35,7 @@ IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
 static IceTImage reduceCompose(void)
 {
     IceTVoid *inSparseImageBuffer;
-    IceTVoid *outSparseImageBuffer;
-    IceTVoid *imageBuffer;
+    IceTSparseImage outSparseImage;
     IceTImage image;
     IceTInt max_pixels;
     IceTInt num_processes;
@@ -47,7 +45,6 @@ static IceTImage reduceCompose(void)
 
     IceTInt *tile_image_dest;
     IceTInt *compose_group, group_size, group_image_dest;
-    IceTInt num_receiving;
     IceTInt compose_tile;
 
     icetRaiseDebug("In reduceCompose");
@@ -55,42 +52,40 @@ static IceTImage reduceCompose(void)
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
 
-    sparse_image_size = icetSparseImageMaxBufferSize(max_pixels);
-    image_size = icetImageMaxBufferSize(max_pixels);
+    sparse_image_size = icetSparseImageBufferSize(max_pixels);
+    image_size = icetImageBufferSize(max_pixels);
     buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
 			    &compose_group, &group_size, &group_image_dest,
-			    &num_receiving,
 			    buffer_size);
 
     inSparseImageBuffer  = icetReserveBufferMem(sparse_image_size);
-    outSparseImageBuffer = icetReserveBufferMem(sparse_image_size);
-    imageBuffer          = icetReserveBufferMem(image_size);
+    outSparseImage       = icetReserveBufferSparseImage(max_pixels);
+    image                = icetReserveBufferImage(max_pixels);
 
-    image = icetRenderTransferFullImages(imageBuffer,
-                                         inSparseImageBuffer,
-                                         outSparseImageBuffer,
-                                         num_receiving,
-                                         tile_image_dest);
+    icetRenderTransferFullImages(image,
+                                 inSparseImageBuffer,
+                                 outSparseImage,
+                                 tile_image_dest);
 
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
 	icetBswapCompose(compose_group, group_size, group_image_dest,
-			 image, inSparseImageBuffer, outSparseImageBuffer);
+			 image, inSparseImageBuffer, outSparseImage);
     } else if (group_size > 0) {
 	icetRaiseDebug("Doing tree compose");
 	icetTreeCompose(compose_group, group_size, group_image_dest,
-			image, inSparseImageBuffer);
+			image, inSparseImageBuffer, outSparseImage);
     } else {
 	icetRaiseDebug("Clearing pixels");
-        image = icetImageNull();
+        icetClearImage(image);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
       /* Return empty image if nothing in this tile. */
 	icetRaiseDebug("Clearing pixels");
-        image = icetImageNull();
+        icetClearImage(image);
     }
 
     return image;
@@ -99,7 +94,6 @@ static IceTImage reduceCompose(void)
 static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
                         IceTInt *group_image_destp,
-                        IceTInt *num_receivingp,
                         IceTSizeType buffer_size)
 {
     IceTBoolean *all_contained_tiles_masks;
@@ -126,7 +120,6 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     IceTInt snode, rnode, dest;
     IceTInt piece;
     IceTInt first_loop;
-    IceTInt num_receiving;
 
     all_contained_tiles_masks
 	= icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
@@ -142,7 +135,6 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     if (total_image_count < 1) {
 	icetRaiseDebug("No nodes are drawing.");
 	*group_sizep = 0;
-	*num_receivingp = 0;
 	icetResizeBuffer(buffer_size);
 	return -1;
     }
@@ -263,8 +255,6 @@ group_sizes[(tile)]++;
 	}
     }
 
-    num_receiving = 0;
-
   /* Now figure out who I am sending to and how many I am receiving. */
     for (tile = 0; tile < num_tiles; tile++) {
 	IceTInt *proc_group = tile_proc_groups + tile*num_processes;
@@ -284,7 +274,6 @@ group_sizes[(tile)]++;
 	    if (   (node_assignment[rank] == tile)
 		&& all_contained_tiles_masks[rank*num_tiles + tile]) {
 		tile_image_dest[tile] = rank;
-		num_receiving++;
 	    }
 
 	    snode = -1;
@@ -320,11 +309,6 @@ group_sizes[(tile)]++;
 	      /* Check to see if this node is sending the image data. */
 		if (snode == rank) {
 		    tile_image_dest[tile] = dest;
-		}
-
-	      /* Check to see if this node is receiving the image data. */
-		if (dest == rank) {
-		    num_receiving++;
 		}
 	    }
 	} else {
@@ -409,11 +393,6 @@ group_sizes[(tile)]++;
 		if (snode == rank) {
 		    tile_image_dest[tile] = rnode;
 		}
-
-	      /* Check to see if this node is receiving the image data. */
-		if (rnode == rank) {
-		    num_receiving++;
-		}
 	    }
 	}
     }
@@ -423,12 +402,10 @@ group_sizes[(tile)]++;
 	*compose_groupp = NULL;
 	*group_sizep = 0;
 	*group_image_destp = 0;
-	*num_receivingp = 0;
     } else {
 	*compose_groupp = tile_proc_groups+node_assignment[rank]*num_processes;
 	*group_sizep = group_sizes[node_assignment[rank]];
 	*group_image_destp = group_image_dest;
-	*num_receivingp = num_receiving;
     }
     return node_assignment[rank];
 }

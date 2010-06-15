@@ -17,15 +17,12 @@
 #include <IceTGL.h>
 
 void write_ppm(const char *filename,
-	       const IceTUByte *image,
-	       int width, int height)
+               const IceTUByte *image,
+               int width, int height)
 {
     FILE *fd;
     int x, y;
     const unsigned char *color;
-    IceTInt color_format;
-
-    icetGetIntegerv(ICET_GL_COLOR_FORMAT, &color_format);
 
     fd = fopen(filename, "wb");
 
@@ -35,25 +32,11 @@ void write_ppm(const char *filename,
     fprintf(fd, "255\n");
 
     for (y = height-1; y >= 0; y--) {
-	color = image + y*width*4;
-	for (x = 0; x < width; x++) {
-	    switch (color_format) {
-	      case GL_RGBA:
-		  fwrite(color, 1, 3, fd);
-		  break;
-#ifdef GL_BGRA_EXT
-	      case GL_BGRA_EXT:
-		  fwrite(color+2, 1, 1, fd);
-		  fwrite(color+1, 1, 1, fd);
-		  fwrite(color+0, 1, 1, fd);
-		  break;
-#endif
-	      default:
-		  printf("Bad color format.\n");
-		  return;
-	    }
-	    color += 4;
-	}
+        color = image + y*width*4;
+        for (x = 0; x < width; x++) {
+            fwrite(color, 1, 3, fd);
+            color += 4;
+        }
     }
 
     fclose(fd);

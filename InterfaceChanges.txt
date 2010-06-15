@@ -12,8 +12,8 @@ Added icetGLInitialize.
 
 Added icetGLSetReadBuffer.
 
-ICET_COLOR_FORMAT -> ICET_GL_COLOR_BUFFER.  Also add ICET_GL_DEPTH_BUFFER
-and setting functions icetGLSetColorFormat and IcetGLSetDepthFormat.
+ICET_COLOR_FORMAT -> ICET_COLOR_BUFFER.  Also add ICET_DEPTH_BUFFER
+and setting functions icetSetColorFormat and IcetSetDepthFormat.
 
 Added icetPhysicalDisplaySize, ICET_PHYSICAL_RENDER_WIDTH, and
 ICET_PHYSICAL_RENDER_HEIGHT.
