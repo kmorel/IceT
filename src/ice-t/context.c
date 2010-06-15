@@ -15,6 +15,7 @@
 
 #include <context.h>
 #include <diagnostics.h>
+#include <image.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -99,9 +100,9 @@ void icetSetContext(IceTContext context)
     icet_current_context = &(context_list[context]);
 }
 
-void *icetReserveBufferMem(IceTSizeType size)
+IceTVoid *icetReserveBufferMem(IceTSizeType size)
 {
-    void *mem = ((IceTUByte *)icet_current_context->buffer)
+    IceTVoid *mem = ((IceTUByte *)icet_current_context->buffer)
         + icet_current_context->buffer_offset;
 
   /* Integer boundries are good. */
@@ -116,6 +117,28 @@ void *icetReserveBufferMem(IceTSizeType size)
                        ICET_OUT_OF_MEMORY);
 
     return mem;
+}
+
+IceTImage icetReserveBufferImage(IceTSizeType num_pixels)
+{
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetImageBufferSize(num_pixels);
+    buffer = icetReserveBufferMem(buffer_size);
+
+    return icetImageAssignBuffer(buffer, num_pixels);
+}
+
+IceTSparseImage icetReserveBufferSparseImage(IceTSizeType num_pixels)
+{
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetSparseImageBufferSize(num_pixels);
+    buffer = icetReserveBufferMem(buffer_size);
+
+    return icetSparseImageAssignBuffer(buffer, num_pixels);
 }
 
 void icetCopyState(IceTContext dest, const IceTContext src)
@@ -149,9 +172,4 @@ void icetResizeBuffer(IceTSizeType size)
     }
 
     icet_current_context->buffer_offset = 0;
-
-  /* The color and depth buffers rely on this memory pool, so we have
-     probably just invalidated them. */
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
 }

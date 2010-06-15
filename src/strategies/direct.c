@@ -23,9 +23,10 @@ IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
 
 static IceTImage directCompose(void)
 {
-    IceTSparseImage inImage;
-    IceTSparseImage outImage;
     IceTImage image;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *contrib_counts;
     IceTInt *display_nodes;
     IceTInt max_pixels;
@@ -39,13 +40,16 @@ static IceTImage directCompose(void)
     icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
-    icetResizeBuffer(  2*icetSparseImageSize(max_pixels)
-		     + icetFullImageSize(max_pixels)
+    rawImageSize = icetImageBufferSize(max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(max_pixels);
+
+    icetResizeBuffer(  rawImageSize
+		     + 2*sparseImageSize
 		     + num_tiles*sizeof(IceTInt));
-    inImage     = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    outImage    = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    image	= icetReserveBufferMem(icetFullImageSize(max_pixels));
-    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
+    image               = icetReserveBufferImage(max_pixels);
+    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
+    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    tile_image_dest     = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
@@ -61,14 +65,15 @@ static IceTImage directCompose(void)
     }
 
     icetRaiseDebug("Rendering and transferring images.");
-    icetRenderTransferFullImages(image, inImage, outImage,
-				 num_contributors, tile_image_dest);
+    icetRenderTransferFullImages(image,
+                                 inSparseImageBuffer,
+                                 outSparseImage,
+                                 tile_image_dest);
 
     if ((display_tile >= 0) && (num_contributors < 1)) {
       /* Must be displaying a blank tile. */
 	icetRaiseDebug("Returning blank tile.");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        icetClearImage(image);
     }
 
     return image;

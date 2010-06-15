@@ -23,8 +23,8 @@ extern "C" {
 extern IceTStrategy strategy_list[];
 extern int STRATEGY_LIST_SIZE;
 
-extern int SCREEN_WIDTH;
-extern int SCREEN_HEIGHT;
+extern IceTSizeType SCREEN_WIDTH;
+extern IceTSizeType SCREEN_HEIGHT;
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
 

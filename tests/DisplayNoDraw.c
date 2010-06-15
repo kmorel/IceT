@@ -64,6 +64,9 @@ static int DisplayNoDrawRun()
 
     icetDrawFunc(draw);
 
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+
     if (rank == 0) {
         icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
     } else {
@@ -81,6 +84,7 @@ static int DisplayNoDrawRun()
     glColor4f(1.0, 1.0, 1.0, 1.0);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
+        IceTImage image;
         IceTUByte *color_buffer;
 
         icetStrategy(strategy_list[i]);
@@ -89,7 +93,7 @@ static int DisplayNoDrawRun()
         for (iteration = 0; iteration < num_proc; iteration++) {
             printf("Blank image is rank %d\n", iteration);
 
-            icetDrawFrame();
+            image = icetDrawFrame();
             swap_buffers();
 
             if (   (rank == 0)
@@ -101,7 +105,7 @@ static int DisplayNoDrawRun()
                 int p;
                 int bad_count = 0;
                 printf("Checking pixels.\n");
-                color_buffer = icetGetColorBuffer();
+                color_buffer = icetImageGetColorUByte(image);
                 for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
                     if (color_buffer[p] != 255) {
                         char filename[256];

@@ -22,19 +22,19 @@ extern "C" {
 }
 #endif
 
-typedef IceTUnsignedInt32     IceTEnum;
-typedef IceTUnsignedInt32     IceTBitField;
-typedef double                IceTDouble;
-typedef float                 IceTFloat;
-typedef IceTInt32             IceTInt;
-typedef IceTUnsignedInt32     IceTUInt;
-typedef IceTInt16             IceTShort;
-typedef IceTUnsignedInt16     IceTUShort;
-typedef IceTInt8              IceTByte;
-typedef IceTUnsignedInt8      IceTUByte;
-typedef IceTInt8              IceTBoolean;
-typedef void                  IceTVoid;
-typedef IceTPointerArithmetic IceTSizeType;
+typedef IceTUnsignedInt32       IceTEnum;
+typedef IceTUnsignedInt32       IceTBitField;
+typedef IceTFloat64             IceTDouble;
+typedef IceTFloat32             IceTFloat;
+typedef IceTInt32               IceTInt;
+typedef IceTUnsignedInt32       IceTUInt;
+typedef IceTInt16               IceTShort;
+typedef IceTUnsignedInt16       IceTUShort;
+typedef IceTInt8                IceTByte;
+typedef IceTUnsignedInt8        IceTUByte;
+typedef IceTUnsignedInt8        IceTBoolean;
+typedef void                    IceTVoid;
+typedef IceTPointerArithmetic   IceTSizeType;
 
 typedef IceTUnsignedInt32 IceTContext;
 
@@ -121,12 +121,37 @@ ICET_EXPORT int  icetAddTile(IceTInt x, IceTInt y,
 
 ICET_EXPORT void icetPhysicalRenderSize(IceTInt width, IceTInt height);
 
-ICET_EXPORT void icetDrawFrame(void);
+typedef struct { IceTVoid *opaque_internals; } IceTImage;
 
-ICET_EXPORT IceTUByte *icetGetColorBuffer(void);
-ICET_EXPORT IceTUInt  *icetGetDepthBuffer(void);
+#define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
+#define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
+#define ICET_IMAGE_COLOR_NONE           (IceTEnum)0x0000
 
-typedef IceTUInt *IceTImage;
+#define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001
+#define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0x0000
+
+ICET_EXPORT void icetSetColorFormat(IceTEnum color_format);
+ICET_EXPORT void icetSetDepthFormat(IceTEnum depth_format);
+
+ICET_EXPORT IceTImage icetImageNull(void);
+ICET_EXPORT IceTBoolean icetImageIsNull(const IceTImage image);
+ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image);
+ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
+ICET_EXPORT IceTSizeType icetImageGetNumPixels(const IceTImage image);
+ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image);
+ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image);
+ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image,
+                                         IceTUByte *color_buffer,
+                                         IceTEnum color_format);
+ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image,
+                                         IceTFloat *color_buffer,
+                                         IceTEnum color_format);
+ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
+                                         IceTFloat *depth_buffer,
+                                         IceTEnum depth_format);
+
 typedef struct _IceTStrategy {
     const char *name;
     IceTBoolean supports_ordering;
@@ -141,17 +166,19 @@ ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_VTREE;
 
 ICET_EXPORT void icetStrategy(IceTStrategy strategy);
 
-ICET_EXPORT const IceTUByte *icetGetStrategyName(void);
+ICET_EXPORT const char *icetGetStrategyName(void);
 
-#define ICET_COLOR_BUFFER_BIT   (IceTEnum)0x0100
-#define ICET_DEPTH_BUFFER_BIT   (IceTEnum)0x0200
-ICET_EXPORT void icetInputOutputBuffers(IceTEnum inputs, IceTEnum outputs);
+#define ICET_COMPOSITE_MODE_Z_BUFFER    (IceTEnum)0x0301
+#define ICET_COMPOSITE_MODE_BLEND       (IceTEnum)0x0302
+ICET_EXPORT void icetCompositeMode(IceTEnum mode);
 
 ICET_EXPORT void icetCompositeOrder(const IceTInt *process_ranks);
 
 ICET_EXPORT void icetDataReplicationGroup(IceTInt size,
                                           const IceTInt *processes);
 ICET_EXPORT void icetDataReplicationGroupColor(IceTInt color);
+
+ICET_EXPORT IceTImage icetDrawFrame(void);
 
 #define ICET_DIAG_OFF           (IceTEnum)0x0000
 #define ICET_DIAG_ERRORS        (IceTEnum)0x0001
@@ -169,11 +196,13 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_DIAGNOSTIC_LEVEL   (ICET_STATE_ENGINE_START | (IceTEnum)0x0001)
 #define ICET_RANK               (ICET_STATE_ENGINE_START | (IceTEnum)0x0002)
 #define ICET_NUM_PROCESSES      (ICET_STATE_ENGINE_START | (IceTEnum)0x0003)
-#define ICET_ABSOLUTE_FAR_DEPTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0004)
+/* #define ICET_ABSOLUTE_FAR_DEPTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0004) */
 #define ICET_BACKGROUND_COLOR   (ICET_STATE_ENGINE_START | (IceTEnum)0x0005)
 #define ICET_BACKGROUND_COLOR_WORD (ICET_STATE_ENGINE_START | (IceTEnum)0x0006)
 #define ICET_PHYSICAL_RENDER_WIDTH (ICET_STATE_ENGINE_START | (IceTEnum)0x0007)
 #define ICET_PHYSICAL_RENDER_HEIGHT (ICET_STATE_ENGINE_START| (IceTEnum)0x0008)
+#define ICET_COLOR_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x0009)
+#define ICET_DEPTH_FORMAT       (ICET_STATE_ENGINE_START | (IceTEnum)0x000A)
 
 #define ICET_NUM_TILES          (ICET_STATE_ENGINE_START | (IceTEnum)0x0010)
 #define ICET_TILE_VIEWPORTS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0011)
@@ -188,8 +217,7 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_NUM_BOUNDING_VERTS (ICET_STATE_ENGINE_START | (IceTEnum)0x0023)
 #define ICET_STRATEGY_NAME      (ICET_STATE_ENGINE_START | (IceTEnum)0x0024)
 #define ICET_STRATEGY_COMPOSE   (ICET_STATE_ENGINE_START | (IceTEnum)0x0025)
-#define ICET_INPUT_BUFFERS      (ICET_STATE_ENGINE_START | (IceTEnum)0x0026)
-#define ICET_OUTPUT_BUFFERS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0027)
+#define ICET_COMPOSITE_MODE     (ICET_STATE_ENGINE_START | (IceTEnum)0x0026)
 #define ICET_COMPOSITE_ORDER    (ICET_STATE_ENGINE_START | (IceTEnum)0x0028)
 #define ICET_PROCESS_ORDERS     (ICET_STATE_ENGINE_START | (IceTEnum)0x0029)
 #define ICET_STRATEGY_SUPPORTS_ORDERING (ICET_STATE_ENGINE_START | (IceTEnum)0x002A)
@@ -215,11 +243,6 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 
 #define ICET_RENDERED_VIEWPORT  (ICET_STATE_FRAME_START | (IceTEnum)0x0010)
 
-#define ICET_COLOR_BUFFER       (ICET_STATE_FRAME_START | (IceTEnum)0x0018)
-#define ICET_DEPTH_BUFFER       (ICET_STATE_FRAME_START | (IceTEnum)0x0019)
-#define ICET_COLOR_BUFFER_VALID (ICET_STATE_FRAME_START | (IceTEnum)0x001A)
-#define ICET_DEPTH_BUFFER_VALID (ICET_STATE_FRAME_START | (IceTEnum)0x001B)
-
 #define ICET_STATE_TIMING_START (IceTEnum)0x000000C0
 
 #define ICET_RENDER_TIME        (ICET_STATE_TIMING_START | (IceTEnum)0x0001)
@@ -238,7 +261,9 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_FLOATING_VIEWPORT  (ICET_STATE_ENABLE_START | (IceTEnum)0x0001)
 #define ICET_ORDERED_COMPOSITE  (ICET_STATE_ENABLE_START | (IceTEnum)0x0002)
 #define ICET_CORRECT_COLORED_BACKGROUND (ICET_STATE_ENABLE_START | (IceTEnum)0x0003)
+#define ICET_COMPOSITE_ONE_BUFFER (ICET_STATE_ENABLE_START | (IceTEnum)0x0004)
 
+/* These should go to GL layer. */
 #define ICET_DISPLAY            (ICET_STATE_ENABLE_START | (IceTEnum)0x0010)
 #define ICET_DISPLAY_COLORED_BACKGROUND (ICET_STATE_ENABLE_START | (IceTEnum)0x0011)
 #define ICET_DISPLAY_INFLATE    (ICET_STATE_ENABLE_START | (IceTEnum)0x0012)
@@ -250,6 +275,8 @@ ICET_EXPORT void icetGetDoublev(IceTEnum pname, IceTDouble *params);
 ICET_EXPORT void icetGetFloatv(IceTEnum pname, IceTFloat *params);
 ICET_EXPORT void icetGetIntegerv(IceTEnum pname, IceTInt *params);
 ICET_EXPORT void icetGetBooleanv(IceTEnum pname, IceTBoolean *params);
+ICET_EXPORT void icetGetEnumv(IceTEnum pname, IceTEnum *params);
+ICET_EXPORT void icetGetBitFieldv(IceTEnum pname, IceTEnum *bitfield);
 ICET_EXPORT void icetGetPointerv(IceTEnum pname, IceTVoid **params);
 
 ICET_EXPORT void icetEnable(IceTEnum pname);

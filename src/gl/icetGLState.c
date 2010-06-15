@@ -23,8 +23,7 @@ void icetGLInitialize(void)
 
     icetStateSetBoolean(ICET_GL_INITIALIZED, ICET_TRUE);
 
-    icetStateSetInteger(ICET_GL_READ_BUFFER, GL_BACK);
-    icetStateSetInteger(ICET_GL_COLOR_FORMAT, GL_RGBA);
+    icetGLSetReadBuffer(GL_BACK);
 }
 
 void icetGLSetReadBuffer(GLenum mode)

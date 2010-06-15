@@ -13,6 +13,7 @@
 
 #include <IceT.h>
 #include <state.h>
+#include <image.h>
 
 struct IceTContext {
     IceTState state;
@@ -29,8 +30,11 @@ ICET_EXPORT extern struct IceTContext *icet_current_context;
 #define icetGetState()          (icet_current_context->state)
 #define icetGetCommunicator()   (icet_current_context->communicator)
 
-ICET_EXPORT void    icetResizeBuffer(IceTSizeType size);
-ICET_EXPORT void *  icetReserveBufferMem(IceTSizeType size);
+ICET_EXPORT void            icetResizeBuffer(IceTSizeType size);
+ICET_EXPORT IceTVoid *      icetReserveBufferMem(IceTSizeType size);
+ICET_EXPORT IceTImage       icetReserveBufferImage(IceTSizeType num_pixels);
+ICET_EXPORT IceTSparseImage icetReserveBufferSparseImage(
+                                                       IceTSizeType num_pixels);
 
 #define ICET_COMM_DUPLICTE()                                            \
     (icetGetCommunicator()->Duplicate(icetGetCommunicator()))

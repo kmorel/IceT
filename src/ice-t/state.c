@@ -56,9 +56,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
         if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
             || (i == ICET_DATA_REPLICATION_GROUP)
             || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
-            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
-            || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
-            || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
+            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS) )
         {
             continue;
         }
@@ -92,10 +90,12 @@ void icetStateSetDefaults(void)
 
     icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
     icetStateSetInteger(ICET_NUM_PROCESSES, ICET_COMM_SIZE());
-    icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1);
+    /* icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1); */
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
     icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
     icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
+    icetStateSetInteger(ICET_COLOR_FORMAT, ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetStateSetInteger(ICET_DEPTH_FORMAT, ICET_IMAGE_DEPTH_FLOAT);
 
     icetResetTiles();
     icetStateSetIntegerv(ICET_DISPLAY_NODES, 0, NULL);
@@ -103,8 +103,7 @@ void icetStateSetDefaults(void)
     icetStateSetDoublev(ICET_GEOMETRY_BOUNDS, 0, NULL);
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
-    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-                           ICET_COLOR_BUFFER_BIT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     int_array = malloc(ICET_COMM_SIZE() * sizeof(IceTInt));
     for (i = 0; i < ICET_COMM_SIZE(); i++) {
         int_array[i] = i;
@@ -122,17 +121,13 @@ void icetStateSetDefaults(void)
     icetEnable(ICET_FLOATING_VIEWPORT);
     icetDisable(ICET_ORDERED_COMPOSITE);
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
+    icetEnable(ICET_COMPOSITE_ONE_BUFFER);
     icetEnable(ICET_DISPLAY);
     icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_DISPLAY_INFLATE);
     icetEnable(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
-
-    icetStateSetPointer(ICET_COLOR_BUFFER, NULL);
-    icetStateSetPointer(ICET_DEPTH_BUFFER, NULL);
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
 
     icetStateResetTiming();
 }
@@ -249,6 +244,27 @@ void icetGetIntegerv(IceTEnum pname, IceTInt *params)
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
     copyArray(IceTInt, params, value->type, value->data, value->size);
+}
+
+void icetGetEnumv(IceTEnum pname, IceTEnum *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTEnum, params, value->type, value->data, value->size);
+}
+void icetGetBitFieldv(IceTEnum pname, IceTBitField *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTBitField, params, value->type, value->data, value->size);
 }
 
 void icetGetPointerv(IceTEnum pname, IceTVoid **params)

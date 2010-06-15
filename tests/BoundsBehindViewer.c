@@ -43,6 +43,7 @@ static void PrintMatrix(float *mat)
 static int BoundsBehindViewerRun()
 {
     float mat[16];
+    IceTImage image;
 
     IceTInt rank;
     icetGetIntegerv(ICET_RANK, &rank);
@@ -53,6 +54,9 @@ static int BoundsBehindViewerRun()
     icetStrategy(ICET_STRATEGY_REDUCE);
 
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);
+
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
   /* We're just going to use one tile. */
     icetResetTiles();
@@ -87,11 +91,11 @@ static int BoundsBehindViewerRun()
   /* All the processes have the same data.  Go ahead and tell IceT. */
     icetDataReplicationGroupColor(0);
 
-    icetDrawFrame();
+    image = icetDrawFrame();
 
   /* Test the resulting image to make sure the polygon was drawn over it. */
     if (rank == 0) {
-        IceTUInt *cb = (IceTUInt *)icetGetColorBuffer();
+        IceTUInt *cb = icetImageGetColorUInt(image);
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
             return TEST_FAILED;

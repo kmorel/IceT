@@ -22,21 +22,27 @@
    uses memory given with the buffer arguments, and will make its best
    efforts to get the graphics and network hardware to run in parallel.
 
-   imageBuffer - A buffer big enough to hold color and/or depth values
-        that is ICET_MAX_PIXELS big.  The size can be determined with
-        the icetFullImageSize function in image.h.
-   inImage, outImage - Two buffers big enough to hold sparse color and
-        depth information for an image that is ICET_MAX_PIXELS big.  The
-        size can be determined with the icetCompressedBufferSize macro
-        in image.h
+   imageBuffer - An image big enough to hold color and/or depth values
+        that is ICET_MAX_PIXELS big.  The results will be put in this
+        image.
+   inSparseImageBuffer - A buffer big enough to hold sparse color and
+        depth information for an image that is ICET_MAX_PIXELS big.
+        The size can be determined with the icetSparseImageBufferSize
+        function in image.h.
+   outSparseImage - A sparse image big enough to hold color and/or depth
+        values that is ICET_MAX_PIXELS big.
    num_receiving - number of image this processor is receiving.
    tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
         rendered image for tile t is sent to tile_image_dest[t].
+
+   This function returns an image object (using the imageBuffer)
+   containing the composited image send to this process.  The contents
+   are undefined if nothing sent to this process.
 */
-void icetRenderTransferFullImages(IceTImage imageBuffer,
-                                  IceTSparseImage inImage,
-                                  IceTSparseImage outImage,
-                                  IceTInt num_receiving, IceTInt *tile_image_dest);
+void icetRenderTransferFullImages(IceTImage image,
+                                  IceTVoid *inSparseImageBuffer,
+                                  IceTSparseImage outSparseImage,
+                                  IceTInt *tile_image_dest);
 
 
 /* icetSendRecvLargeMessages
@@ -60,6 +66,9 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
         processor is sending out.
    messageDestinations - An array of size numMessagesSending that contains
         the ranks of message destinations.
+   messagesInOrder - If true, then messages will be received in the order
+        specified by the ICET_PROCESS_ORDERS state variable.  If false,
+        messages may come in an arbitrary order.
    generateDataFunc - A callback function that generates messages.  The
         function is given the index in messageDestinations and the rank of
         the destination as arguments.  The data of the message and the size
@@ -76,15 +85,16 @@ void icetRenderTransferFullImages(IceTImage imageBuffer,
    bufferSize - The maximum size of a message.
    
 */
-typedef void *(*IceTGenerateData)(IceTInt id, IceTInt dest, IceTInt *size);
-typedef void *(*IceTHandleData)(void *, IceTInt src);
+typedef IceTVoid *(*IceTGenerateData)(IceTInt id, IceTInt dest,
+                                      IceTSizeType *size);
+typedef void (*IceTHandleData)(void *, IceTInt src);
 void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTInt *messageDestinations,
-                               IceTInt messagesInOrder,
+                               IceTBoolean messagesInOrder,
                                IceTGenerateData generateDataFunc,
                                IceTHandleData handleDataFunc,
-                               void *incomingBuffer,
-                               IceTInt bufferSize);
+                               IceTVoid *incomingBuffer,
+                               IceTSizeType bufferSize);
 
 
 /* icetBswapCompose
@@ -100,17 +110,22 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
    image_dest - The location of where the final composed image should be
         placed.  It is an index into compose_group, not the actual rank
         of the process.
-   imageBuffer - The input image colors and/or depth to be used.  If this
+   image - The input image colors and/or depth to be used.  If this
         processor has rank compose_group[compose_group], any output data
         will be put in this buffer.  If the color or depth value is not to
         be computed or this processor is not rank
         compose_group[compose_group], the buffer has undefined partial
         results when the function returns.
-   inImage/outImage - two buffers for holding sparse image data.
+   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
+        image data.  They must be large enough to store any compressed buffer
+        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
+        compute the number of bytes to allocate.
 */
-void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
-                      IceTImage imageBuffer,
-                      IceTSparseImage inImage, IceTSparseImage outImage);
+void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
+                      IceTInt image_dest,
+                      IceTImage image,
+                      IceTVoid *inSparseImageBuffer,
+                      IceTSparseImage outSparseImage);
 
 /* icetTreeCompose
 
@@ -125,16 +140,21 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_
    image_dest - The location of where the final composed image should be
         placed.  It is an index into compose_group, not the actual rank
         of the process.
-   imageBuffer - The input image colors and/or depth to be used.  If this
+   image - The input image colors and/or depth to be used.  If this
         processor has rank compose_group[image_dest], any output data will
         be put in this buffer.  If the color or depth value is not to be
         computed or this processor is not rank compose_group[image_dest],
         the buffer has undefined partial results when the function returns.
-   compressedImageBuffer - a buffer for holding sparse image data in transit.
+   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
+        image data.  They must be large enough to store any compressed buffer
+        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
+        compute the number of bytes to allocate.
 */
-void icetTreeCompose(IceTInt *compose_group, IceTInt group_size, IceTInt image_dest,
-                     IceTImage imageBuffer,
-                     IceTSparseImage compressedImageBuffer);
+void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
+                     IceTInt image_dest,
+                     IceTImage image,
+                     IceTVoid *inSparseImageBuffer,
+                     IceTSparseImage outSparseImage);
 
 #define icetAddSentBytes(num_sending)                                   \
     (icetUnsafeStateGetInteger(ICET_BYTES_SENT))[0] += (num_sending)

@@ -29,8 +29,10 @@ static IceTImage serialCompose(void)
     IceTInt *display_nodes;
     IceTBoolean ordered_composite;
     IceTImage myImage;
-    IceTImage imageBuffer;
-    IceTSparseImage inImage, outImage;
+    IceTImage image;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *compose_group;
     int i;
 
@@ -41,14 +43,18 @@ static IceTImage serialCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    icetResizeBuffer(  icetFullImageSize(max_pixels)*2
-		     + icetSparseImageSize(max_pixels)*2
+    rawImageSize    = icetImageBufferSize(max_pixels);
+    sparseImageSize = icetSparseImageBufferSize(max_pixels);
+
+    icetResizeBuffer(  rawImageSize*2
+		     + sparseImageSize*2
 		     + sizeof(int)*num_proc);
-    myImage       = NULL;
-    imageBuffer   = icetReserveBufferMem(icetFullImageSize(max_pixels));
-    inImage       = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    outImage      = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    compose_group = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+    image               = icetReserveBufferImage(max_pixels);
+    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
+    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    compose_group       = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+
+    myImage = icetImageNull();
 
     if (ordered_composite) {
 	icetGetIntegerv(ICET_COMPOSITE_ORDER, compose_group);
@@ -60,7 +66,7 @@ static IceTImage serialCompose(void)
 
   /* Render and compose every tile. */
     for (i = 0; i < num_tiles; i++) {
-	IceTImage ibuf;
+        IceTImage tileImage;
 	int d_node = display_nodes[i];
 	int image_dest;
 
@@ -77,15 +83,22 @@ static IceTImage serialCompose(void)
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
 	if (d_node == rank) {
-	    myImage = icetReserveBufferMem(icetFullImageSize(max_pixels));
-	    ibuf = myImage;
+            tileImage = icetReserveBufferImage(max_pixels);
 	} else {
-	    ibuf = imageBuffer;
+	    tileImage = image;
+          /* A previous iteration may have changed the image buffer to remove
+             the depth.  This command restores that so that both buffers are
+             read in for the next pass. */
+            icetImageAdjustForInput(tileImage);
 	}
 
-	icetGetTileImage(i, ibuf);
+	icetGetTileImage(i, tileImage);
 	icetBswapCompose(compose_group, num_proc, image_dest,
-			 ibuf, inImage, outImage);
+			 tileImage, inSparseImageBuffer, outSparseImage);
+
+        if (d_node == rank) {
+            myImage = tileImage;
+        }
     }
 
     return myImage;

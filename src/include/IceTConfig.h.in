@@ -107,6 +107,18 @@ typedef unsigned __int64 IceTUnsignedInt64;
 #error "No valid data type for 64 bit integers found."
 #endif
 
+#if ICET_SIZEOF_FLOAT == 4
+typedef float IceTFloat32;
+#else
+#error "No valid data type for 32 bit floating point found."
+#endif
+
+#if ICET_SIZEOF_DOUBLE == 8
+typedef double IceTFloat64;
+#else
+#error "No valid data type for 64 bit floating point found."
+#endif
+
 #if ICET_SIZEOF_VOID_P == 4
 typedef IceTInt32 IceTPointerArithmetic;
 #elif ICET_SIZEOF_VOID_P == 8
