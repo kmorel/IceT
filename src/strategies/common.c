@@ -416,23 +416,15 @@ static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
                        compose_group[image_dest], SWAP_IMAGE_DATA);
     }
 
-
-  /* Do not collect both color and depth when ICET_COMPOSITE_ONE_BUFFER is
-     enabled. */
-    if (    (color_format == ICET_IMAGE_COLOR_NONE)
-         || !icetIsEnabled(ICET_COMPOSITE_ONE_BUFFER) ) {
-        if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-            IceTVoid *depthBuffer;
-            IceTSizeType pixel_size;
-            depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
-            icetRaiseDebug("Sending depth data.");
-            icetAddSentBytes(pixel_size*pixel_count);
-            ICET_COMM_SEND(depthBuffer + pixel_size*offset,
-                           pixel_size*pixel_count, ICET_FLOAT,
-                           compose_group[image_dest], SWAP_DEPTH_DATA);
-        } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-            icetRaiseError("Invalid depth format", ICET_SANITY_CHECK_FAIL);
-        }
+    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        IceTVoid *depthBuffer;
+        IceTSizeType pixel_size;
+        depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
+        icetRaiseDebug("Sending depth data.");
+        icetAddSentBytes(pixel_size*pixel_count);
+        ICET_COMM_SEND(depthBuffer + pixel_size*offset,
+                       pixel_size*pixel_count, ICET_BYTE,
+                       compose_group[image_dest], SWAP_DEPTH_DATA);
     }
 }
 
