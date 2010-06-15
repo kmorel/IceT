@@ -832,6 +832,8 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
     space_bottom = target_viewport[1];
     space_top = height - target_viewport[3] - space_bottom;
 
+    icetSparseImageSetNumPixels(compressed_image, width*height);
+
 #define INPUT_IMAGE             raw_image
 #define OUTPUT_SPARSE_IMAGE     compressed_image
 #define PADDING
@@ -1265,12 +1267,9 @@ static void readSubImage(IceTInt fb_x, IceTInt fb_y,
         icetRaiseError("Buffer magic number not set.", ICET_SANITY_CHECK_FAIL);
         return;
     }
-    if (icetImageGetNumPixels(buffer) != (IceTSizeType)(full_width*full_height))
-    {
-        icetRaiseError("Buffer size was not set.", ICET_SANITY_CHECK_FAIL);
-        return;
-    }
 #endif /* DEBUG */
+
+    icetImageSetNumPixels(buffer, full_width*full_height);
 
     color_format = icetImageGetColorFormat(buffer);
     depth_format = icetImageGetDepthFormat(buffer);
