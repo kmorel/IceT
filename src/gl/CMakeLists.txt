@@ -8,6 +8,7 @@
 
 SET(ICET_GL_SRCS
         icetGLState.c
+	icetGLDraw.c
 )
 
 ADD_LIBRARY(icet_gl ${ICET_GL_SRCS})

@@ -91,7 +91,7 @@ static int BoundsBehindViewerRun()
   /* All the processes have the same data.  Go ahead and tell IceT. */
     icetDataReplicationGroupColor(0);
 
-    image = icetDrawFrame();
+    image = icetGLDrawFrame();
 
   /* Test the resulting image to make sure the polygon was drawn over it. */
     if (rank == 0) {

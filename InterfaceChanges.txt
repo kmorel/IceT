@@ -57,3 +57,12 @@ Added icetGetEnumv and icetGetBitFieldv.  They are similar to
 icetGetIntegerv except that they disallow conversions from floating points
 and pointers.  They also get around errors conerning casting from unsigned
 to signed pointers.
+
+ICET_DISPLAY_* -> ICET_GL_DISPLAY_*.
+
+The function icetDrawFrame now takes three arguments: the projection
+matrix, the modelview matrix, and the background color.  Previously these
+values were taken from OpenGL, but now the user can get them from wherever.
+A function called icetGLDrawFrame has been added that replaces the
+functionality of automatically grabbing these values from OpenGL.  It
+behaves just as the old function did.

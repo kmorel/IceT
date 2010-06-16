@@ -389,7 +389,7 @@ static int RandomTransformRun()
     glColor4f(color[0], color[1], color[2], 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(mat);
-    image = icetDrawFrame();
+    image = icetGLDrawFrame();
     swap_buffers();
 
     refbuf = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
@@ -402,7 +402,7 @@ static int RandomTransformRun()
     icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
     icetEnable(ICET_ORDERED_COMPOSITE);
     glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
-    image = icetDrawFrame();
+    image = icetGLDrawFrame();
     swap_buffers();
 
     refbuf2 = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
@@ -469,7 +469,7 @@ static int RandomTransformRun()
                     -1, 1);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(mat);
-            image = icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (rank < tile_dim*tile_dim) {
@@ -496,7 +496,7 @@ static int RandomTransformRun()
                     -1, 1);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(mat);
-            image = icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (rank < tile_dim*tile_dim) {
@@ -525,7 +525,7 @@ static int RandomTransformRun()
                         -1, 1);
                 glMatrixMode(GL_MODELVIEW);
                 glLoadMatrixf(mat);
-                image = icetDrawFrame();
+                image = icetGLDrawFrame();
                 swap_buffers();
 
                 if (rank < tile_dim*tile_dim) {

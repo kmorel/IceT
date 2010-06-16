@@ -93,7 +93,7 @@ static int DisplayNoDrawRun()
         for (iteration = 0; iteration < num_proc; iteration++) {
             printf("Blank image is rank %d\n", iteration);
 
-            image = icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (   (rank == 0)

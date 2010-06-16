@@ -1085,6 +1085,7 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     IceTVoid *value;
     IceTDouble render_time;
     IceTDouble timer;
+    IceTFloat background_color[4];
 
     icetRaiseDebug1("Rendering tile %d", tile);
     contained_viewport = icetUnsafeStateGetInteger(ICET_CONTAINED_VIEWPORT);
@@ -1243,6 +1244,10 @@ static void renderTile(int tile, IceTInt *screen_viewport,
 
   /* Now we can actually start to render an image. */
     glMatrixMode(GL_MODELVIEW);
+
+    icetGetFloatv(ICET_BACKGROUND_COLOR, &background_color);
+    glClearColor(background_color[0], background_color[1],
+                 background_color[2], background_color[3]);
 
   /* Draw the geometry. */
     icetRaiseDebug("Getting callback.");

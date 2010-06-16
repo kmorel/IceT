@@ -10,9 +10,6 @@
 
 #include <IceT.h>
 
-/* TODO: Move all OpenGL dependent operations into its own OpenGL layer. */
-#include <IceTGL.h>
-
 #include <state.h>
 #include <context.h>
 #include <diagnostics.h>
@@ -29,13 +26,7 @@
 #pragma warning(disable:4055)
 #endif
 
-static void inflateBuffer(IceTUByte *buffer,
-                          IceTSizeType width, IceTSizeType height);
-
 static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B);
-
-static IceTUByte *display_buffer = NULL;
-static IceTSizeType display_buffer_size = 0;
 
 void icetDrawFunc(IceTCallback func)
 {
@@ -158,12 +149,12 @@ void icetDataReplicationGroupColor(IceTInt color)
 }
 
 static void find_contained_viewport(const IceTDouble projection_matrix[16],
+                                    const IceTDouble modelview_matrix[16],
                                     const IceTInt global_viewport[4],
                                     IceTInt contained_viewport[4],
                                     IceTDouble *znear, IceTDouble *zfar)
 {
     IceTDouble *bound_vert;
-    IceTDouble modelview_matrix[16];
     IceTDouble viewport_matrix[16];
     IceTDouble tmp_matrix[16];
     IceTDouble total_transform[16];
@@ -194,8 +185,6 @@ static void find_contained_viewport(const IceTDouble projection_matrix[16],
     viewport_matrix[13] = global_viewport[3] + global_viewport[1]*2.0;
     viewport_matrix[14] = 0.0;
     viewport_matrix[15] = 2.0;
-
-    glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
 
     multMatrix(tmp_matrix, projection_matrix, modelview_matrix);
     multMatrix(total_transform, viewport_matrix, tmp_matrix);
@@ -351,12 +340,13 @@ static void determine_contained_tiles(const IceTInt contained_viewport[4],
 
 static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
 
-IceTImage icetDrawFrame(void)
+IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
+                        const IceTDouble *modelview_matrix,
+                        const IceTFloat *background_color)
 {
     IceTInt rank, num_proc;
     IceTBoolean isDrawing;
     IceTInt frame_count;
-    IceTDouble projection_matrix[16];
     IceTInt global_viewport[4];
     IceTInt contained_viewport[4];
     IceTDouble znear, zfar;
@@ -378,13 +368,10 @@ IceTImage icetDrawFrame(void)
     IceTInt *display_nodes;
     IceTDouble render_time;
     IceTDouble buf_read_time;
-    IceTDouble buf_write_time;
     IceTDouble compose_time;
     IceTDouble total_time;
-    IceTFloat background_color[4];
     IceTUInt background_color_word;
     IceTBoolean color_blending;
-    GLint physical_viewport[4];
     int i, j;
 
     icetRaiseDebug("In icetDrawFrame");
@@ -402,12 +389,7 @@ IceTImage icetDrawFrame(void)
         (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_COMPOSITE_MODE))
                       == ICET_COMPOSITE_MODE_BLEND);
 
-  /* Update physical render size to actual OpenGL viewport. */
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    icetPhysicalRenderSize(physical_viewport[2], physical_viewport[3]);
-
   /* Make sure background color is up to date. */
-    glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
     ((IceTUByte *)&background_color_word)[0]
       = (IceTUByte)(255*background_color[0]);
     ((IceTUByte *)&background_color_word)[1]
@@ -416,11 +398,9 @@ IceTImage icetDrawFrame(void)
       = (IceTUByte)(255*background_color[2]);
     ((IceTUByte *)&background_color_word)[3]
       = (IceTUByte)(255*background_color[3]);
-    if (color_blending && (   icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND)
-                           || icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND))) {
+    if (color_blending) {
       /* We need to correct the background color by zeroing it out at
        * blending it back at the end. */
-        glClearColor(0.0, 0.0, 0.0, 0.0);
         icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
         icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
     } else {
@@ -451,10 +431,8 @@ IceTImage icetDrawFrame(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
 
-  /* Get the current projection matrix. */
-    icetRaiseDebug("Getting projection matrix.");
-    glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
     icetStateSetDoublev(ICET_PROJECTION_MATRIX, 16, projection_matrix);
+    icetStateSetDoublev(ICET_MODELVIEW_MATRIX, 16, modelview_matrix);
 
     if (num_bounding_verts < 1) {
       /* User never set bounding vertices.  Assume image covers all
@@ -472,8 +450,9 @@ IceTImage icetDrawFrame(void)
         num_contained = num_tiles;
     } else {
       /* Figure out how the geometry projects onto the display. */
-        find_contained_viewport(projection_matrix, global_viewport,
-                                contained_viewport, &znear, &zfar);
+        find_contained_viewport(projection_matrix, modelview_matrix,
+                                global_viewport, contained_viewport,
+                                &znear, &zfar);
 
       /* Now use this information to figure out which tiles need to be
          drawn. */
@@ -663,8 +642,6 @@ IceTImage icetDrawFrame(void)
     image = (*strategy.compose)();
 
   /* Correct background color where applicable. */
-    glClearColor(background_color[0], background_color[1],
-                 background_color[2], background_color[3]);
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
         IceTSizeType pixels = icetImageGetNumPixels(image);
@@ -693,209 +670,21 @@ IceTImage icetDrawFrame(void)
         icetStateSetDouble(ICET_BLEND_TIME, blend_time);
     }
 
-    buf_write_time = icetWallTime();
-    if (display_tile >= 0) {
-        IceTEnum color_format = icetImageGetColorFormat(image);
-
-        if (   (color_format != ICET_IMAGE_COLOR_NONE)
-            && icetIsEnabled(ICET_DISPLAY) ) {
-            IceTUByte *colorBuffer;
-            IceTInt readBuffer;
-
-            icetRaiseDebug("Displaying image.");
-
-            icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
-            glDrawBuffer(readBuffer);
-
-          /* Place raster position in lower left corner. */
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
-            glLoadIdentity();
-            glRasterPos2f(-1, -1);
-            glPopMatrix();
-
-          /* This could be made more efficient by natively handling all the
-             image formats.  Don't forget to free memory later if necessary. */
-            if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                colorBuffer = icetImageGetColorUByte(image);
-            } else {
-                colorBuffer = malloc(4*icetImageGetNumPixels(image));
-                icetImageCopyColorUByte(image, colorBuffer,
-                                        ICET_IMAGE_COLOR_RGBA_UBYTE);
-            }
-
-            glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);
-            glDisable(GL_TEXTURE_1D);
-            glDisable(GL_TEXTURE_2D);
-#ifdef GL_TEXTURE_3D
-            glDisable(GL_TEXTURE_3D);
-#endif
-            if (   color_blending
-                && icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND)
-                && !icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glEnable(GL_BLEND);
-                glClear(GL_COLOR_BUFFER_BIT);
-            } else {
-                glDisable(GL_BLEND);
-            }
-            glClear(GL_DEPTH_BUFFER_BIT);
-            if (icetIsEnabled(ICET_DISPLAY_INFLATE)) {
-                inflateBuffer(colorBuffer,
-                              tile_viewports[display_tile*4+2],
-                              tile_viewports[display_tile*4+3]);
-            } else {
-                glDrawPixels(tile_viewports[display_tile*4+2],
-                             tile_viewports[display_tile*4+3],
-                             GL_RGBA, GL_UNSIGNED_BYTE, colorBuffer);
-            }
-            glPopAttrib();
-
-          /* Delete the color buffer if we had to create our own. */
-            if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                free(colorBuffer);
-            }
-        }
-    }
-
-  /* Restore projection matrix. */
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixd(projection_matrix);
-    glMatrixMode(GL_MODELVIEW);
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
-    icetRaiseDebug("Calculating times.");
-    buf_write_time = icetWallTime() - buf_write_time;
-    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, buf_write_time);
-
+  /* Calculate times. */
     icetGetDoublev(ICET_RENDER_TIME, &render_time);
     icetGetDoublev(ICET_BUFFER_READ_TIME, &buf_read_time);
 
     total_time = icetWallTime() - total_time;
     icetStateSetDouble(ICET_TOTAL_DRAW_TIME, total_time);
 
-    compose_time = total_time - render_time - buf_read_time - buf_write_time;
+    compose_time = total_time - render_time - buf_read_time;
     icetStateSetDouble(ICET_COMPOSITE_TIME, compose_time);
 
+    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, 0.0);
+
     return image;
-}
-
-static void inflateBuffer(IceTUByte *buffer,
-                          IceTSizeType width, IceTSizeType height)
-{
-    IceTInt display_width, display_height;
-
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &display_width);
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &display_height);
-
-    if ((display_width <= width) && (display_height <= height)) {
-      /* No need to inflate image. */
-        glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-    } else {
-        IceTSizeType x, y;
-        IceTSizeType x_div, y_div;
-        IceTUByte *last_scanline;
-        IceTInt target_width, target_height;
-        int use_textures = icetIsEnabled(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
-
-      /* If using hardware, resize to the nearest greater power of two.
-         Otherwise, resize to screen size. */
-        if (use_textures) {
-            for (target_width=1; target_width < width; target_width <<= 1);
-            for (target_height=1; target_height < height; target_height <<= 1);
-            if (target_width*target_height >= display_width*display_height) {
-              /* Sizing up to a power of two takes more data than just
-                 sizing up to the screen size. */
-                use_textures = 0;
-                target_width = display_width;
-                target_height = display_height;
-            }
-        } else {
-            target_width = display_width;
-            target_height = display_height;
-        }
-
-      /* Make sure buffer is big enough. */
-        if (display_buffer_size < target_width*target_height) {
-            free(display_buffer);
-            display_buffer_size = target_width*target_height;
-            display_buffer = malloc(4*sizeof(IceTUByte)*display_buffer_size);
-        }
-
-      /* This is how we scale the image with integer arithmetic.
-       * If a/b = r = a div b + (a mod b)/b then:
-       *        c/r = c/(a div b + (a mod b)/b) = c*b/(b*(a div b) + a mod b)
-       * In our case a/b is target_width/width and target_height/height.
-       * x_div and y_div are the denominators in the equation above.
-       */
-        x_div = width*(target_width/width) + target_width%width;
-        y_div = height*(target_height/height) + target_height%height;
-        last_scanline = NULL;
-        for (y = 0; y < target_height; y++) {
-            IceTUByte *src_scanline;
-            IceTUByte *dest_scanline;
-
-            src_scanline = buffer + 4*width*((y*height)/y_div);
-            dest_scanline = display_buffer + 4*target_width*y;
-
-            if (src_scanline == last_scanline) {
-              /* Repeating last scanline.  Just copy memory. */
-                memcpy(dest_scanline,
-                       (const IceTUByte *)(dest_scanline - 4*target_width),
-                       4*target_width);
-                continue;
-            }
-
-            for (x = 0; x < target_width; x++) {
-                ((IceTUInt *)dest_scanline)[x] =
-                    ((IceTUInt *)src_scanline)[(x*width)/x_div];
-            }
-
-            last_scanline = src_scanline;
-        }
-
-        if (use_textures) {
-          /* Setup texture. */
-            if (icet_current_context->display_inflate_texture == 0) {
-                glGenTextures(1,
-                              &(icet_current_context->display_inflate_texture));
-            }
-            glBindTexture(GL_TEXTURE_2D,
-                          icet_current_context->display_inflate_texture);
-            glEnable(GL_TEXTURE_2D);
-            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target_width, target_height,
-                         0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer);
-
-          /* Setup geometry. */
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
-            glLoadIdentity();
-
-          /* Draw texture. */
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glBegin(GL_QUADS);
-              glTexCoord2f(0, 0);  glVertex2f(-1, -1);
-              glTexCoord2f(1, 0);  glVertex2f( 1, -1);
-              glTexCoord2f(1, 1);  glVertex2f( 1,  1);
-              glTexCoord2f(0, 1);  glVertex2f(-1,  1);
-            glEnd();
-
-          /* Clean up. */
-            glPopMatrix();
-        } else {
-            glDrawPixels(target_width, target_height, GL_RGBA,
-                         GL_UNSIGNED_BYTE, display_buffer);
-        }
-    }
 }
 
 static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)

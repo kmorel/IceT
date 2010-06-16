@@ -24,6 +24,11 @@ void icetGLInitialize(void)
     icetStateSetBoolean(ICET_GL_INITIALIZED, ICET_TRUE);
 
     icetGLSetReadBuffer(GL_BACK);
+
+    icetEnable(ICET_GL_DISPLAY);
+    icetDisable(ICET_GL_DISPLAY_COLORED_BACKGROUND);
+    icetDisable(ICET_GL_DISPLAY_INFLATE);
+    icetEnable(ICET_GL_DISPLAY_INFLATE_WITH_HARDWARE);
 }
 
 void icetGLSetReadBuffer(GLenum mode)

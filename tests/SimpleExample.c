@@ -158,7 +158,7 @@ static int SimpleExampleRun()
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  ICE-T will automatically handle image
        * compositing. */
-        icetDrawFrame();
+        icetGLDrawFrame();
 
       /* For obvious reasons, ICE-T should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a

@@ -230,7 +230,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
     icetDrawFunc(draw);
   /* Do a perfunctory draw to set other state variables. */
-    icetDrawFrame();
+    icetGLDrawFrame();
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
     icetGetCompressedTileImage(0, compressedimage);

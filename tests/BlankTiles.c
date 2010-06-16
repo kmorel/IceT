@@ -71,7 +71,7 @@ static int BlankTilesRun()
             glOrtho(-1, tile_dim*2-1, -1, tile_dim*2-1, -1, 1);
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
-            image = icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (rank == 0) {

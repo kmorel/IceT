@@ -122,10 +122,6 @@ void icetStateSetDefaults(void)
     icetDisable(ICET_ORDERED_COMPOSITE);
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);
-    icetEnable(ICET_DISPLAY);
-    icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
-    icetDisable(ICET_DISPLAY_INFLATE);
-    icetEnable(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
