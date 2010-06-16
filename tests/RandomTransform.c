@@ -51,6 +51,17 @@ static int compare_color_buffers(IceTSizeType local_width,
     IceTUByte *refcbuf, *cb;
 
     printf("Checking returned image.\n");
+
+    if (    (local_width != icetImageGetWidth(testimage))
+         || (local_height != icetImageGetHeight(testimage)) ) {
+        printf("Image dimensions not what is expected!!!!!\n");
+        printf("Expected %dx%d, received %dx%d\n",
+               (int)local_width, (int)local_height,
+               (int)icetImageGetWidth(testimage),
+               (int)icetImageGetHeight(testimage));
+        return 0;
+    }
+
     refcbuf = icetImageGetColorUByte(refimage);
     cb = icetImageGetColorUByte(testimage);
     ref_off_x = (rank%tile_dim) * local_width;
