@@ -392,8 +392,10 @@ static int RandomTransformRun()
     image = icetGLDrawFrame();
     swap_buffers();
 
-    refbuf = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
-    refimage = icetImageAssignBuffer(refbuf, icetImageGetNumPixels(image));
+    refbuf = malloc(icetImageBufferSize(icetImageGetWidth(image),
+                                        icetImageGetHeight(image)));
+    refimage = icetImageAssignBuffer(refbuf, icetImageGetWidth(image),
+                                     icetImageGetHeight(image));
     icetImageCopyPixels(image, 0, refimage, 0, icetImageGetNumPixels(image));
 
     printf("Getting base image for color blend.\n");
@@ -405,8 +407,10 @@ static int RandomTransformRun()
     image = icetGLDrawFrame();
     swap_buffers();
 
-    refbuf2 = malloc(icetImageBufferSize(icetImageGetNumPixels(image)));
-    refimage2 = icetImageAssignBuffer(refbuf2, icetImageGetNumPixels(image));
+    refbuf2 = malloc(icetImageBufferSize(icetImageGetWidth(image),
+                                         icetImageGetHeight(image)));
+    refimage2 = icetImageAssignBuffer(refbuf2, icetImageGetWidth(image),
+                                      icetImageGetHeight(image));
     icetImageCopyPixels(image, 0, refimage2, 0, icetImageGetNumPixels(image));
 
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);

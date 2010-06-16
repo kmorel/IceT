@@ -138,7 +138,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
                              IceTEnum composite_mode)
 {
     GLint viewport[4];
-    int pixels;
+    int width, height;
+    IceTSizeType pixels;
     IceTImage image;
     IceTVoid *imagebuffer;
     IceTSizeType imagesize;
@@ -162,16 +163,19 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetCompositeMode(composite_mode);
 
     glGetIntegerv(GL_VIEWPORT, viewport);
-    pixels = viewport[2]*viewport[3];
+    width = viewport[2];
+    height = viewport[3];
+    pixels = width*height;
 
-    printf("Allocating memory for %d pixel image.\n", pixels);
-    imagesize = icetImageBufferSize(pixels);
+    printf("Allocating memory for %dx%x pixel image.\n", width, height);
+    imagesize = icetImageBufferSize(width, height);
     imagebuffer = malloc(imagesize);
-    image = icetImageAssignBuffer(imagebuffer, pixels);
+    image = icetImageAssignBuffer(imagebuffer, width, height);
 
-    compressedsize = icetSparseImageBufferSize(pixels);
+    compressedsize = icetSparseImageBufferSize(width, height);
     compressedbuffer = malloc(compressedsize);
-    compressedimage = icetSparseImageAssignBuffer(compressedbuffer, pixels);
+    compressedimage = icetSparseImageAssignBuffer(compressedbuffer,
+                                                  width, height);
 
   /* Get the number of bytes per pixel.  This is used in checking the
      size of compressed images. */
@@ -209,12 +213,12 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     }
 
     printf("\nCompressing zero size image.\n");
-    icetImageSetNumPixels(image, 0);
+    icetImageSetDimensions(image, 0, 0);
     icetCompressImage(image, compressedimage);
     size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageBufferSize(0), (int)size);
-    if (size > icetSparseImageBufferSize(0)) {
+           (int)icetSparseImageBufferSize(0, 0), (int)size);
+    if (size > icetSparseImageBufferSize(0, 0)) {
         printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }

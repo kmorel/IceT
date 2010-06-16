@@ -137,6 +137,8 @@ ICET_EXPORT IceTImage icetImageNull(void);
 ICET_EXPORT IceTBoolean icetImageIsNull(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetColorFormat(const IceTImage image);
 ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
+ICET_EXPORT IceTSizeType icetImageGetWidth(const IceTImage image);
+ICET_EXPORT IceTSizeType icetImageGetHeight(const IceTImage image);
 ICET_EXPORT IceTSizeType icetImageGetNumPixels(const IceTImage image);
 ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image);
 ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image);
@@ -211,7 +213,6 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_GLOBAL_VIEWPORT    (ICET_STATE_ENGINE_START | (IceTEnum)0x0012)
 #define ICET_TILE_MAX_WIDTH     (ICET_STATE_ENGINE_START | (IceTEnum)0x0013)
 #define ICET_TILE_MAX_HEIGHT    (ICET_STATE_ENGINE_START | (IceTEnum)0x0014)
-#define ICET_TILE_MAX_PIXELS    (ICET_STATE_ENGINE_START | (IceTEnum)0x0015)
 #define ICET_DISPLAY_NODES      (ICET_STATE_ENGINE_START | (IceTEnum)0x001A)
 #define ICET_TILE_DISPLAYED     (ICET_STATE_ENGINE_START | (IceTEnum)0x001B)
 

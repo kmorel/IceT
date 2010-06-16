@@ -81,6 +81,9 @@
 #else
         || (_pixel_count  != icetImageGetNumPixels(OUTPUT_IMAGE))
 #endif
+#ifdef OFFSET
+        || (_pixel_count > icetImageGetNumPixels(OUTPUT_IMAGE) - OFFSET)
+#endif
            )
     {
         icetRaiseError("Input/output buffers do not agree for decompression.",

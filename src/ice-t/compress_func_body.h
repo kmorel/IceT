@@ -276,7 +276,9 @@
 
     icetRaiseDebug1("Compression: %f%%\n",
         100.0f - (  100.0f*icetSparseImageGetCompressedBufferSize(OUTPUT_SPARSE_IMAGE)
-                  / icetImageBufferSizeType(_color_format, _depth_format, _pixel_count) ));
+                  / icetImageBufferSizeType(_color_format, _depth_format,
+                                            icetSparseImageGetWidth(OUTPUT_SPARSE_IMAGE),
+                                            icetSparseImageGetHeight(OUTPUT_SPARSE_IMAGE)) ));
 }
 
 #undef INPUT_IMAGE

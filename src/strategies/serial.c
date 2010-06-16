@@ -23,7 +23,7 @@ IceTStrategy ICET_STRATEGY_SERIAL = { "Serial", ICET_TRUE, serialCompose };
 static IceTImage serialCompose(void)
 {
     IceTInt num_tiles;
-    IceTInt max_pixels;
+    IceTInt max_width, max_height;
     IceTInt rank;
     IceTInt num_proc;
     IceTInt *display_nodes;
@@ -37,21 +37,22 @@ static IceTImage serialCompose(void)
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    rawImageSize    = icetImageBufferSize(max_pixels);
-    sparseImageSize = icetSparseImageBufferSize(max_pixels);
+    rawImageSize    = icetImageBufferSize(max_width, max_height);
+    sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
 
     icetResizeBuffer(  rawImageSize*2
 		     + sparseImageSize*2
 		     + sizeof(int)*num_proc);
-    image               = icetReserveBufferImage(max_pixels);
+    image               = icetReserveBufferImage(max_width, max_height);
     inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
-    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    outSparseImage      = icetReserveBufferSparseImage(max_width, max_height);
     compose_group       = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
 
     myImage = icetImageNull();
@@ -83,7 +84,7 @@ static IceTImage serialCompose(void)
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
 	if (d_node == rank) {
-            tileImage = icetReserveBufferImage(max_pixels);
+            tileImage = icetReserveBufferImage(max_width, max_height);
 	} else {
 	    tileImage = image;
           /* A previous iteration may have changed the image buffer to remove

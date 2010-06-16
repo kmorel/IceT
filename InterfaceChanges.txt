@@ -66,3 +66,7 @@ values were taken from OpenGL, but now the user can get them from wherever.
 A function called icetGLDrawFrame has been added that replaces the
 functionality of automatically grabbing these values from OpenGL.  It
 behaves just as the old function did.
+
+Removed ICET_TILE_MAX_PIXELS.
+
+Images hold width/height.  You must specify both when creating them.

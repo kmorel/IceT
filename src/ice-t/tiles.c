@@ -30,7 +30,6 @@ void icetResetTiles(void)
 
     icetStateSetInteger(ICET_TILE_MAX_WIDTH, 0);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, 0);
-    icetStateSetInteger(ICET_TILE_MAX_PIXELS, 0);
 
     icetPhysicalRenderSize(0, 0);
 }
@@ -120,10 +119,6 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     max_height = MAX(max_height, height);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, max_height);
-  /* When storing max pixels, leave some padding so that pixels may be
-     dropped if the image needs to be divided amongst processors. */
-    icetStateSetInteger(ICET_TILE_MAX_PIXELS,
-			max_width*max_height + num_processors);
 
     icetPhysicalRenderSize(max_width, max_height);
 

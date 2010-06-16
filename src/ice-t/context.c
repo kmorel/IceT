@@ -119,26 +119,27 @@ IceTVoid *icetReserveBufferMem(IceTSizeType size)
     return mem;
 }
 
-IceTImage icetReserveBufferImage(IceTSizeType num_pixels)
+IceTImage icetReserveBufferImage(IceTSizeType width, IceTSizeType height)
 {
     IceTVoid *buffer;
     IceTSizeType buffer_size;
 
-    buffer_size = icetImageBufferSize(num_pixels);
+    buffer_size = icetImageBufferSize(width, height);
     buffer = icetReserveBufferMem(buffer_size);
 
-    return icetImageAssignBuffer(buffer, num_pixels);
+    return icetImageAssignBuffer(buffer, width, height);
 }
 
-IceTSparseImage icetReserveBufferSparseImage(IceTSizeType num_pixels)
+IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
+                                             IceTSizeType height)
 {
     IceTVoid *buffer;
     IceTSizeType buffer_size;
 
-    buffer_size = icetSparseImageBufferSize(num_pixels);
+    buffer_size = icetSparseImageBufferSize(width, height);
     buffer = icetReserveBufferMem(buffer_size);
 
-    return icetSparseImageAssignBuffer(buffer, num_pixels);
+    return icetSparseImageAssignBuffer(buffer, width, height);
 }
 
 void icetCopyState(IceTContext dest, const IceTContext src)

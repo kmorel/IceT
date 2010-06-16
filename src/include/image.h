@@ -14,16 +14,20 @@
 #include <IceT.h>
 #include "state.h"
 
-ICET_EXPORT IceTSizeType icetImageBufferSize(IceTSizeType num_pixels);
+ICET_EXPORT IceTSizeType icetImageBufferSize(IceTSizeType width,
+                                             IceTSizeType height);
 ICET_EXPORT IceTSizeType icetImageBufferSizeType(IceTEnum color_format,
                                                  IceTEnum depth_format,
-                                                 IceTSizeType num_pixels);
+                                                 IceTSizeType width,
+                                                 IceTSizeType height);
 ICET_EXPORT IceTImage icetImageAssignBuffer(IceTVoid *buffer,
-                                            IceTSizeType num_pixels);
+                                            IceTSizeType width,
+                                            IceTSizeType height);
 ICET_EXPORT void icetImageAdjustForOutput(IceTImage image);
 ICET_EXPORT void icetImageAdjustForInput(IceTImage image);
-ICET_EXPORT void icetImageSetNumPixels(IceTImage image,
-                                       IceTSizeType num_pixels);
+ICET_EXPORT void icetImageSetDimensions(IceTImage image,
+                                        IceTSizeType width,
+                                        IceTSizeType height);
 ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
 ICET_EXPORT IceTVoid *icetImageGetDepthVoid(IceTImage image,
@@ -40,18 +44,22 @@ ICET_EXPORT IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer);
 
 typedef struct { IceTVoid *opaque_internals; } IceTSparseImage;
 
-ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTSizeType num_pixels);
+ICET_EXPORT IceTSizeType icetSparseImageBufferSize(IceTSizeType width,
+                                                   IceTSizeType height);
 ICET_EXPORT IceTSizeType icetSparseImageBufferSizeType(IceTEnum color_format,
                                                        IceTEnum depth_format,
-                                                       IceTSizeType num_pixels);
+                                                       IceTSizeType width,
+                                                       IceTSizeType height);
 ICET_EXPORT IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
-                                                       IceTSizeType num_pixels);
+                                                        IceTSizeType width,
+                                                        IceTSizeType height);
 ICET_EXPORT IceTEnum icetSparseImageGetColorFormat(const IceTSparseImage image);
 ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image);
-ICET_EXPORT IceTSizeType icetSparseImageGetNumPixels(
-                                                   const IceTSparseImage image);
-ICET_EXPORT void icetSparseImageSetNumPixels(IceTSparseImage image,
-                                             IceTSizeType num_pixels);
+ICET_EXPORT IceTSizeType icetSparseImageGetWidth(const IceTSparseImage image);
+ICET_EXPORT IceTSizeType icetSparseImageGetHeight(const IceTSparseImage image);
+ICET_EXPORT void icetSparseImageSetDimensions(IceTSparseImage image,
+                                              IceTSizeType width,
+                                              IceTSizeType height);
 ICET_EXPORT IceTSizeType icetSparseImageGetCompressedBufferSize(
                                                    const IceTSparseImage image);
 ICET_EXPORT void icetSparseImagePackageForSend(IceTSparseImage image,
@@ -88,7 +96,7 @@ ICET_EXPORT void icetCompressedComposite(IceTImage destBuffer,
                                          int srcOnTop);
 
 ICET_EXPORT void icetCompressedSubComposite(IceTImage destBuffer,
-                                            IceTUInt offset, IceTUInt pixels,
+                                            IceTUInt offset,
                                             const IceTSparseImage srcBuffer,
                                             int srcOnTop);
 
