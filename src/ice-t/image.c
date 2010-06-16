@@ -929,8 +929,13 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
 void icetCompressImage(const IceTImage image,
                        IceTSparseImage compressed_image)
 {
-    return icetCompressSubImage(image, 0, icetImageGetNumPixels(image),
-                                compressed_image);
+    icetCompressSubImage(image, 0, icetImageGetNumPixels(image),
+                         compressed_image);
+
+  /* This is a hack to get the width/height of the compressed image to agree
+     with the original image. */
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = icetImageGetWidth(image);
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX]=icetImageGetHeight(image);
 }
 
 void icetCompressSubImage(const IceTImage image,
