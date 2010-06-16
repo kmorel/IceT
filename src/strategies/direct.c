@@ -29,7 +29,7 @@ static IceTImage directCompose(void)
     IceTSizeType rawImageSize, sparseImageSize;
     IceTInt *contrib_counts;
     IceTInt *display_nodes;
-    IceTInt max_pixels;
+    IceTInt max_width, max_height;
     IceTInt num_tiles;
     IceTInt num_contributors;
     IceTInt display_tile;
@@ -37,18 +37,19 @@ static IceTImage directCompose(void)
     IceTInt *tile_image_dest;
     icetRaiseDebug("In Direct Compose");
 
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
-    rawImageSize = icetImageBufferSize(max_pixels);
-    sparseImageSize = icetSparseImageBufferSize(max_pixels);
+    rawImageSize = icetImageBufferSize(max_width, max_height);
+    sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
 
     icetResizeBuffer(  rawImageSize
 		     + 2*sparseImageSize
 		     + num_tiles*sizeof(IceTInt));
-    image               = icetReserveBufferImage(max_pixels);
+    image               = icetReserveBufferImage(max_width, max_height);
     inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
-    outSparseImage      = icetReserveBufferSparseImage(max_pixels);
+    outSparseImage      = icetReserveBufferSparseImage(max_width, max_height);
     tile_image_dest     = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);

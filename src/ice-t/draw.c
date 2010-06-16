@@ -644,7 +644,7 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
   /* Correct background color where applicable. */
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-        IceTSizeType pixels = icetImageGetNumPixels(image);
+        IceTSizeType pixels =icetImageGetWidth(image)*icetImageGetHeight(image);
         IceTEnum color_format = icetImageGetColorFormat(image);
         IceTDouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);

@@ -24,6 +24,8 @@
 
 #define LARGE_MESSAGE 23
 
+#define MIN(x,y) ((x) <= (y) ? (x) : (y))
+
 static IceTImage rtfi_image;
 static IceTSparseImage rtfi_outSparseImage;
 static IceTBoolean rtfi_first;
@@ -78,8 +80,8 @@ void icetRenderTransferFullImages(IceTImage image,
 {
     IceTInt num_sending;
     IceTInt *tile_list;
-    IceTInt max_pixels;
     IceTInt num_tiles;
+    IceTInt width, height;
 
     IceTInt i;
 
@@ -89,7 +91,8 @@ void icetRenderTransferFullImages(IceTImage image,
 
     icetGetIntegerv(ICET_NUM_CONTAINED_TILES, &num_sending);
     tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &height);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
     if (allocatedTileSize < num_tiles) {
@@ -108,7 +111,7 @@ void icetRenderTransferFullImages(IceTImage image,
                               icetIsEnabled(ICET_ORDERED_COMPOSITE),
                               rtfi_generateDataFunc, rtfi_handleDataFunc,
                               inSparseImageBuffer,
-                              icetSparseImageBufferSize(max_pixels));
+                              icetSparseImageBufferSize(width, height));
 }
 
 static void startLargeRecv(void *buf, IceTSizeType size, IceTInt src,
@@ -405,6 +408,9 @@ static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
     color_format = icetImageGetColorFormat(image);
     depth_format = icetImageGetDepthFormat(image);
 
+  /* Correct for last piece that may overrun image size. */
+    pixel_count = MIN(pixel_count, icetImageGetNumPixels(image) - offset);
+
     if (color_format != ICET_IMAGE_COLOR_NONE) {
         IceTVoid *colorBuffer;
         IceTSizeType pixel_size;
@@ -481,13 +487,20 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                 IceTVoid *package_buffer;
                 IceTSizeType package_size;
                 IceTInt dest_rank;
+                IceTSizeType pixel_start;
+                IceTSizeType pixels_sending;
 
                 BIT_REVERSE(dest_rank, i, num_pieces);
                 dest_rank = dest_rank*extra_pow2size + upper_group_rank;
                 icetRaiseDebug2("Sending piece %d to %d", i, (int)dest_rank);
 
+              /* Make sure we don't send pixels past the end of the buffer. */
+                pixel_start = offset + i*pixel_count;
+                pixels_sending
+                    = MIN(pixel_count,icetImageGetNumPixels(image)-pixel_start);
+
               /* Is compression the right thing?  It's currently easier. */
-                icetCompressSubImage(image, offset + i*pixel_count, pixel_count,
+                icetCompressSubImage(image, pixel_start, pixels_sending,
                                      outSparseImage);
                 icetSparseImagePackageForSend(outSparseImage,
                                               &package_buffer, &package_size);
@@ -521,13 +534,21 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
             IceTSizeType package_size;
             IceTSizeType incoming_size;
             IceTSparseImage inSparseImage;
+            IceTSizeType truncated_pixel_count;
 
             pair = group_rank ^ bitmask;
 
             pixel_count /= 2;
 
+          /* Pieces grabbed at the bottom of the image may be truncated if the
+             pixel count does not divide evently.  Check for that. */
+            truncated_pixel_count
+                = MIN(pixel_count,
+                      icetImageGetNumPixels(image)-offset-pixel_count);
+
             if (group_rank < pair) {
-                icetCompressSubImage(image, offset + pixel_count, pixel_count,
+                icetCompressSubImage(image, offset + pixel_count,
+                                     truncated_pixel_count,
                                      outSparseImage);
                 inOnTop = 0;
             } else {
@@ -542,7 +563,7 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
             icetAddSentBytes(package_size);
             incoming_size = icetSparseImageBufferSizeType(color_format,
                                                           depth_format,
-                                                          pixel_count);
+                                                          pixel_count, 1);
             ICET_COMM_SENDRECV(package_buffer, package_size,
                                ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA,
                                inSparseImageBuffer, incoming_size,
@@ -550,8 +571,7 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
 
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
-            icetCompressedSubComposite(image, offset, pixel_count,
-                                       inSparseImage, inOnTop);
+            icetCompressedSubComposite(image, offset, inSparseImage, inOnTop);
         }
 
       /* Now absorb any image that was part of extra stuff. */
@@ -566,14 +586,13 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
             icetRaiseDebug1("Absorbing image from %d", (int)src);
             incoming_size = icetSparseImageBufferSizeType(color_format,
                                                           depth_format,
-                                                          pixel_count);
+                                                          pixel_count, 1);
             src = pow2size + (group_rank & (extra_pow2size-1));
             ICET_COMM_RECV(inSparseImageBuffer, incoming_size,
                            ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
-            icetCompressedSubComposite(image, offset, pixel_count,
-                                       inSparseImage, 0);
+            icetCompressedSubComposite(image, offset, inSparseImage, 0);
         }
     }
 }
@@ -600,8 +619,9 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
 
     pixel_count = icetImageGetNumPixels(image);
   /* Make sure we can divide pixels evenly amongst processors. */
-  /* WARNING: Will leave some pixels un-composed. */
-    pixel_count = (pixel_count/pow2size)*pow2size;
+  /* WARNING: This adds padding at the end of the image that could cause an
+     error if you do not catch it. */
+    pixel_count = ((pixel_count+pow2size-1)/pow2size)*pow2size;
 
   /* Do actual bswap. */
     BswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
@@ -706,7 +726,8 @@ static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
         incoming_size
             = icetSparseImageBufferSizeType(icetImageGetColorFormat(image),
                                             icetImageGetDepthFormat(image),
-                                            icetImageGetNumPixels(image));
+                                            icetImageGetWidth(image),
+                                            icetImageGetHeight(image));
         ICET_COMM_RECV(inSparseImageBuffer, incoming_size, ICET_BYTE,
                        compose_group[pair_proc], TREE_IMAGE_DATA);
         inSparseImage

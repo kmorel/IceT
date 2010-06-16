@@ -32,9 +32,10 @@ ICET_EXPORT extern struct IceTContext *icet_current_context;
 
 ICET_EXPORT void            icetResizeBuffer(IceTSizeType size);
 ICET_EXPORT IceTVoid *      icetReserveBufferMem(IceTSizeType size);
-ICET_EXPORT IceTImage       icetReserveBufferImage(IceTSizeType num_pixels);
-ICET_EXPORT IceTSparseImage icetReserveBufferSparseImage(
-                                                       IceTSizeType num_pixels);
+ICET_EXPORT IceTImage       icetReserveBufferImage(IceTSizeType width,
+                                                   IceTSizeType height);
+ICET_EXPORT IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
+                                                         IceTSizeType height);
 
 #define ICET_COMM_DUPLICTE()                                            \
     (icetGetCommunicator()->Duplicate(icetGetCommunicator()))

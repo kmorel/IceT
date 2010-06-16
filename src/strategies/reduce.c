@@ -37,7 +37,7 @@ static IceTImage reduceCompose(void)
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
     IceTImage image;
-    IceTInt max_pixels;
+    IceTInt max_width, max_height;
     IceTInt num_processes;
     IceTInt tile_displayed;
     IceTSizeType image_size, sparse_image_size;
@@ -50,18 +50,19 @@ static IceTImage reduceCompose(void)
     icetRaiseDebug("In reduceCompose");
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
 
-    sparse_image_size = icetSparseImageBufferSize(max_pixels);
-    image_size = icetImageBufferSize(max_pixels);
+    sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
+    image_size = icetImageBufferSize(max_width, max_height);
     buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
 			    &compose_group, &group_size, &group_image_dest,
 			    buffer_size);
 
     inSparseImageBuffer  = icetReserveBufferMem(sparse_image_size);
-    outSparseImage       = icetReserveBufferSparseImage(max_pixels);
-    image                = icetReserveBufferImage(max_pixels);
+    outSparseImage       = icetReserveBufferSparseImage(max_width, max_height);
+    image                = icetReserveBufferImage(max_width, max_height);
 
     icetRenderTransferFullImages(image,
                                  inSparseImageBuffer,
