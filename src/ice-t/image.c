@@ -934,8 +934,10 @@ void icetCompressImage(const IceTImage image,
 
   /* This is a hack to get the width/height of the compressed image to agree
      with the original image. */
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = icetImageGetWidth(image);
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX]=icetImageGetHeight(image);
+    ICET_IMAGE_HEADER(compressed_image)[ICET_IMAGE_WIDTH_INDEX]
+        = icetImageGetWidth(image);
+    ICET_IMAGE_HEADER(compressed_image)[ICET_IMAGE_HEIGHT_INDEX]
+        = icetImageGetHeight(image);
 }
 
 void icetCompressSubImage(const IceTImage image,
