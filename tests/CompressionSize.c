@@ -22,25 +22,13 @@
 #include <stdio.h>
 #include <time.h>
 
-static void draw(void)
-{
-    printf("In draw\n");
-  /*I really don't care what Ice-T set the projection to.*/
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_CULL_FACE);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glColor4f(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glBegin(GL_QUADS);
-    glVertex3f(-1.0, -1.0, 0.0);
-    glVertex3f(1.0, -1.0, 0.0);
-    glVertex3f(1.0, 1.0, 0.0);
-    glVertex3f(-1.0, 1.0, 0.0);
-    glEnd();
-}
+static IceTDouble IdentityMatrix[16] = {
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+};
+static IceTFloat Black[4] = { 0.0, 0.0, 0.0, 1.0 };
 
 static void InitPathologicalImage(IceTImage image)
 {
@@ -132,6 +120,21 @@ static void InitActiveImage(IceTImage image)
     } else if (format != ICET_IMAGE_DEPTH_NONE) {
         printf("*** Unknown depth format? ***\n");
     }
+}
+
+static void drawCallback(const IceTDouble *projection_matrix,
+                         const IceTDouble *modelview_matrix,
+                         const IceTFloat *background_color,
+                         const IceTInt *readback_viewport,
+                         IceTImage result)
+{
+  /* Don't care about this information. */
+    (void)projection_matrix;
+    (void)modelview_matrix;
+    (void)background_color;
+    (void)readback_viewport;
+
+    InitActiveImage(result);
 }
 
 static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
@@ -232,9 +235,9 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("\nSetup for actual render.\n");
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
-    icetGLDrawCallback(draw);
+    icetDrawCallback(drawCallback);
   /* Do a perfunctory draw to set other state variables. */
-    icetGLDrawFrame();
+    icetDrawFrame(IdentityMatrix, IdentityMatrix, Black);
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
     icetGetCompressedTileImage(0, compressedimage);
