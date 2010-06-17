@@ -70,3 +70,12 @@ behaves just as the old function did.
 Removed ICET_TILE_MAX_PIXELS.
 
 Images hold width/height.  You must specify both when creating them.
+
+Renamed icetDrawFunc -> icetDrawCallback.  Changed the callback function to
+take the three rendering parameters that IceT manipulates (the projection
+and modelview matricies and the background color), a viewport of pixels for
+which data is needed, and an image to put the result in.
+
+Added icetGLDrawCallback.  Provides a callback that replicates the old
+icetDrawFunc.  It has the OpenGL parameters automatically set up and
+automatically reads back the appropriate frame buffers.

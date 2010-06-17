@@ -43,7 +43,7 @@ static int BlankTilesRun()
 
     glClearColor(0.0, 0.0, 0.0, 0.0);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
     icetBoundingBoxf(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
 
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);

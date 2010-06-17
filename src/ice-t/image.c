@@ -13,9 +13,6 @@
 #include <state.h>
 #include <diagnostics.h>
 
-/* TODO: Get rid of this and decouple the core IceT from OpenGL. */
-#include <IceTGL.h>
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,40 +51,25 @@
 static IceTSizeType colorPixelSize(IceTEnum color_format);
 static IceTSizeType depthPixelSize(IceTEnum depth_format);
 
-/* Renders the geometry for a tile.  The geometry may not be projected
- * exactly into the tile.  screen_viewport gives the offset and dimensions
- * of the image in the OpenGL framebuffer.  tile_viewport gives the offset
- * and dimensions of the place where the pixels actually fall in a viewport
- * for the tile.  Everything outside of this tile viewport should be
- * cleared to the background color. */
-static void renderTile(int tile, IceTInt *screen_viewport,
-                       IceTInt *tile_viewport);
-/* Reads an image from the frame buffer.  x and y are the offset, and width
- * and height are the dimensions of the part of the framebuffer to read.
- * If renderTile has just been called, it is appropriate to use the values
- * from screen_viewport for these parameters. */
-static void readImage(IceTInt x, IceTInt y,
-                      IceTSizeType width, IceTSizeType height,
-                      IceTImage image);
-/* Like readImage, except that it stores the result in an offset in buffer
- * and clears out everything else in buffer to the background color.  If
- * renderTile has just been called, and you want the appropriate full tile
- * image in buffer, then pass the values of screen_viewport into the fb_x,
- * fb_y, sub_width, and sub_height parameters.  Pass the first two values
- * of target_viewport into ib_x and ib_y.  The full dimensions of the tile
- * should be passed into full_width and full_height. */
-static void readSubImage(IceTInt fb_x, IceTInt fb_y,
-                         IceTSizeType sub_width, IceTSizeType sub_height,
-                         IceTImage buffer,
-                         IceTInt ib_x, IceTInt ib_y,
-                         IceTSizeType full_width, IceTSizeType full_height);
-/* Gets a static image buffer that is shared amongst all contexts (and
- * therefore not thread safe.  The buffer is resized as necessary. */
-static IceTImage getInternalSharedImage(IceTSizeType width,
-                                        IceTSizeType height);
-/* Releases use of the buffers retreived with getInternalSharedImage.  Currently
- * does nothing as thread safty is not ensured. */
-static void releaseInternalSharedImage(void);
+/* Renders the geometry for a tile and returns an image of the rendered data.
+   If IceT determines that it is most efficient to render the data directly to
+   the tile projection, then screen_viewport and tile_viewport will be set to
+   the same thing, which is a viewport of the valid pixels in the returned
+   image.  Any pixels outside of this viewport are undefined and should be
+   cleared to the background before used.  If tile_buffer is not a null image,
+   that image will be used to render and be returned.  If IceT determines that
+   it is most efficient to render a projection that does not exactly fit a tile,
+   tile_buffer will be ignored an image with an internal buffer will be
+   returned.  screen_viewport will give the offset and dimensions of the valid
+   pixels in the returned buffer.  tile_viewport gives the offset and dimensions
+   where these pixels reside in the tile.  (The dimensions for both will be the
+   same.)  As before, pixels outside of these viewports are undefined. */
+static IceTImage renderTile(int tile,
+                            IceTInt *screen_viewport,
+                            IceTInt *tile_viewport,
+                            IceTImage tile_buffer);
+/* Gets an image buffer attached to this context. */
+static IceTImage getRenderBuffer(void);
 
 static IceTSizeType colorPixelSize(IceTEnum color_format)
 {
@@ -585,6 +567,11 @@ void icetImageCopyDepthFloat(const IceTImage image,
     memcpy(depth_buffer, in_buffer, depth_format_bytes);
 }
 
+IceTBoolean icetImageEqual(const IceTImage image1, const IceTImage image2)
+{
+    return image1.opaque_internals == image2.opaque_internals;
+}
+
 void icetImageCopyPixels(const IceTImage in_image, IceTSizeType in_offset,
                          IceTImage out_image, IceTSizeType out_offset,
                          IceTSizeType num_pixels)
@@ -631,6 +618,184 @@ void icetImageCopyPixels(const IceTImage in_image, IceTSizeType in_offset,
         memcpy(out_depths + pixel_size*out_offset,
                in_depths + pixel_size*in_offset,
                pixel_size*num_pixels);
+    }
+}
+
+void icetImageCopyRegion(const IceTImage in_image,
+                         const IceTInt *in_viewport,
+                         IceTImage out_image,
+                         const IceTInt *out_viewport)
+{
+    IceTEnum color_format = icetImageGetColorFormat(in_image);
+    IceTEnum depth_format = icetImageGetDepthFormat(in_image);
+
+    if (    (color_format != icetImageGetColorFormat(out_image))
+         || (depth_format != icetImageGetDepthFormat(out_image)) ) {
+        icetRaiseError("icetImageCopyRegion only supports copying images"
+                       " of the same format.", ICET_INVALID_VALUE);
+        return;
+    }
+
+    if (    (in_viewport[2] != out_viewport[2])
+         || (in_viewport[3] != out_viewport[3]) ) {
+        icetRaiseError("Sizes of input and output regions must be the same.",
+                       ICET_INVALID_VALUE);
+        return;
+    }
+
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        IceTSizeType pixel_size;
+        const IceTVoid *src = icetImageGetColorVoid(in_image, &pixel_size);
+        IceTVoid *dest = icetImageGetColorVoid(out_image, &pixel_size);
+        IceTSizeType y;
+
+      /* Advance pointers up to vertical offset. */
+        src  += in_viewport[1]*icetImageGetWidth(in_image)*pixel_size;
+        dest += out_viewport[1]*icetImageGetWidth(out_image)*pixel_size;
+
+      /* Advance pointers forward to horizontal offset. */
+        src  += in_viewport[0]*pixel_size;
+        dest += out_viewport[0]*pixel_size;
+
+        for (y = 0; y < in_viewport[3]; y++) {
+            memcpy(dest, src, in_viewport[2]*pixel_size);
+            src  += icetImageGetWidth(in_image)*pixel_size;
+            dest += icetImageGetWidth(out_image)*pixel_size;
+        }
+    }
+
+    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        IceTSizeType pixel_size;
+        const IceTVoid *src = icetImageGetDepthVoid(in_image, &pixel_size);
+        IceTVoid *dest = icetImageGetDepthVoid(out_image, &pixel_size);
+        IceTSizeType y;
+
+      /* Advance pointers up to vertical offset. */
+        src  += in_viewport[1]*icetImageGetWidth(in_image)*pixel_size;
+        dest += out_viewport[1]*icetImageGetWidth(out_image)*pixel_size;
+
+      /* Advance pointers forward to horizontal offset. */
+        src  += in_viewport[0]*pixel_size;
+        dest += out_viewport[0]*pixel_size;
+
+        for (y = 0; y < in_viewport[3]; y++) {
+            memcpy(dest, src, in_viewport[2]*pixel_size);
+            src  += icetImageGetWidth(in_image)*pixel_size;
+            dest += icetImageGetWidth(out_image)*pixel_size;
+        }
+    }
+}
+
+void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
+{
+    IceTSizeType width = icetImageGetWidth(image);
+    IceTSizeType height = icetImageGetHeight(image);
+    IceTEnum color_format = icetImageGetColorFormat(image);
+    IceTEnum depth_format = icetImageGetDepthFormat(image);
+    IceTSizeType x, y;
+
+    if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        IceTUInt *color_buffer = icetImageGetColorUInt(image);
+        IceTUInt background_color;
+
+        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,(IceTInt*)&background_color);
+
+      /* Clear out bottom. */
+        for (y = 0; y < region[1]; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[y*width + x] = background_color;
+            }
+        }
+      /* Clear out left and right. */
+        if ((region[0] > 0) || (region[0]+region[2] < width)) {
+            for (y = region[1]; y < region[1]+region[3]; y++) {
+                for (x = 0; x < region[0]; x++) {
+                    color_buffer[y*width + x] = background_color;
+                }
+                for (x = region[0]+region[2]; x < width; x++) {
+                    color_buffer[y*width + x] = background_color;
+                }
+            }
+        }
+      /* Clear out top. */
+        for (y = region[1]+region[3]; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[y*width + x] = background_color;
+            }
+        }
+    } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        IceTFloat *color_buffer = icetImageGetColorFloat(image);
+        IceTFloat background_color[4];
+
+        icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
+
+      /* Clear out bottom. */
+        for (y = 0; y < region[1]; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[4*(y*width + x) + 0] = background_color[0];
+                color_buffer[4*(y*width + x) + 1] = background_color[1];
+                color_buffer[4*(y*width + x) + 2] = background_color[2];
+                color_buffer[4*(y*width + x) + 3] = background_color[3];
+            }
+        }
+      /* Clear out left and right. */
+        if ((region[0] > 0) || (region[0]+region[2] < width)) {
+            for (y = region[1]; y < region[1]+region[3]; y++) {
+                for (x = 0; x < region[0]; x++) {
+                    color_buffer[4*(y*width + x) + 0] = background_color[0];
+                    color_buffer[4*(y*width + x) + 1] = background_color[1];
+                    color_buffer[4*(y*width + x) + 2] = background_color[2];
+                    color_buffer[4*(y*width + x) + 3] = background_color[3];
+                }
+                for (x = region[0]+region[2]; x < width; x++) {
+                    color_buffer[4*(y*width + x) + 0] = background_color[0];
+                    color_buffer[4*(y*width + x) + 1] = background_color[1];
+                    color_buffer[4*(y*width + x) + 2] = background_color[2];
+                    color_buffer[4*(y*width + x) + 3] = background_color[3];
+                }
+            }
+        }
+      /* Clear out top. */
+        for (y = region[1]+region[3]; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[4*(y*width + x) + 0] = background_color[0];
+                color_buffer[4*(y*width + x) + 1] = background_color[1];
+                color_buffer[4*(y*width + x) + 2] = background_color[2];
+                color_buffer[4*(y*width + x) + 3] = background_color[3];
+            }
+        }
+    } else if (color_format != ICET_IMAGE_COLOR_NONE) {
+        icetRaiseError("Invalid color format.", ICET_SANITY_CHECK_FAIL);
+    }
+
+    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+        IceTFloat *depth_buffer = icetImageGetDepthFloat(image);
+
+      /* Clear out bottom. */
+        for (y = 0; y < region[1]; y++) {
+            for (x = 0; x < width; x++) {
+                depth_buffer[y*width + x] = 1.0;
+            }
+        }
+      /* Clear out left and right. */
+        if ((region[0] > 0) || (region[0]+region[2] < width)) {
+            for (y = region[1]; y < region[1]+region[3]; y++) {
+                for (x = 0; x < region[0]; x++) {
+                    depth_buffer[y*width + x] = 1.0;
+                }
+                for (x = region[0]+region[2]; x < width; x++) {
+                    depth_buffer[y*width + x] = 1.0;
+                }
+            }
+        }
+      /* Clear out top. */
+        for (y = region[1]+region[3]; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                depth_buffer[y*width + x] = 1.0;
+            }
+        }
+    } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        icetRaiseError("Invalid depth format.", ICET_SANITY_CHECK_FAIL);
     }
 }
 
@@ -764,46 +929,8 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
 
 void icetClearImage(IceTImage image)
 {
-    IceTUInt *ip;
-    IceTFloat *fp;
-    IceTSizeType pixels = icetImageGetNumPixels(image);
-    IceTSizeType i;
-    IceTUInt i_bg_color;
-    IceTFloat f_bg_color[4];
-
-    icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&i_bg_color);
-    icetGetFloatv(ICET_BACKGROUND_COLOR, f_bg_color);
-
-    switch (icetImageGetColorFormat(image)) {
-      case ICET_IMAGE_COLOR_RGBA_UBYTE:
-          for (i = 0, ip = icetImageGetColorUInt(image); i<pixels; i++, ip++) {
-              ip[0] = i_bg_color;
-          }
-          break;
-      case ICET_IMAGE_COLOR_RGBA_FLOAT:
-          for (i = 0, fp = icetImageGetColorFloat(image); i<pixels;
-               i++, fp += 4) {
-              fp[0] = f_bg_color[0];
-              fp[1] = f_bg_color[1];
-              fp[2] = f_bg_color[2];
-              fp[3] = f_bg_color[3];
-          }
-          break;
-      case ICET_IMAGE_COLOR_NONE:
-        /* Nothing to do. */
-          break;
-    }
-
-    switch (icetImageGetDepthFormat(image)) {
-      case ICET_IMAGE_DEPTH_FLOAT:
-          for (i = 0, fp = icetImageGetDepthFloat(image); i<pixels; i++, fp++) {
-              fp[0] = 1.0;
-          }
-          break;
-      case ICET_IMAGE_DEPTH_NONE:
-        /* Nothing to do. */
-          break;
-    }
+    IceTInt region[4] = {0, 0, 0, 0};
+    icetImageClearAroundRegion(image, region);
 }
 
 void icetClearSparseImage(IceTSparseImage image)
@@ -872,17 +999,39 @@ void icetGetTileImage(IceTInt tile, IceTImage image)
     IceTInt screen_viewport[4], target_viewport[4];
     IceTInt *viewports;
     IceTSizeType width, height;
+    IceTImage rendered_image;
+    IceTDouble read_time;
+    IceTDouble timer;
 
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
+    icetImageSetDimensions(image, width, height);
 
-    renderTile(tile, screen_viewport, target_viewport);
+    rendered_image = renderTile(tile, screen_viewport, target_viewport, image);
 
-    readSubImage(screen_viewport[0], screen_viewport[1],
-                 screen_viewport[2], screen_viewport[3],
-                 image, target_viewport[0], target_viewport[1],
-                 width, height);
+    timer = icetWallTime();
+
+    if (icetImageEqual(rendered_image, image)) {
+      /* Check to make sure the screen and target viewports are also equal. */
+        if (    (screen_viewport[0] != target_viewport[0])
+             || (screen_viewport[1] != target_viewport[1])
+             || (screen_viewport[2] != target_viewport[2])
+             || (screen_viewport[3] != target_viewport[3]) ) {
+            icetRaiseError("Inconsistent values returned from renderTile.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+    } else {
+      /* Copy the appropriate part of the image to the output buffer. */
+        icetImageCopyRegion(rendered_image, screen_viewport,
+                            image, target_viewport);
+    }
+
+    icetImageClearAroundRegion(image, target_viewport);
+
+    icetGetDoublev(ICET_BUFFER_READ_TIME, &read_time);
+    read_time += icetWallTime() - timer;
+    icetStateSetDouble(ICET_BUFFER_READ_TIME, read_time);
 }
 
 void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
@@ -896,14 +1045,10 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
     height = viewports[4*tile+3];
+    icetSparseImageSetDimensions(compressed_image, width, height);
 
-    renderTile(tile, screen_viewport, target_viewport);
-
-    raw_image = getInternalSharedImage(screen_viewport[2], screen_viewport[3]);
-
-    readImage(screen_viewport[0], screen_viewport[1],
-              screen_viewport[2], screen_viewport[3],
-              raw_image);
+    raw_image = renderTile(tile, screen_viewport, target_viewport,
+                           icetImageNull());
 
     space_left = target_viewport[0];
     space_right = width - target_viewport[2] - space_left;
@@ -921,9 +1066,12 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
 #define SPACE_RIGHT             space_right
 #define FULL_WIDTH              width
 #define FULL_HEIGHT             height
+#define REGION
+#define REGION_OFFSET_X         screen_viewport[0]
+#define REGION_OFFSET_Y         screen_viewport[1]
+#define REGION_WIDTH            screen_viewport[2]
+#define REGION_HEIGHT           screen_viewport[3]
 #include "compress_func_body.h"
-
-    releaseInternalSharedImage();
 }
 
 void icetCompressImage(const IceTImage image,
@@ -1135,22 +1283,23 @@ void icetCompressedSubComposite(IceTImage destBuffer,
     }
 }
 
-/* Makes sure that all the information for the current tile is rendered and
-   currently available in the given OpenGL frame buffers.  Returns a
-   viewport in the screen which has the pertinent information and a
-   viewport that it should be mapped to in the given tile screen space. */
-static void renderTile(int tile, IceTInt *screen_viewport,
-                       IceTInt *target_viewport)
+static IceTImage renderTile(int tile,
+                            IceTInt *screen_viewport,
+                            IceTInt *target_viewport,
+                            IceTImage tile_buffer)
 {
     IceTInt *contained_viewport;
     IceTInt *tile_viewport;
     IceTBoolean *contained_mask;
-    IceTInt max_width, max_height;
+    IceTInt physical_width, physical_height;
     IceTBoolean use_floating_viewport;
-    IceTCallback drawfunc;
+    IceTDrawCallbackType drawfunc;
     IceTVoid *value;
     IceTDouble render_time;
     IceTDouble timer;
+    IceTImage render_buffer;
+    IceTDouble projection_matrix[16];
+    IceTDouble modelview_matrix[16];
     IceTFloat background_color[4];
 
     icetRaiseDebug1("Rendering tile %d", tile);
@@ -1159,13 +1308,8 @@ static void renderTile(int tile, IceTInt *screen_viewport,
     contained_mask = icetUnsafeStateGetBoolean(ICET_CONTAINED_TILES_MASK);
     use_floating_viewport = icetIsEnabled(ICET_FLOATING_VIEWPORT);
 
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &max_width);
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &max_height);
-
-  /* Get ready for tile projection. */
-    icetRaiseDebug("Determine projection");
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &physical_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &physical_height);
 
     icetRaiseDebug4("contained viewport: %d %d %d %d",
                     (int)contained_viewport[0], (int)contained_viewport[1],
@@ -1174,6 +1318,8 @@ static void renderTile(int tile, IceTInt *screen_viewport,
                     (int)tile_viewport[0], (int)tile_viewport[1],
                     (int)tile_viewport[2], (int)tile_viewport[3]);
 
+    render_buffer = tile_buffer;
+
     if (   !contained_mask[tile]
         || (contained_viewport[0] + contained_viewport[2] < tile_viewport[0])
         || (contained_viewport[1] + contained_viewport[3] < tile_viewport[1])
@@ -1181,14 +1327,12 @@ static void renderTile(int tile, IceTInt *screen_viewport,
         || (contained_viewport[1] > tile_viewport[1] + tile_viewport[3]) ) {
       /* Case 0: geometry completely outside tile. */
         icetRaiseDebug("Case 0: geometry completely outside tile.");
-        screen_viewport[0] = 1; /* Make target and screen viewports slightly */
-        target_viewport[0] = 0; /* different to signal not to read the image */
-        screen_viewport[1] = 1; /* completely from OpenGL buffers.           */
-        target_viewport[1] = 0;
+        screen_viewport[0] = target_viewport[0] = 0;
+        screen_viewport[1] = target_viewport[1] = 0;
         screen_viewport[2] = target_viewport[2] = 0;
         screen_viewport[3] = target_viewport[3] = 0;
       /* Don't bother to render. */
-        return;
+        return tile_buffer;
 #if 1
     } else if (   (contained_viewport[0] >= tile_viewport[0])
                && (contained_viewport[1] >= tile_viewport[1])
@@ -1197,11 +1341,9 @@ static void renderTile(int tile, IceTInt *screen_viewport,
                && (   contained_viewport[3]+contained_viewport[1]
                    <= tile_viewport[3]+tile_viewport[1]) ) {
       /* Case 1: geometry fits entirely within tile. */
-        IceTDouble matrix[16];
         icetRaiseDebug("Case 1: geometry fits entirely within tile.");
 
-        icetProjectTile(tile, matrix);
-        glMultMatrixd(matrix);
+        icetProjectTile(tile, projection_matrix);
         icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, tile_viewport);
         screen_viewport[0] = target_viewport[0]
             = contained_viewport[0] - tile_viewport[0];
@@ -1211,15 +1353,13 @@ static void renderTile(int tile, IceTInt *screen_viewport,
         screen_viewport[3] = target_viewport[3] = contained_viewport[3];
 #endif
     } else if (   !use_floating_viewport
-               || (contained_viewport[2] > max_width)
-               || (contained_viewport[3] > max_height) ) {
+               || (contained_viewport[2] > physical_width)
+               || (contained_viewport[3] > physical_height) ) {
       /* Case 2: Can't use floating viewport due to use selection or image
          does not fit. */
-        IceTDouble matrix[16];
         icetRaiseDebug("Case 2: Can't use floating viewport.");
 
-        icetProjectTile(tile, matrix);
-        glMultMatrixd(matrix);
+        icetProjectTile(tile, projection_matrix);
         icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, tile_viewport);
         if (contained_viewport[0] <= tile_viewport[0]) {
             screen_viewport[0] = target_viewport[0] = 0;
@@ -1252,8 +1392,9 @@ static void renderTile(int tile, IceTInt *screen_viewport,
         }
     } else {
       /* Case 3: Using floating viewport. */
-        IceTDouble matrix[16];
-        IceTInt *rendered_viewport;
+        IceTDouble viewport_project_matrix[16];
+        IceTDouble global_projection_matrix[16];
+        IceTInt rendered_viewport[4];
         icetRaiseDebug("Case 3: Using floating viewport.");
 
         if (contained_viewport[0] < tile_viewport[0]) {
@@ -1283,268 +1424,103 @@ static void renderTile(int tile, IceTInt *screen_viewport,
             screen_viewport[3] = target_viewport[3];
         }
 
+      /* Floating viewport must be stored in our own buffer so subsequent tiles
+         can be read from it. */
+        render_buffer = getRenderBuffer();
+
         if (  icetStateGetTime(ICET_RENDERED_VIEWPORT)
             > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
           /* Already rendered image for this tile. */
-            return;
+            return render_buffer;
         }
 
       /* Setup render for this tile. */
 
-      /* This will later be freed with state.c code. */
-        rendered_viewport = malloc(sizeof(IceTInt)*4);
         rendered_viewport[0] = contained_viewport[0];
         rendered_viewport[1] = contained_viewport[1];
-        rendered_viewport[2] = max_width;
-        rendered_viewport[3] = max_height;
-        icetUnsafeStateSet(ICET_RENDERED_VIEWPORT, 4,
-                           ICET_INT, rendered_viewport);
+        rendered_viewport[2] = physical_width;
+        rendered_viewport[3] = physical_height;
+        icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, rendered_viewport);
 
         icetGetViewportProject(rendered_viewport[0], rendered_viewport[1],
                                rendered_viewport[2], rendered_viewport[3],
-                               matrix);
-        glMultMatrixd(matrix);
-        icetGetDoublev(ICET_PROJECTION_MATRIX, matrix);
-        glMultMatrixd(matrix);
+                               viewport_project_matrix);
+        icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection_matrix);
+        icetMultMatrix(projection_matrix,
+                       viewport_project_matrix, global_projection_matrix);
+    }
+
+  /* Make sure that the current render_buffer is sized appropriately for the
+     physical viewport.  If not, use our own buffer. */
+    if (    (icetImageGetWidth(render_buffer) != physical_width)
+         || (icetImageGetHeight(render_buffer) != physical_height) ) {
+        render_buffer = getRenderBuffer();
     }
 
   /* Now we can actually start to render an image. */
-    glMatrixMode(GL_MODELVIEW);
-
+    icetGetDoublev(ICET_MODELVIEW_MATRIX, modelview_matrix);
     icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
-    glClearColor(background_color[0], background_color[1],
-                 background_color[2], background_color[3]);
 
   /* Draw the geometry. */
-    icetRaiseDebug("Getting callback.");
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
-    drawfunc = (IceTCallback)value;
-    icetGetDoublev(ICET_RENDER_TIME, &render_time);
+    drawfunc = (IceTDrawCallbackType)value;
     icetRaiseDebug("Calling draw function.");
     timer = icetWallTime();
-    (*drawfunc)();
+    (*drawfunc)(projection_matrix, modelview_matrix, background_color,
+                screen_viewport, render_buffer);
+    icetGetDoublev(ICET_RENDER_TIME, &render_time);
     render_time += icetWallTime() - timer;
     icetStateSetDouble(ICET_RENDER_TIME, render_time);
+
+    return render_buffer;
 }
 
-/* Performs a glReadPixels on the color and depth buffers (unless they
- * are not needed).  buffer is expected to already have its magic number
- * and pixel count set. */
-static void readImage(IceTInt x, IceTInt y,
-                      IceTSizeType width, IceTSizeType height,
-                      IceTImage buffer)
+/* This function is full of hackery. */
+static IceTImage getRenderBuffer(void)
 {
-    readSubImage(x, y, width, height, buffer, 0, 0, width, height);
-}
-static void readSubImage(IceTInt fb_x, IceTInt fb_y,
-                         IceTSizeType sub_width, IceTSizeType sub_height,
-                         IceTImage buffer,
-                         IceTInt ib_x, IceTInt ib_y,
-                         IceTSizeType full_width, IceTSizeType full_height)
-{
-    IceTInt readBuffer;
-    IceTEnum color_format;
-    IceTEnum depth_format;
-    IceTDouble *read_time;
-    IceTDouble timer;
-    IceTInt physical_viewport[4];
-    IceTInt x_offset, y_offset;
-    IceTInt x, y;
+    IceTInt width, height;
+    IceTInt required_buffer_size, stored_buffer_size;
+    IceTVoid *buffer;
 
-    icetRaiseDebug4("Reading viewport %d %d %d %d", (int)fb_x, (int)fb_y,
-                    (int)sub_width, (int)sub_height);
-    icetRaiseDebug2("Image offset %d %d", (int)ib_x, (int)ib_y);
-    icetRaiseDebug2("Full image dimensions %d %d",
-                    (int)full_width, (int)full_height);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &height);
 
-#ifdef DEBUG
-    if (   (ICET_IMAGE_HEADER(buffer)[ICET_IMAGE_MAGIC_NUM_INDEX])
-        != ICET_IMAGE_MAGIC_NUM ) {
-        icetRaiseError("Buffer magic number not set.", ICET_SANITY_CHECK_FAIL);
-        return;
-    }
-#endif /* DEBUG */
+    required_buffer_size = icetImageBufferSize(width, height);
+    icetGetIntegerv(ICET_RENDER_BUFFER_SIZE, &stored_buffer_size);
+    if (required_buffer_size <= stored_buffer_size) {
+        buffer = icetUnsafeStateGetInteger(ICET_RENDER_BUFFER);
 
-    icetImageSetDimensions(buffer, full_width, full_height);
-
-    color_format = icetImageGetColorFormat(buffer);
-    depth_format = icetImageGetDepthFormat(buffer);
-
-    glPixelStorei(GL_PACK_ROW_LENGTH, full_width);
-
-  /* These pixel store parameters are not working on one of the platforms
-   * I am testing on (thank you Mac).  Instead of using these, just offset
-   * the buffers we read in from. */
-  /* glPixelStorei(GL_PACK_SKIP_PIXELS, ib_x); */
-  /* glPixelStorei(GL_PACK_SKIP_ROWS, ib_y); */
-
-    icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
-    glReadBuffer(readBuffer);
-
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    x_offset = physical_viewport[0];
-    y_offset = physical_viewport[1];
-
-    read_time = icetUnsafeStateGetDouble(ICET_BUFFER_READ_TIME);
-    timer = icetWallTime();
-
-    if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-        IceTUInt *colorBuffer = icetImageGetColorUInt(buffer);
-        IceTUInt background_color;
-        glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     GL_RGBA, GL_UNSIGNED_BYTE,
-                     colorBuffer + (ib_x + full_width*ib_y));
-
-        icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD, (IceTInt *)&background_color);
-      /* Clear out bottom. */
-        for (y = 0; y < ib_y; y++) {
-            for (x = 0; x < full_width; x++) {
-                colorBuffer[y*full_width + x] = background_color;
-            }
+      /* Check to see if we are in the same frame as the last time we returned
+         this buffer.  In that case, just restore the buffer because it still
+         has the image we need. */
+        if (  icetStateGetTime(ICET_RENDER_BUFFER_SIZE)
+            > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
+          /* A little bit of hackery: this assumes that a buffer initialized is
+             the same one returned from icetImagePackageForSend.  It (currently)
+             does. */
+            return icetImageUnpackageFromReceive(buffer);
         }
-      /* Clear out left. */
-        if (ib_x > 0) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = 0; x < ib_x; x++) {
-                    colorBuffer[y*full_width + x] =background_color;
-                }
-            }
-        }
-      /* Clear out right. */
-        if (ib_x + sub_width < full_width) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = ib_x+sub_width; x < full_width; x++) {
-                    colorBuffer[y*full_width + x] =background_color;
-                }
-            }
-        }
-      /* Clear out top. */
-        for (y = ib_y+sub_height; y < full_height; y++) {
-            for (x = 0; x < full_width; x++) {
-                colorBuffer[y*full_width + x] = background_color;
-            }
-        }
-    } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-        IceTFloat *colorBuffer = icetImageGetColorFloat(buffer);
-        IceTFloat background_color[4];
-        glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     GL_RGBA, GL_FLOAT,
-                     colorBuffer + 4*(ib_x + full_width*ib_y));
 
-        icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
-      /* Clear out bottom. */
-        for (y = 0; y < ib_y; y++) {
-            for (x = 0; x < full_width; x++) {
-                colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
-                colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
-                colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
-                colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
-            }
-        }
-      /* Clear out left. */
-        if (ib_x > 0) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = 0; x < ib_x; x++) {
-                    colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
-                    colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
-                    colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
-                    colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
-                }
-            }
-        }
-      /* Clear out right. */
-        if (ib_x + sub_width < full_width) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = ib_x+sub_width; x < full_width; x++) {
-                    colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
-                    colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
-                    colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
-                    colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
-                }
-            }
-        }
-      /* Clear out top. */
-        for (y = ib_y+sub_height; y < full_height; y++) {
-            for (x = 0; x < full_width; x++) {
-                colorBuffer[4*(y*full_width + x) + 0] = background_color[0];
-                colorBuffer[4*(y*full_width + x) + 1] = background_color[1];
-                colorBuffer[4*(y*full_width + x) + 2] = background_color[2];
-                colorBuffer[4*(y*full_width + x) + 3] = background_color[3];
-            }
-        }
-    } else if (color_format != ICET_IMAGE_COLOR_NONE) {
-        icetRaiseError("Invalid color format.", ICET_SANITY_CHECK_FAIL);
+      /* Creating a new image object.  "Touch" the ICET_RENDER_BUFFER_SIZE state
+         variable to signify the time we created the image so the above check
+         works on the next call. */
+        icetStateSetInteger(ICET_RENDER_BUFFER_SIZE, stored_buffer_size);
+
+      /* Create a new image object with this buffer.  Consider the old image
+         overridden. */
+        return icetImageAssignBuffer(buffer, width, height);
     }
 
-    if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-        IceTFloat *depthBuffer = icetImageGetDepthFloat(buffer);;
-        glReadPixels(fb_x + x_offset, fb_y + y_offset, sub_width, sub_height,
-                     GL_DEPTH_COMPONENT, GL_FLOAT,
-                     depthBuffer + ib_x + full_width*ib_y);
+  /* Stored buffer not big enough.  Create a new one. */
+    buffer = malloc(required_buffer_size);
 
-      /* Clear out bottom. */
-        for (y = 0; y < ib_y; y++) {
-            for (x = 0; x < full_width; x++) {
-                depthBuffer[y*full_width + x] = 1.0;
-            }
-        }
-      /* Clear out left. */
-        if (ib_x > 0) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = 0; x < ib_x; x++) {
-                    depthBuffer[y*full_width + x] = 1.0;
-                }
-            }
-        }
-      /* Clear out right. */
-        if (ib_x + sub_width < full_width) {
-            for (y = ib_y; y < sub_height+ib_y; y++) {
-                for (x = ib_x+sub_width; x < full_width; x++) {
-                    depthBuffer[y*full_width + x] = 1.0;
-                }
-            }
-        }
-      /* Clear out top. */
-        for (y = ib_y+sub_height; y < full_height; y++) {
-            for (x = 0; x < full_width; x++) {
-                depthBuffer[y*full_width + x] = 1.0;
-            }
-        }
-    } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        icetRaiseError("Invalid depth format.", ICET_SANITY_CHECK_FAIL);
-    }
+  /* Store the buffer in the state.  A little more hackery: once given to the
+     state we expect the state to free the memory when it is reallocated or when
+     the context is destroyed. */
+    icetUnsafeStateSet(ICET_RENDER_BUFFER, required_buffer_size/sizeof(IceTInt),
+                       ICET_INT, buffer);
+    icetStateSetInteger(ICET_RENDER_BUFFER_SIZE, required_buffer_size);
 
-    *read_time += icetWallTime() - timer;
-
-    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-  /* glPixelStorei(GL_PACK_SKIP_PIXELS, 0); */
-  /* glPixelStorei(GL_PACK_SKIP_ROWS, 0); */
-}
-
-/* Currently not thread safe. */
-static IceTImage getInternalSharedImage(IceTSizeType width, IceTSizeType height)
-{
-    static IceTVoid *buffer = NULL;
-    static IceTSizeType bufferSize = 0;
-
-    IceTSizeType newBufferSize = icetImageBufferSize(width, height);
-
-    if (newBufferSize > bufferSize) {
-        free(buffer);
-        buffer = malloc(newBufferSize);
-        if (buffer == NULL) {
-            icetRaiseError("Could not allocate buffers.", ICET_OUT_OF_MEMORY);
-            bufferSize = 0;
-        } else {
-            bufferSize = newBufferSize;
-        }
-    }
-
+  /* Create an image with our buffer. */
     return icetImageAssignBuffer(buffer, width, height);
 }
-
-static void releaseInternalSharedImage(void)
-{
-  /* If we were thread safe, we would unlock the buffers. */
-}
-

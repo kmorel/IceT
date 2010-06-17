@@ -124,6 +124,7 @@ void icetStateSetDefaults(void)
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
+    icetStateSetBoolean(ICET_RENDER_BUFFER_SIZE, 0);
 
     icetStateResetTiming();
 }

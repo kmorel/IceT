@@ -232,7 +232,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("\nSetup for actual render.\n");
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
   /* Do a perfunctory draw to set other state variables. */
     icetGLDrawFrame();
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);

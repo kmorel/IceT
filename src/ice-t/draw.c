@@ -28,7 +28,7 @@
 
 static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B);
 
-void icetDrawFunc(IceTCallback func)
+void icetDrawCallback(IceTDrawCallbackType func)
 {
     icetStateSetPointer(ICET_DRAW_FUNCTION, (IceTVoid *)func);
 }
@@ -628,7 +628,8 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
 
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     if (value == NULL) {
-        icetRaiseError("Drawing function not set.", ICET_INVALID_OPERATION);
+        icetRaiseError("Drawing function not set.  Call icetDrawCallback.",
+                       ICET_INVALID_OPERATION);
         return icetImageNull();
     }
     icetRaiseDebug("Calling strategy.compose");

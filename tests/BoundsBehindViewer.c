@@ -50,7 +50,7 @@ static int BoundsBehindViewerRun()
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
     icetStrategy(ICET_STRATEGY_REDUCE);
 
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);

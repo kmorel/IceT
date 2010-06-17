@@ -62,7 +62,7 @@ static int DisplayNoDrawRun()
     icetResetTiles();
     icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
 
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);

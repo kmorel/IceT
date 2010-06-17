@@ -26,7 +26,7 @@
  *      CT_ACTIVE() - provides a true value if the current pixel is active.
  *      CT_WRITE_PIXEL(pointer) - writes the current pixel to the pointer and
  *              increments the pointer.
- *      CT_INCREMENT_PIXEL() - Increments to the next pixel.
+ *      CT_INCREMENT_PIXEL() - Increments to the next input pixel.
  *
  * The following macros are optional:
  *      CT_PADDING - If defined, enables inactive pixels to be placed

@@ -25,6 +25,8 @@ void icetGLInitialize(void)
 
     icetGLSetReadBuffer(GL_BACK);
 
+    icetStateSetPointer(ICET_GL_DRAW_FUNCTION, NULL);
+
     icetEnable(ICET_GL_DISPLAY);
     icetDisable(ICET_GL_DISPLAY_COLORED_BACKGROUND);
     icetDisable(ICET_GL_DISPLAY_INFLATE);

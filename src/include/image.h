@@ -32,11 +32,19 @@ ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
 ICET_EXPORT IceTVoid *icetImageGetDepthVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
+ICET_EXPORT IceTBoolean icetImageEqual(const IceTImage image1,
+                                       const IceTImage image2);
 ICET_EXPORT void icetImageCopyPixels(const IceTImage in_image,
                                      IceTSizeType in_offset,
                                      IceTImage out_image,
                                      IceTSizeType out_offset,
                                      IceTSizeType num_pixels);
+ICET_EXPORT void icetImageCopyRegion(const IceTImage in_image,
+                                     const IceTInt *in_viewport,
+                                     IceTImage out_image,
+                                     const IceTInt *out_viewport);
+ICET_EXPORT void icetImageClearAroundRegion(IceTImage image,
+                                            const IceTInt *region);
 ICET_EXPORT void icetImagePackageForSend(IceTImage image,
                                          IceTVoid **buffer,
                                          IceTSizeType *size);

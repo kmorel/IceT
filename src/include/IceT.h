@@ -88,10 +88,6 @@ ICET_EXPORT IceTContext icetGetContext(void);
 ICET_EXPORT void        icetSetContext(IceTContext context);
 ICET_EXPORT void        icetCopyState(IceTContext dest, const IceTContext src);
 
-typedef void (*IceTCallback)(void);
-
-ICET_EXPORT void icetDrawFunc(IceTCallback func);
-
 #define ICET_BOOLEAN    (IceTEnum)0x8000
 #define ICET_BYTE       (IceTEnum)0x8001
 #define ICET_SHORT      (IceTEnum)0x8002
@@ -180,6 +176,14 @@ ICET_EXPORT void icetDataReplicationGroup(IceTInt size,
                                           const IceTInt *processes);
 ICET_EXPORT void icetDataReplicationGroupColor(IceTInt color);
 
+typedef void (*IceTDrawCallbackType)(const IceTDouble *projection_matrix,
+                                     const IceTDouble *modelview_matrix,
+                                     const IceTFloat *background_color,
+                                     const IceTInt *readback_viewport,
+                                     IceTImage result);
+
+ICET_EXPORT void icetDrawCallback(IceTDrawCallbackType func);
+
 ICET_EXPORT IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
                                     const IceTDouble *modelview_matrix,
                                     const IceTFloat *background_color);
@@ -246,6 +250,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_TOTAL_IMAGE_COUNT  (ICET_STATE_FRAME_START | (IceTEnum)0x000B)
 
 #define ICET_RENDERED_VIEWPORT  (ICET_STATE_FRAME_START | (IceTEnum)0x0010)
+#define ICET_RENDER_BUFFER      (ICET_STATE_FRAME_START | (IceTEnum)0x0011)
+#define ICET_RENDER_BUFFER_SIZE (ICET_STATE_FRAME_START | (IceTEnum)0x0012)
 
 #define ICET_STATE_TIMING_START (IceTEnum)0x000000C0
 

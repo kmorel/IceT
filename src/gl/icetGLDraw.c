@@ -11,6 +11,8 @@
 #include <state.h>
 #include <context.h>
 
+#include "icetGLImage.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,6 +21,11 @@ static IceTSizeType display_buffer_size = 0;
 
 static void inflateBuffer(IceTUByte *buffer,
                           IceTSizeType width, IceTSizeType height);
+
+void icetGLDrawCallback(IceTGLDrawCallbackType func)
+{
+    icetStateSetPointer(ICET_GL_DRAW_FUNCTION, (IceTVoid *)func);
+}
 
 IceTImage icetGLDrawFrame(void)
 {
@@ -29,6 +36,8 @@ IceTImage icetGLDrawFrame(void)
     IceTFloat background_color[4];
     IceTDouble projection_matrix[16];
     IceTDouble modelview_matrix[16];
+    IceTVoid *value;
+    IceTDrawCallbackType original_callback;
     IceTDouble buf_write_time;
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
@@ -48,10 +57,26 @@ IceTImage icetGLDrawFrame(void)
     glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
     glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
 
+  /* Check the GL callback. */
+    icetGetPointerv(ICET_GL_DRAW_FUNCTION, &value);
+    if (value == NULL) {
+        icetRaiseError("GL Drawing function not set.  Call icetGLDrawCallback.",
+                       ICET_INVALID_OPERATION);
+        return icetImageNull();
+    }
+
+  /* Set up core callback to call the GL layer. */
+    icetGetPointerv(ICET_DRAW_FUNCTION, &value);
+    original_callback = (IceTDrawCallbackType)value;
+    icetDrawCallback(icetGLDrawCallbackFunction);
+
   /* Hand control to the core layer to render and composite. */
     image = icetDrawFrame(projection_matrix,
                           modelview_matrix,
                           background_color);
+
+  /* Restore core IceT callback. */
+    icetDrawCallback(original_callback);
 
   /* Fix background color. */
     glClearColor(background_color[0], background_color[1],
@@ -131,6 +156,7 @@ IceTImage icetGLDrawFrame(void)
     glMatrixMode(GL_PROJECTION);
     glLoadMatrixd(projection_matrix);
     glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixd(modelview_matrix);
 
   /* Calculate display times. */
     buf_write_time = icetWallTime() - buf_write_time;

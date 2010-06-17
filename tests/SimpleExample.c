@@ -78,7 +78,7 @@ static int SimpleExampleRun()
     glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
 
   /* Give ICE-T a function that will issue the OpenGL drawing commands. */
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
 
   /* Give ICE-T the bounds of the polygons that will be drawn.  Note that
    * we must take into account any transformation that happens within the
