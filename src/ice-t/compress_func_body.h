@@ -76,6 +76,8 @@
 
 #ifdef PIXEL_COUNT
     _pixel_count = PIXEL_COUNT;
+#elif defined(REGION)
+    _pixel_count = (REGION_WIDTH)*(REGION_HEIGHT);
 #else
     _pixel_count = icetImageGetNumPixels(INPUT_IMAGE);
 #endif
