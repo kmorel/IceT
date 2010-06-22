@@ -1297,6 +1297,7 @@ static IceTImage renderTile(int tile,
     IceTVoid *value;
     IceTDouble render_time;
     IceTDouble timer;
+    IceTInt readback_viewport[4];
     IceTImage render_buffer;
     IceTDouble projection_matrix[16];
     IceTDouble modelview_matrix[16];
@@ -1351,6 +1352,11 @@ static IceTImage renderTile(int tile,
             = contained_viewport[1] - tile_viewport[1];
         screen_viewport[2] = target_viewport[2] = contained_viewport[2];
         screen_viewport[3] = target_viewport[3] = contained_viewport[3];
+
+        readback_viewport[0] = screen_viewport[0];
+        readback_viewport[1] = screen_viewport[1];
+        readback_viewport[2] = screen_viewport[2];
+        readback_viewport[3] = screen_viewport[3];
 #endif
     } else if (   !use_floating_viewport
                || (contained_viewport[2] > physical_width)
@@ -1390,12 +1396,31 @@ static IceTImage renderTile(int tile,
                       tile_viewport[1] + tile_viewport[3]
                       - contained_viewport[1]);
         }
+
+        readback_viewport[0] = screen_viewport[0];
+        readback_viewport[1] = screen_viewport[1];
+        readback_viewport[2] = screen_viewport[2];
+        readback_viewport[3] = screen_viewport[3];
     } else {
       /* Case 3: Using floating viewport. */
         IceTDouble viewport_project_matrix[16];
         IceTDouble global_projection_matrix[16];
         IceTInt rendered_viewport[4];
         icetRaiseDebug("Case 3: Using floating viewport.");
+
+      /* This is the viewport in the global tiled display that we will be
+         rendering. */
+        rendered_viewport[0] = contained_viewport[0];
+        rendered_viewport[1] = contained_viewport[1];
+        rendered_viewport[2] = physical_width;
+        rendered_viewport[3] = physical_height;
+
+      /* This is the area that has valid pixels.  The screen_viewport will be a
+         subset of this. */
+        readback_viewport[0] = 0;
+        readback_viewport[1] = 0;
+        readback_viewport[2] = contained_viewport[2];
+        readback_viewport[3] = contained_viewport[3];
 
         if (contained_viewport[0] < tile_viewport[0]) {
             screen_viewport[0] = tile_viewport[0] - contained_viewport[0];
@@ -1428,19 +1453,30 @@ static IceTImage renderTile(int tile,
          can be read from it. */
         render_buffer = getRenderBuffer();
 
+      /* Check to see if we already rendered the floating viewport.  The whole
+         point of the floating viewport is to do one actual render and reuse the
+         image to grab all the actual tile images. */
         if (  icetStateGetTime(ICET_RENDERED_VIEWPORT)
             > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
           /* Already rendered image for this tile. */
-            return render_buffer;
+            IceTInt *old_rendered_viewport
+                = icetUnsafeStateGetInteger(ICET_RENDERED_VIEWPORT);
+            IceTBoolean old_rendered_viewport_valid
+                = (   (old_rendered_viewport[0] == rendered_viewport[0])
+                   || (old_rendered_viewport[1] == rendered_viewport[1])
+                   || (old_rendered_viewport[2] == rendered_viewport[2])
+                   || (old_rendered_viewport[3] == rendered_viewport[3]) );
+            if (!old_rendered_viewport_valid) {
+                icetRaiseError("Rendered floating viewport became invalidated.",
+                               ICET_SANITY_CHECK_FAIL);
+            } else {
+                icetRaiseDebug("Already rendered floating viewport.");
+                return render_buffer;
+            }
         }
+        icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, rendered_viewport);
 
       /* Setup render for this tile. */
-
-        rendered_viewport[0] = contained_viewport[0];
-        rendered_viewport[1] = contained_viewport[1];
-        rendered_viewport[2] = physical_width;
-        rendered_viewport[3] = physical_height;
-        icetStateSetIntegerv(ICET_RENDERED_VIEWPORT, 4, rendered_viewport);
 
         icetGetViewportProject(rendered_viewport[0], rendered_viewport[1],
                                rendered_viewport[2], rendered_viewport[3],
@@ -1467,7 +1503,7 @@ static IceTImage renderTile(int tile,
     icetRaiseDebug("Calling draw function.");
     timer = icetWallTime();
     (*drawfunc)(projection_matrix, modelview_matrix, background_color,
-                screen_viewport, render_buffer);
+                readback_viewport, render_buffer);
     icetGetDoublev(ICET_RENDER_TIME, &render_time);
     render_time += icetWallTime() - timer;
     icetStateSetDouble(ICET_RENDER_TIME, render_time);
@@ -1498,6 +1534,7 @@ static IceTImage getRenderBuffer(void)
           /* A little bit of hackery: this assumes that a buffer initialized is
              the same one returned from icetImagePackageForSend.  It (currently)
              does. */
+            icetRaiseDebug("Last render should still be good.");
             return icetImageUnpackageFromReceive(buffer);
         }
 
@@ -1510,6 +1547,8 @@ static IceTImage getRenderBuffer(void)
          overridden. */
         return icetImageAssignBuffer(buffer, width, height);
     }
+
+    icetRaiseDebug("Allocating new render buffer.");
 
   /* Stored buffer not big enough.  Create a new one. */
     buffer = malloc(required_buffer_size);
