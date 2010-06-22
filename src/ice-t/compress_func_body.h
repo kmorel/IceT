@@ -106,7 +106,7 @@
 #ifdef REGION
     if (    (REGION_OFFSET_X < 0) || (REGION_OFFSET_Y < 0)
          || (REGION_OFFSET_X+REGION_WIDTH > icetImageGetWidth(INPUT_IMAGE))
-         || (REGION_OFFSET_Y+REGION_HEIGHT > icetImageGetWidth(INPUT_IMAGE)) ) {
+         || (REGION_OFFSET_Y+REGION_HEIGHT > icetImageGetHeight(INPUT_IMAGE)) ){
         icetRaiseError("Size of input incompatible with region.",
                        ICET_SANITY_CHECK_FAIL);
     }
