@@ -15,7 +15,6 @@ SET(ICET_SRCS
         projections.c
         draw.c
         image.c
-        buckets.c
 )
 
 ADD_LIBRARY(icet ${ICET_SRCS})
@@ -28,7 +27,6 @@ IF(NOT ICET_INSTALL_NO_LIBRARIES)
 ENDIF(NOT ICET_INSTALL_NO_LIBRARIES)
 IF(NOT ICET_INSTALL_NO_DEVELOPMENT)
   INSTALL(FILES ${ICET_SOURCE_DIR}/src/include/IceT.h
-    ${ICET_SOURCE_DIR}/src/include/IceTBuckets.h
     ${ICET_BINARY_DIR}/src/include/IceTConfig.h
     DESTINATION ${ICET_INSTALL_INCLUDE_DIR})
 ENDIF(NOT ICET_INSTALL_NO_DEVELOPMENT)
