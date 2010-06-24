@@ -240,13 +240,20 @@ static void inflateBuffer(IceTUByte *buffer,
         }
 
         if (use_textures) {
+            IceTInt icet_texture;
+            GLuint gl_texture;
+
           /* Setup texture. */
-            if (icet_current_context->display_inflate_texture == 0) {
-                glGenTextures(1,
-                              &(icet_current_context->display_inflate_texture));
+            icetGetIntegerv(ICET_GL_INFLATE_TEXTURE, &icet_texture);
+            gl_texture = icet_texture;
+
+            if (gl_texture == 0) {
+                glGenTextures(1, &gl_texture);
+                icet_texture = gl_texture;
+                icetStateSetInteger(ICET_GL_INFLATE_TEXTURE, icet_texture);
             }
-            glBindTexture(GL_TEXTURE_2D,
-                          icet_current_context->display_inflate_texture);
+
+            glBindTexture(GL_TEXTURE_2D, gl_texture);
             glEnable(GL_TEXTURE_2D);
             glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

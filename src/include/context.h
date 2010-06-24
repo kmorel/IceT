@@ -15,17 +15,16 @@
 #include <state.h>
 #include <image.h>
 
-struct IceTContext {
+struct IceTContextData {
     IceTState state;
     IceTCommunicator communicator;
     IceTStrategy strategy;
     IceTVoid *buffer;
     IceTSizeType buffer_size;
     IceTSizeType buffer_offset;
-    IceTUInt display_inflate_texture;
 };
 
-ICET_EXPORT extern struct IceTContext *icet_current_context;
+ICET_EXPORT extern struct IceTContextData *icet_current_context;
 
 #define icetGetState()          (icet_current_context->state)
 #define icetGetCommunicator()   (icet_current_context->communicator)

@@ -10,9 +10,6 @@
 
 #include <IceT.h>
 
-/* TODO: Get rid of this and decouple the core IceT from OpenGL. */
-#include <IceTGL.h>
-
 #include <context.h>
 #include <diagnostics.h>
 #include <image.h>
@@ -20,13 +17,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct IceTContext *context_list = NULL;
+static struct IceTContextData *context_list = NULL;
 
 static int num_contexts = 0;
 
 static int current_context_index;
 
-struct IceTContext *icet_current_context = NULL;
+struct IceTContextData *icet_current_context = NULL;
 
 IceTContext icetCreateContext(IceTCommunicator comm)
 {
@@ -41,8 +38,8 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     if (idx >= num_contexts) {
         num_contexts += 4;
         context_list = realloc(context_list,
-                               num_contexts*sizeof(struct IceTContext));
-        memset(context_list + idx, 0, 4 * sizeof(struct IceTContext));
+                               num_contexts*sizeof(struct IceTContextData));
+        memset(context_list + idx, 0, 4 * sizeof(struct IceTContextData));
     }
 
     context_list[idx].communicator = comm->Duplicate(comm);
@@ -50,8 +47,6 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     context_list[idx].buffer = NULL;
     context_list[idx].buffer_size = 0;
     context_list[idx].buffer_offset = 0;
-
-    context_list[idx].display_inflate_texture = 0;
 
     context_list[idx].state = icetStateCreate();
 
@@ -61,13 +56,28 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     return idx;
 }
 
+static void callDestructor(struct IceTContextData *cp, IceTEnum dtor_variable)
+{
+    IceTVoid *void_dtor_pointer;
+    void (*dtor_function)(void);
+
+    icetGetPointerv(dtor_variable, &void_dtor_pointer);
+    dtor_function = (void (*)(void))void_dtor_pointer;
+
+    if (dtor_function) {
+        (*dtor_function)();
+    }
+}
+
 void icetDestroyContext(IceTContext context)
 {
-    struct IceTContext *cp = &(context_list[context]);
+    struct IceTContextData *cp = &(context_list[context]);
 
     if (context == current_context_index) {
         icetRaiseDebug("Destroying current context.");
     }
+
+    callDestructor(cp, ICET_RENDER_LAYER_DESTRUCTOR);
 
     icetStateDestroy(cp->state);
     cp->state = NULL;
@@ -77,10 +87,6 @@ void icetDestroyContext(IceTContext context)
     cp->buffer = NULL;
     cp->buffer_size = 0;
     cp->buffer_offset = 0;
-
-    if (cp->display_inflate_texture != 0) {
-        glDeleteTextures(1, &(cp->display_inflate_texture));
-    }
 }
 
 IceTContext icetGetContext(void)

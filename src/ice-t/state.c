@@ -114,9 +114,10 @@ void icetStateSetDefaults(void)
 
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, ICET_COMM_RANK());
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
+    icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
-    icetStateSetInteger(ICET_FRAME_COUNT, 0);
+    icetStateSetPointer(ICET_RENDER_LAYER_DESTRUCTOR, NULL);
 
     icetEnable(ICET_FLOATING_VIEWPORT);
     icetDisable(ICET_ORDERED_COMPOSITE);
