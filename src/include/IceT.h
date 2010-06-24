@@ -36,7 +36,7 @@ typedef IceTUnsignedInt8        IceTBoolean;
 typedef void                    IceTVoid;
 typedef IceTPointerArithmetic   IceTSizeType;
 
-typedef IceTUnsignedInt32 IceTContext;
+typedef IceTInt IceTContext;
 
 struct IceTCommunicatorStruct;
 

@@ -19,15 +19,15 @@
 
 static struct IceTContextData *context_list = NULL;
 
-static int num_contexts = 0;
+static IceTInt num_contexts = 0;
 
-static int current_context_index;
+static IceTInt current_context_index;
 
 struct IceTContextData *icet_current_context = NULL;
 
 IceTContext icetCreateContext(IceTCommunicator comm)
 {
-    int idx;
+    IceTInt idx;
 
     for (idx = 0; idx < num_contexts; idx++) {
         if (context_list[idx].state == NULL) {
@@ -56,7 +56,7 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     return idx;
 }
 
-static void callDestructor(struct IceTContextData *cp, IceTEnum dtor_variable)
+static void callDestructor(IceTEnum dtor_variable)
 {
     IceTVoid *void_dtor_pointer;
     void (*dtor_function)(void);
@@ -71,14 +71,22 @@ static void callDestructor(struct IceTContextData *cp, IceTEnum dtor_variable)
 
 void icetDestroyContext(IceTContext context)
 {
-    struct IceTContextData *cp = &(context_list[context]);
+    struct IceTContextData *cp;
+    IceTContext saved_current_context;
 
-    if (context == current_context_index) {
+    saved_current_context = icetGetContext();
+    if (context == saved_current_context) {
         icetRaiseDebug("Destroying current context.");
     }
 
-    callDestructor(cp, ICET_RENDER_LAYER_DESTRUCTOR);
+  /* Temporarily make the context to be destroyed current. */
+    icetSetContext(context);
+    cp = icet_current_context;
 
+  /* Call destructors for other dependent units. */
+    callDestructor(ICET_RENDER_LAYER_DESTRUCTOR);
+
+  /* From here on out be careful.  We are invalidating the context. */
     icetStateDestroy(cp->state);
     cp->state = NULL;
 
@@ -87,6 +95,10 @@ void icetDestroyContext(IceTContext context)
     cp->buffer = NULL;
     cp->buffer_size = 0;
     cp->buffer_offset = 0;
+
+  /* The context is now completely destroyed and now null.  Restore saved
+     context. */
+    icetSetContext(saved_current_context);
 }
 
 IceTContext icetGetContext(void)

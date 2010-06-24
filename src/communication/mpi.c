@@ -55,7 +55,7 @@ struct IceTMPICommRequestStruct {
 #if REQUEST_POOL
 /* Note that the use of this array is not thread safe. */
 static struct IceTMPICommRequestStruct *request_pool = NULL;
-static int request_pool_count = 0;
+static IceTUnsignedInt32 request_pool_count = 0;
 #endif
 
 static IceTCommRequest create_request(void)

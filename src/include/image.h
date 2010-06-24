@@ -104,7 +104,7 @@ ICET_EXPORT void icetCompressedComposite(IceTImage destBuffer,
                                          int srcOnTop);
 
 ICET_EXPORT void icetCompressedSubComposite(IceTImage destBuffer,
-                                            IceTUInt offset,
+                                            IceTSizeType offset,
                                             const IceTSparseImage srcBuffer,
                                             int srcOnTop);
 

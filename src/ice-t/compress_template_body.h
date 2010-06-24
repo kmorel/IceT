@@ -209,7 +209,7 @@
     _totalcount -= (  (CT_FULL_HEIGHT-(CT_SPACE_TOP+CT_SPACE_BOTTOM))
                     * (CT_SPACE_LEFT+CT_SPACE_RIGHT) );
 #endif /*CT_PADDING*/
-    if (_totalcount != (IceTUInt)CT_PIXEL_COUNT) {
+    if (_totalcount != (IceTSizeType)CT_PIXEL_COUNT) {
         char msg[256];
         sprintf(msg, "Total run lengths don't equal pixel count: %d != %d",
                 (int)_totalcount, (int)(CT_PIXEL_COUNT));

@@ -28,7 +28,7 @@
 #define ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX     6
 #define ICET_IMAGE_DATA_START_INDEX             7
 
-#define ICET_IMAGE_HEADER(image)        ((IceTUInt *)image.opaque_internals)
+#define ICET_IMAGE_HEADER(image)        ((IceTInt *)image.opaque_internals)
 #define ICET_IMAGE_DATA(image) \
     ((IceTVoid *)&(ICET_IMAGE_HEADER(image)[ICET_IMAGE_DATA_START_INDEX]))
 
@@ -151,7 +151,7 @@ IceTImage icetImageAssignBuffer(IceTVoid *buffer,
 {
     IceTImage image;
     IceTEnum color_format, depth_format;
-    IceTUInt *header;
+    IceTInt *header;
 
     image.opaque_internals = buffer;
 
@@ -208,7 +208,7 @@ IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
 {
     IceTSparseImage image;
     IceTEnum color_format, depth_format;
-    IceTUInt *header;
+    IceTInt *header;
 
     image.opaque_internals = buffer;
 
@@ -1252,7 +1252,7 @@ void icetCompressedComposite(IceTImage destBuffer,
     icetCompressedSubComposite(destBuffer, 0, srcBuffer, srcOnTop);
 }
 void icetCompressedSubComposite(IceTImage destBuffer,
-                                IceTUInt offset,
+                                IceTSizeType offset,
                                 const IceTSparseImage srcBuffer,
                                 int srcOnTop)
 {
