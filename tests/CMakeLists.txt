@@ -34,11 +34,11 @@ TARGET_LINK_LIBRARIES(icetTests_mpi
   )
 
 IF (ICET_MPIRUN_EXE)
-  SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_PREFLAGS})
+  SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_NUMPROC_FLAG} ${ICET_MPI_MAX_NUMPROCS} ${ICET_MPI_PREFLAGS})
   SET(POST_TEST_FLAGS ${ICET_MPI_POSTFLAGS})
 ENDIF (ICET_MPIRUN_EXE)
 
-SET(ICET_TEST_FLAGS "" CACHE STRING "Arguments given to the test program.")
+SET(ICET_TEST_FLAGS "" CACHE STRING "Arguments given to the test program.  These are given between the test executable and the name of the test.  Run the test executable with the -h flag to see what is available.")
 MARK_AS_ADVANCED(ICET_TEST_FLAGS)
 SEPARATE_ARGUMENTS(ICET_TEST_FLAGS)
 
