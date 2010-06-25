@@ -15,8 +15,8 @@
 #include "test_codes.h"
 #include "test-util.h"
 
-#include <image.h>
-#include <state.h>
+#include <IceTDevImage.h>
+#include <IceTDevState.h>
 
 #include <stdlib.h>
 #include <stdio.h>

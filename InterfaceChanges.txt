@@ -79,3 +79,6 @@ which data is needed, and an image to put the result in.
 Added icetGLDrawCallback.  Provides a callback that replicates the old
 icetDrawFunc.  It has the OpenGL parameters automatically set up and
 automatically reads back the appropriate frame buffers.
+
+Changed the development include files to IceTDev*.h.  This will prevent
+mixing them up with headers from other packages.

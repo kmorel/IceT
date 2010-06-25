@@ -7,8 +7,8 @@
 
 #include <IceTGL.h>
 
-#include <diagnostics.h>
-#include <state.h>
+#include <IceTDevDiagnostics.h>
+#include <IceTDevState.h>
 
 static void gl_destroy(void);
 

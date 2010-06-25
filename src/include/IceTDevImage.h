@@ -12,7 +12,7 @@
 #define _ICET_IMAGE_H_
 
 #include <IceT.h>
-#include "state.h"
+#include <IceTDevState.h>
 
 ICET_EXPORT IceTSizeType icetImageBufferSize(IceTSizeType width,
                                              IceTSizeType height);

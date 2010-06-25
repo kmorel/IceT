@@ -11,7 +11,7 @@
 *****************************************************************************/
 
 #include <IceTGL.h>
-#include <context.h>
+#include <IceTDevContext.h>
 #include "test_codes.h"
 #include "test-util.h"
 

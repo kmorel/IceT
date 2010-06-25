@@ -8,11 +8,11 @@
  * of authorship are reproduced on all copies.
  */
 
-#include <diagnostics.h>
+#include <IceTDevDiagnostics.h>
 
 #include <IceT.h>
 
-#include <context.h>
+#include <IceTDevContext.h>
 
 #include <stdlib.h>
 #include <stdio.h>

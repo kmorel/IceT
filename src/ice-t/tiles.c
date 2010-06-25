@@ -10,9 +10,9 @@
 
 #include <IceT.h>
 
-#include <state.h>
-#include <context.h>
-#include <diagnostics.h>
+#include <IceTDevState.h>
+#include <IceTDevContext.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 

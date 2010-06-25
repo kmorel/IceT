@@ -7,11 +7,11 @@
 
 #include <IceTGL.h>
 
-#include <diagnostics.h>
-#include <state.h>
-#include <context.h>
+#include <IceTDevDiagnostics.h>
+#include <IceTDevState.h>
+#include <IceTDevContext.h>
 
-#include "icetGLImage.h"
+#include <IceTDevGLImage.h>
 
 #include <stdlib.h>
 #include <string.h>

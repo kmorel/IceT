@@ -5,12 +5,12 @@
  * license for use of this work by or on behalf of the U.S. Government.
  */
 
-#include "icetGLImage.h"
+#include <IceTDevGLImage.h>
 
 #include <IceTGL.h>
 
-#include <diagnostics.h>
-#include <state.h>
+#include <IceTDevDiagnostics.h>
+#include <IceTDevState.h>
 
 void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
                                 const IceTDouble *modelview_matrix,

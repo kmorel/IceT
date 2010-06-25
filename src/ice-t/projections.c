@@ -8,12 +8,12 @@
  * of authorship are reproduced on all copies.
  */
 
-#include <projections.h>
+#include <IceTDevProjections.h>
 
 #include <IceT.h>
 
-#include <state.h>
-#include <diagnostics.h>
+#include <IceTDevState.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 #include <string.h>

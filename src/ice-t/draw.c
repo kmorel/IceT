@@ -10,10 +10,10 @@
 
 #include <IceT.h>
 
-#include <state.h>
-#include <context.h>
-#include <diagnostics.h>
-#include <image.h>
+#include <IceTDevState.h>
+#include <IceTDevContext.h>
+#include <IceTDevDiagnostics.h>
+#include <IceTDevImage.h>
 
 #include <stdlib.h>
 #include <string.h>

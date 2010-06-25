@@ -10,7 +10,7 @@
 
 #include <IceTMPI.h>
 
-#include <diagnostics.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 #include <string.h>

@@ -8,9 +8,7 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
-#include <porting.h>
+#include <IceTDevPorting.h>
 
 #include <IceT.h>
 

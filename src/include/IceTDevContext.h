@@ -12,8 +12,8 @@
 #define _ICET_CONTEXT_H_
 
 #include <IceT.h>
-#include <state.h>
-#include <image.h>
+#include <IceTDevState.h>
+#include <IceTDevImage.h>
 
 struct IceTContextData {
     IceTState state;

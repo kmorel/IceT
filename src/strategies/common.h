@@ -12,7 +12,7 @@
 #define _ICET_STRATEGY_COMMON_H_
 
 #include <IceT.h>
-#include <image.h>
+#include <IceTDevImage.h>
 
 /* icetRenderTransferFullImages
 
