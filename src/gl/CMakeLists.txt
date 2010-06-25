@@ -7,9 +7,9 @@
 #
 
 SET(ICET_GL_SRCS
-        icetGLState.c
-	icetGLDraw.c
-	icetGLImage.c
+        gl_state.c
+	gl_draw.c
+	gl_image.c
 )
 
 ADD_LIBRARY(icet_gl ${ICET_GL_SRCS})
