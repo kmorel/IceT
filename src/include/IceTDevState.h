@@ -15,13 +15,7 @@
 
 typedef IceTUnsignedInt64 IceTTimeStamp;
 
-struct IceTStateValue {
-    IceTEnum type;
-    IceTInt size;
-    void *data;
-    IceTTimeStamp mod_time;
-};
-
+struct IceTStateValue;
 typedef struct IceTStateValue *IceTState;
 
 IceTState icetStateCreate(void);

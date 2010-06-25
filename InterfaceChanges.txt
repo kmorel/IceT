@@ -82,3 +82,8 @@ automatically reads back the appropriate frame buffers.
 
 Changed the development include files to IceTDev*.h.  This will prevent
 mixing them up with headers from other packages.
+
+Changed IceTContext from being an integer to being a pointer to a (hidden)
+structure.  This still allows == and keeps the internals opaque but also
+provides more type safety and prevents you from using them as integers and
+doing stupid things like add them.

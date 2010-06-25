@@ -18,43 +18,38 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct IceTContextData *context_list = NULL;
+#define CONTEXT_MAGIC_NUMBER ((IceTEnum)0x12358D15)
 
-static IceTInt num_contexts = 0;
+struct IceTContextStruct {
+    IceTEnum magic_number;
+    IceTState state;
+    IceTCommunicator communicator;
+    IceTStrategy strategy;
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+    IceTSizeType buffer_offset;
+};
 
-static IceTInt current_context_index;
-
-struct IceTContextData *icet_current_context = NULL;
+static IceTContext icet_current_context = NULL;
 
 IceTContext icetCreateContext(IceTCommunicator comm)
 {
-    IceTInt idx;
+    IceTContext context = malloc(sizeof(struct IceTContextStruct));
 
-    for (idx = 0; idx < num_contexts; idx++) {
-        if (context_list[idx].state == NULL) {
-            break;
-        }
-    }
+    context->magic_number = CONTEXT_MAGIC_NUMBER;
 
-    if (idx >= num_contexts) {
-        num_contexts += 4;
-        context_list = realloc(context_list,
-                               num_contexts*sizeof(struct IceTContextData));
-        memset(context_list + idx, 0, 4 * sizeof(struct IceTContextData));
-    }
+    context->communicator = comm->Duplicate(comm);
 
-    context_list[idx].communicator = comm->Duplicate(comm);
+    context->buffer = NULL;
+    context->buffer_size = 0;
+    context->buffer_offset = 0;
 
-    context_list[idx].buffer = NULL;
-    context_list[idx].buffer_size = 0;
-    context_list[idx].buffer_offset = 0;
+    context->state = icetStateCreate();
 
-    context_list[idx].state = icetStateCreate();
-
-    icetSetContext(idx);
+    icetSetContext(context);
     icetStateSetDefaults();
 
-    return idx;
+    return context;
 }
 
 static void callDestructor(IceTEnum dtor_variable)
@@ -72,30 +67,31 @@ static void callDestructor(IceTEnum dtor_variable)
 
 void icetDestroyContext(IceTContext context)
 {
-    struct IceTContextData *cp;
     IceTContext saved_current_context;
 
     saved_current_context = icetGetContext();
     if (context == saved_current_context) {
         icetRaiseDebug("Destroying current context.");
+        saved_current_context = NULL;
     }
 
   /* Temporarily make the context to be destroyed current. */
     icetSetContext(context);
-    cp = icet_current_context;
 
   /* Call destructors for other dependent units. */
     callDestructor(ICET_RENDER_LAYER_DESTRUCTOR);
 
   /* From here on out be careful.  We are invalidating the context. */
-    icetStateDestroy(cp->state);
-    cp->state = NULL;
+    context->magic_number = 0;
 
-    free(cp->buffer);
-    cp->communicator->Destroy(cp->communicator);
-    cp->buffer = NULL;
-    cp->buffer_size = 0;
-    cp->buffer_offset = 0;
+    icetStateDestroy(context->state);
+    context->state = NULL;
+
+    free(context->buffer);
+    context->communicator->Destroy(context->communicator);
+    context->buffer = NULL;
+    context->buffer_size = 0;
+    context->buffer_offset = 0;
 
   /* The context is now completely destroyed and now null.  Restore saved
      context. */
@@ -104,19 +100,26 @@ void icetDestroyContext(IceTContext context)
 
 IceTContext icetGetContext(void)
 {
-    return current_context_index;
+    return icet_current_context;
 }
 
 void icetSetContext(IceTContext context)
 {
-    if (   (context < 0)
-        || (context >= num_contexts)
-        || (context_list[context].state == NULL) ) {
-        icetRaiseError("No such context", ICET_INVALID_VALUE);
+    if (context && (context->magic_number != CONTEXT_MAGIC_NUMBER)) {
+        icetRaiseError("Invalid context.", ICET_INVALID_VALUE);
         return;
     }
-    current_context_index = context;
-    icet_current_context = &(context_list[context]);
+    icet_current_context = context;
+}
+
+IceTState icetGetState()
+{
+    return icet_current_context->state;
+}
+
+IceTCommunicator icetGetCommunicator()
+{
+    return icet_current_context->communicator;
 }
 
 IceTVoid *icetReserveBufferMem(IceTSizeType size)
@@ -163,7 +166,7 @@ IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
 
 void icetCopyState(IceTContext dest, const IceTContext src)
 {
-    icetStateCopy(context_list[dest].state, context_list[src].state);
+    icetStateCopy(dest->state, src->state);
 }
 
 void icetResizeBuffer(IceTSizeType size)

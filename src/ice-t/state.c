@@ -18,6 +18,13 @@
 #include <stdio.h>
 #include <string.h>
 
+struct IceTStateValue {
+    IceTEnum type;
+    IceTInt size;
+    void *data;
+    IceTTimeStamp mod_time;
+};
+
 static int typeWidth(IceTEnum type);
 static void stateSet(IceTEnum pname, IceTInt size, IceTEnum type,
                      const IceTVoid *data);

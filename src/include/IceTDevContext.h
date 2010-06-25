@@ -15,19 +15,8 @@
 #include <IceTDevState.h>
 #include <IceTDevImage.h>
 
-struct IceTContextData {
-    IceTState state;
-    IceTCommunicator communicator;
-    IceTStrategy strategy;
-    IceTVoid *buffer;
-    IceTSizeType buffer_size;
-    IceTSizeType buffer_offset;
-};
-
-ICET_EXPORT extern struct IceTContextData *icet_current_context;
-
-#define icetGetState()          (icet_current_context->state)
-#define icetGetCommunicator()   (icet_current_context->communicator)
+IceTState icetGetState();
+IceTCommunicator icetGetCommunicator();
 
 ICET_EXPORT void            icetResizeBuffer(IceTSizeType size);
 ICET_EXPORT IceTVoid *      icetReserveBufferMem(IceTSizeType size);
