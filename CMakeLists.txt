@@ -9,7 +9,7 @@
 PROJECT(ICET C)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
-# Set the current ICE-T version.
+# Set the current IceT version.
 SET(ICET_MAJOR_VERSION 2)
 SET(ICET_MINOR_VERSION 0)
 SET(ICET_PATCH_VERSION 0)
@@ -26,7 +26,7 @@ SET(ICET_EXECUTABLE_DIR ${EXECUTABLE_OUTPUT_PATH})
 SET(C_TEST_PATH ${EXECUTABLE_OUTPUT_PATH})
 
 # Turn shared libraries on or off.
-OPTION(BUILD_SHARED_LIBS "Build ICE-T with shared libraries." OFF)
+OPTION(BUILD_SHARED_LIBS "Build IceT with shared libraries." OFF)
 SET(ICET_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 
 # Options controlling support libraries
@@ -105,7 +105,7 @@ ENDIF (CMAKE_COMPILER_IS_GNUCC)
 
 # Configure testing support.
 IF (BUILD_TESTING)
-  OPTION(ICET_BUILD_TESTING "Build and run the ICE-T tests." ON)
+  OPTION(ICET_BUILD_TESTING "Build and run the IceT tests." ON)
   MARK_AS_ADVANCED(ICET_BUILD_TESTING)
 ENDIF (BUILD_TESTING)
 
@@ -156,7 +156,7 @@ ENDIF(BUILD_SHARED_LIBS)
 CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/IceTConfig.h.in
                ${ICET_BINARY_DIR}/src/include/IceTConfig.h)
 
-# Point to ICE-T include files.
+# Point to IceT include files.
 INCLUDE_DIRECTORIES(${ICET_SOURCE_DIR}/src/include)
 INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
 
@@ -188,7 +188,7 @@ INSTALL(FILES ${ICET_BINARY_DIR}/ICETBuildSettings.cmake DESTINATION ${ICET_INST
 EXPORT_LIBRARY_DEPENDENCIES(${ICET_BINARY_DIR}/ICETLibraryDepends.cmake)
 INSTALL(FILES ${ICET_BINARY_DIR}/ICETLibraryDepends.cmake DESTINATION ${ICET_INSTALL_LIB_DIR})
 
-# Save ICE-T specific configuration options.
+# Save IceT specific configuration options.
 #First, configuration for build directory.
 SET(ICET_INCLUDE_DIRS_CONFIG "${ICET_SOURCE_DIR}/src/include;${ICET_BINARY_DIR}/src/include")
 SET(ICET_LIBRARY_DIRS_CONFIG ${ICET_LIBRARY_DIR})

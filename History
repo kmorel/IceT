@@ -1,6 +1,6 @@
 ** -*- text -*- *************************************************************
 **
-** Revision history of ICE-T.
+** Revision history of IceT.
 **
 ** Copyright 2003 Sandia Coporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
@@ -30,7 +30,7 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 	enabled.
 
 	Added ability to handle replicated data.  If geometry is replicated
-	over several processors, ICE-T will break the amount of screen the
+	over several processors, IceT will break the amount of screen the
 	data is replicated over and divide it amongst the processors that
 	all contain the same data.
 
@@ -55,7 +55,7 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 	Fixed a problem when rendering objects behind the viewer with a
 	perspective projection matrix.
 
-Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
+Revision 0.4: Abstracted the image formats a bit.  IceT can now perform
 	a composite on just the depth buffer.  This is useful when creating
 	shadow buffers.  This should also make it easier to implement
 	image-only compositing for parallel volume rendering.
@@ -67,10 +67,10 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 
 	Removed icetInit, which only called icetCreateContext to make a
 	"default" context.  The only real consiquence of this change is
-	that ICE-T can now be placed in a state where it has no current
+	that IceT can now be placed in a state where it has no current
 	context.  This could lead to seg-faults if the user does not set
-	another context as current and then tries to use ICE-T, but this is
-	an erroneous use of ICE-T anyway.
+	another context as current and then tries to use IceT, but this is
+	an erroneous use of IceT anyway.
 
 	Changed build system to use CMake instead of autoconf.
 
@@ -80,7 +80,7 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	is that a default strategy is no longer set.
 
 	patch 1: More updates to the build system to actually allow other
-	CMake-built programs use ICE-T.
+	CMake-built programs use IceT.
 
 	patch 2: Fixed a bug with the background color.
 
@@ -105,7 +105,7 @@ Revision 0.2: A whole host of fixes.  Added a regression testing suite.
 	with split strategy under Myrinet.  Probably either race condition
 	or Myrinet/MPI bug.
 
-Revision 0.1: Semi-stable after movement from MTIC to ICE-T and building
+Revision 0.1: Semi-stable after movement from MTIC to IceT and building
 	autoconf scripts for use on Win32 rather than MSVC project files.
 	Found some issues with split and reduce strategies after moving to
 	Myrinet.

@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 #
-# UseICET.cmake - File to INCLUDE in a CMakeLists.txt file to use ICE-T.
+# UseICET.cmake - File to INCLUDE in a CMakeLists.txt file to use IceT.
 #
 # After including this file, you need only to add icet, icet_strategies, and,
 # perhaps, icet_mpi libraries with the LINK_LIBRARIES command.
@@ -15,17 +15,17 @@
 # Id
 #
 
-#Load compiler settings used for ICE-T.
+#Load compiler settings used for IceT.
 #On second thought, why enforce the duplication of compiler flags?
 #INCLUDE(${CMAKE_ROOT}/Modules/CMakeImportBuildSettings.cmake)
 #CMAKE_IMPORT_BUILD_SETTINGS(${ICET_BUILD_SETTINGS_FILE})
 
-# Add compiler flags needed to use ICE-T.
+# Add compiler flags needed to use IceT.
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ICET_REQUIRED_C_FLAGS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ICET_REQUIRED_CXX_FLAGS}")
 
-# Add include directories needed to use ICE-T.
+# Add include directories needed to use IceT.
 INCLUDE_DIRECTORIES(${ICET_INCLUDE_DIRS})
 
-# Add link directories needed to use ICE-T.
+# Add link directories needed to use IceT.
 LINK_DIRECTORIES(${ICET_LIBRARY_DIRS})

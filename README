@@ -1,6 +1,6 @@
 ** -*- text -*- *************************************************************
 **
-** README and installation instructions for ICE-T
+** README and installation instructions for IceT
 **
 ** Author: Kenneth Moreland (kmorel@sandia.gov)
 **
@@ -13,12 +13,12 @@
 **
 *****************************************************************************
 
-Welcome to the ICE-T build process.  ICE-T uses CMake to automatically
+Welcome to the IceT build process.  IceT uses CMake to automatically
 tailor itself to your system, so compiling should be relatively painless.
-Before building ICE-T you will need to install CMake on your system.  You
+Before building IceT you will need to install CMake on your system.  You
 can get CMake from www.cmake.org.
 
-Once CMake is installed and the ICE-T source is extracted, run the
+Once CMake is installed and the IceT source is extracted, run the
 interactive CMake configuration tool.  On UNIX, run ccmake.  On Win32, run
 the CMake program on the desktop or in the start menu.  Note that when
 using the interactive configuration tool, you will need to ``configure''

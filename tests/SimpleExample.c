@@ -6,7 +6,7 @@
 ** modification, are permitted provided that this Notice and any statement
 ** of authorship are reproduced on all copies.
 **
-** This test provides a simple example of using ICE-T to perform parallel
+** This test provides a simple example of using IceT to perform parallel
 ** rendering.
 *****************************************************************************/
 
@@ -45,7 +45,7 @@ static void draw(void)
    * to what is was when the function is called.  Remember, the draw
    * function may be called multiple times and transformations may be
    * commuted.  Also, the bounds of the drawn geometry must be correctly
-   * transformed before given to ICE-T.  ICE-T has no way of knowing about
+   * transformed before given to IceT.  IceT has no way of knowing about
    * transformations done here.  It is an error to change the projection
    * matrix in the draw function. */
     glPushMatrix();
@@ -60,7 +60,7 @@ static int SimpleExampleRun()
     float angle;
 
   /* Normally, the first thing that you do is set up your communication and
-   * then create at least one ICE-T context.  This has already been done in
+   * then create at least one IceT context.  This has already been done in
    * the calling function (i.e. icetTests_mpi.c).  See the init_mpi_comm in
    * mpi_comm.h for an example.
    */
@@ -77,12 +77,12 @@ static int SimpleExampleRun()
    * color blending. */
     glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
 
-  /* Give ICE-T a function that will issue the OpenGL drawing commands. */
+  /* Give IceT a function that will issue the OpenGL drawing commands. */
     icetGLDrawCallback(draw);
 
-  /* Give ICE-T the bounds of the polygons that will be drawn.  Note that
+  /* Give IceT the bounds of the polygons that will be drawn.  Note that
    * we must take into account any transformation that happens within the
-   * draw function (but ICE-T will take care of any transformation that
+   * draw function (but IceT will take care of any transformation that
    * happens before icetDrawFrame). */
     icetBoundingBoxf(-0.5f+rank, 0.5f+rank, -0.5, 0.5, -0.5, 0.5);
 
@@ -119,7 +119,7 @@ static int SimpleExampleRun()
         icetAddTile(SCREEN_WIDTH,0,             SCREEN_WIDTH, SCREEN_HEIGHT, 3);
     }
 
-  /* Tell ICE-T what strategy to use.  The REDUCE strategy is an all-around
+  /* Tell IceT what strategy to use.  The REDUCE strategy is an all-around
    * good performer. */
     icetStrategy(ICET_STRATEGY_REDUCE);
 
@@ -143,12 +143,12 @@ static int SimpleExampleRun()
 
   /* Here is an example of an animation loop. */
     for (angle = 0; angle < 360; angle += 10) {
-      /* We can set up a modelview matrix here and ICE-T will factor this
+      /* We can set up a modelview matrix here and IceT will factor this
        * in determining the screen projection of the geometry.  Note that
-       * there is further transformation in the draw function that ICE-T
+       * there is further transformation in the draw function that IceT
        * cannot take into account.  That transformation is handled in the
        * application by deforming the bounds before giving them to
-       * ICE-T. */
+       * IceT. */
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glRotatef(angle, 0.0, 1.0, 0.0);
@@ -156,11 +156,11 @@ static int SimpleExampleRun()
         glTranslatef(-(num_proc-1)/2.0f, 0.0, 0.0);
 
       /* Instead of calling draw() directly, call it indirectly through
-       * icetDrawFrame().  ICE-T will automatically handle image
+       * icetDrawFrame().  IceT will automatically handle image
        * compositing. */
         icetGLDrawFrame();
 
-      /* For obvious reasons, ICE-T should be run in double-buffered frame
+      /* For obvious reasons, IceT should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a
        * synchronize (a barrier is often about as good as you can do) and
        * then a swap buffers. */

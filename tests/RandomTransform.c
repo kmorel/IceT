@@ -333,7 +333,7 @@ static int RandomTransformRun()
         ICET_COMM_RECV(background_color, 3, ICET_FLOAT, 0, 32);
     }
 
-  /* Set up ICE-T. */
+  /* Set up IceT. */
     icetGLDrawCallback(draw);
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.125, 0.125);
     icetEnable(ICET_CORRECT_COLORED_BACKGROUND);

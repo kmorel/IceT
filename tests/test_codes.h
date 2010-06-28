@@ -19,9 +19,9 @@
  * at least 2. */
 #define TEST_NOT_RUN	-1
 
-/* Return this if the test failed for a reason not related to ice-t.
+/* Return this if the test failed for a reason not related to IceT.
  * Example: could not read or write to a file.  Note that out of memory
- * errors may be caused by ice-t memory leaks. */
+ * errors may be caused by IceT memory leaks. */
 #define TEST_NOT_PASSED	-2
 
 /* Return this if the test failed outright. */
