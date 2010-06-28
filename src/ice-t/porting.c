@@ -8,10 +8,9 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceTDevPorting.h>
 
-#include <porting.h>
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 #ifndef WIN32
 #include <sys/time.h>

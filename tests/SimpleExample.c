@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -12,10 +10,9 @@
 ** rendering.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #ifdef __APPLE__
 #  include <OpenGL/gl.h>
@@ -28,8 +25,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-GLint rank;
-GLint num_proc;
+IceTInt rank;
+IceTInt num_proc;
 
 static void draw(void)
 {
@@ -58,13 +55,9 @@ static void draw(void)
     glPopMatrix();
 }
 
-int SimpleExample(int argc, char * argv[])
+static int SimpleExampleRun()
 {
     float angle;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
   /* Normally, the first thing that you do is set up your communication and
    * then create at least one ICE-T context.  This has already been done in
@@ -85,7 +78,7 @@ int SimpleExample(int argc, char * argv[])
     glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
 
   /* Give ICE-T a function that will issue the OpenGL drawing commands. */
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
 
   /* Give ICE-T the bounds of the polygons that will be drawn.  Note that
    * we must take into account any transformation that happens within the
@@ -165,7 +158,7 @@ int SimpleExample(int argc, char * argv[])
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  ICE-T will automatically handle image
        * compositing. */
-        icetDrawFrame();
+        icetGLDrawFrame();
 
       /* For obvious reasons, ICE-T should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a
@@ -174,6 +167,14 @@ int SimpleExample(int argc, char * argv[])
         swap_buffers();
     }
 
-    finalize_test(TEST_PASSED);
     return TEST_PASSED;
+}
+
+int SimpleExample(int argc, char * argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(SimpleExampleRun);
 }

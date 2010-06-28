@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -11,10 +9,9 @@
 ** Tests to make sure blank tiles are correctly handled.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,24 +30,24 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int BlankTiles(int argc, char *argv[])
+static int BlankTilesRun()
 {
     int i, j, x, y;
-    GLubyte *cb;
+    IceTImage image;
+    IceTUByte *cb;
     int result = TEST_PASSED;
-    GLint rank, num_proc;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
+    IceTInt rank, num_proc;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
     glClearColor(0.0, 0.0, 0.0, 0.0);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
     icetBoundingBoxf(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
+
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
         int tile_dim;
@@ -74,14 +71,14 @@ int BlankTiles(int argc, char *argv[])
             glOrtho(-1, tile_dim*2-1, -1, tile_dim*2-1, -1, 1);
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
-            icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (rank == 0) {
                 printf("Rank == 0, tile should have stuff in it.\n");
             } else if (rank < tile_dim*tile_dim) {
                 printf("Checking returned image.\n");
-                cb = icetGetColorBuffer();
+                cb = icetImageGetColorUByte(image);
                 for (j = 0; j < SCREEN_WIDTH*SCREEN_HEIGHT*4; j++) {
                     if (cb[j] != 0) {
                         printf("Found bad pixel!!!!!!!!\n");
@@ -95,8 +92,14 @@ int BlankTiles(int argc, char *argv[])
         }
     }
 
-    printf("Cleaning up.\n");
-
-    finalize_test(result);
     return result;
+}
+
+int BlankTiles(int argc, char *argv[])
+{
+  /* To remove warning */
+  (void)argc;
+  (void)argv;
+
+  return run_test(BlankTilesRun);
 }

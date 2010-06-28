@@ -1,0 +1,124 @@
+/* -*- c -*- *******************************************************/
+/*
+ * Copyright (C) 2010 Sandia Corporation
+ * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
+ * license for use of this work by or on behalf of the U.S. Government.
+ */
+
+#include <IceTDevGLImage.h>
+
+#include <IceTGL.h>
+
+#include <IceTDevDiagnostics.h>
+#include <IceTDevState.h>
+
+void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
+                                const IceTDouble *modelview_matrix,
+                                const IceTFloat *background_color,
+                                const IceTInt *readback_viewport,
+                                IceTImage result)
+{
+    IceTSizeType width = icetImageGetWidth(result);
+    IceTSizeType height = icetImageGetHeight(result);
+    GLint gl_viewport[4];
+    glGetIntegerv(GL_VIEWPORT, gl_viewport);
+
+  /* Check OpenGL state. */
+    {
+        if ((gl_viewport[2] != width) || (gl_viewport[3] != height)) {
+            icetRaiseError("OpenGL viewport different than expected."
+                           " Was it changed?", ICET_SANITY_CHECK_FAIL);
+        }
+    }
+
+  /* Set up OpenGL. */
+    {
+      /* Load the matrices. */
+        glMatrixMode(GL_PROJECTION);
+        glLoadMatrixd(projection_matrix);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadMatrixd(modelview_matrix);
+
+      /* Set the clear color as the background IceT currently wants. */
+        glClearColor(background_color[0], background_color[1],
+                     background_color[2], background_color[3]);
+    }
+
+  /* Call the rendering callback. */
+    {
+        IceTVoid *value;
+        IceTGLDrawCallbackType callback;
+        icetRaiseDebug("Calling OpenGL draw function.");
+        icetGetPointerv(ICET_GL_DRAW_FUNCTION, &value);
+        callback = (IceTGLDrawCallbackType)value;
+        (*callback)();
+    }
+
+  /* Read the OpenGL buffers. */
+    {
+        IceTEnum color_format = icetImageGetColorFormat(result);
+        IceTEnum depth_format = icetImageGetDepthFormat(result);
+        IceTEnum readbuffer;
+        IceTSizeType x_offset = gl_viewport[0] + readback_viewport[0];
+        IceTSizeType y_offset = gl_viewport[1] + readback_viewport[1];
+        IceTDouble read_time;
+        IceTDouble render_time;
+        IceTDouble timer;
+
+        glPixelStorei(GL_PACK_ROW_LENGTH, icetImageGetWidth(result));
+
+      /* These pixel store parameters are not working on one of the platforms
+       * I am testing on (thank you Mac).  Instead of using these, just offset
+       * the buffers we read in from. */
+        /* glPixelStorei(GL_PACK_SKIP_PIXELS, readback_viewport[0]); */
+        /* glPixelStorei(GL_PACK_SKIP_ROWS, readback_viewport[1]); */
+
+        icetGetEnumv(ICET_GL_READ_BUFFER, &readbuffer);
+        glReadBuffer(readbuffer);
+
+        timer = icetWallTime();
+
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUInt *colorBuffer = icetImageGetColorUInt(result);
+            glReadPixels(x_offset, y_offset,
+                         readback_viewport[2], readback_viewport[3],
+                         GL_RGBA, GL_UNSIGNED_BYTE,
+                         colorBuffer + (  readback_viewport[0]
+                                        + width*readback_viewport[1]));
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            IceTFloat *colorBuffer = icetImageGetColorFloat(result);
+            glReadPixels(x_offset, y_offset,
+                         readback_viewport[2], readback_viewport[3],
+                         GL_RGBA, GL_FLOAT,
+                         colorBuffer + 4*(  readback_viewport[0]
+                                          + width*readback_viewport[1]));
+        } else if (color_format != ICET_IMAGE_COLOR_NONE) {
+            icetRaiseError("Invalid color format.", ICET_SANITY_CHECK_FAIL);
+        }
+
+        if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
+            IceTFloat *depthBuffer = icetImageGetDepthFloat(result);;
+            glReadPixels(x_offset, y_offset,
+                         readback_viewport[2], readback_viewport[3],
+                         GL_DEPTH_COMPONENT, GL_FLOAT,
+                         depthBuffer + (  readback_viewport[0]
+                                        + width*readback_viewport[1]));
+        } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+            icetRaiseError("Invalid depth format.", ICET_SANITY_CHECK_FAIL);
+        }
+
+        glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+        /* glPixelStorei(GL_PACK_SKIP_PIXELS, 0); */
+        /* glPixelStorei(GL_PACK_SKIP_ROWS, 0); */
+
+        icetGetDoublev(ICET_BUFFER_READ_TIME, &read_time);
+        read_time += icetWallTime() - timer;
+        icetStateSetDouble(ICET_BUFFER_READ_TIME, read_time);
+
+      /* Subtract read time from render time since the render time is being
+         recorded as we are in this funtion. */
+        icetGetDoublev(ICET_RENDER_TIME, &render_time);
+        render_time -= read_time;
+        icetStateSetDouble(ICET_RENDER_TIME, render_time);
+    }
+}

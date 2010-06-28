@@ -8,13 +8,12 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceT.h>
 
-#include <GL/ice-t.h>
-#include <image.h>
-#include <state.h>
-#include <context.h>
-#include <diagnostics.h>
+#include <IceTDevImage.h>
+#include <IceTDevState.h>
+#include <IceTDevContext.h>
+#include <IceTDevDiagnostics.h>
 #include "common.h"
 
 #include <stdlib.h>
@@ -25,112 +24,110 @@
 #endif
 
 static IceTImage reduceCompose(void);
-static GLint delegate(GLint **tile_image_destp,
-		      GLint **compose_groupp, GLint *group_sizep,
-		      GLint *group_image_destp,
-		      GLint *num_receivingp,
-		      GLint buffer_size);
+static IceTInt delegate(IceTInt **tile_image_destp,
+                        IceTInt **compose_groupp, IceTInt *group_sizep,
+                        IceTInt *group_image_destp,
+                        IceTSizeType buffer_size);
 
 
 IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
 
 static IceTImage reduceCompose(void)
 {
-    IceTSparseImage inImage;
-    IceTSparseImage outImage;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
     IceTImage image;
-    GLint max_pixels;
-    GLint num_processes;
-    GLint tile_displayed;
-    GLint buffer_size;
+    IceTInt max_width, max_height;
+    IceTInt num_processes;
+    IceTInt tile_displayed;
+    IceTSizeType image_size, sparse_image_size;
+    IceTSizeType buffer_size;
 
-    GLint *tile_image_dest;
-    GLint *compose_group, group_size, group_image_dest;
-    GLint num_receiving;
-    GLint compose_tile;
+    IceTInt *tile_image_dest;
+    IceTInt *compose_group, group_size, group_image_dest;
+    IceTInt compose_tile;
 
     icetRaiseDebug("In reduceCompose");
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
 
-    buffer_size = (  2*icetSparseImageSize(max_pixels)
-		   + icetFullImageSize(max_pixels));
+    sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
+    image_size = icetImageBufferSize(max_width, max_height);
+    buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
 			    &compose_group, &group_size, &group_image_dest,
-			    &num_receiving,
 			    buffer_size);
 
-    inImage  = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    outImage = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    image    = icetReserveBufferMem(icetFullImageSize(max_pixels));
+    inSparseImageBuffer  = icetReserveBufferMem(sparse_image_size);
+    outSparseImage       = icetReserveBufferSparseImage(max_width, max_height);
+    image                = icetReserveBufferImage(max_width, max_height);
 
-    icetRenderTransferFullImages(image, inImage, outImage,
-				 num_receiving, tile_image_dest);
+    icetRenderTransferFullImages(image,
+                                 inSparseImageBuffer,
+                                 outSparseImage,
+                                 tile_image_dest);
 
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
 	icetBswapCompose(compose_group, group_size, group_image_dest,
-			 image, inImage, outImage);
+			 image, inSparseImageBuffer, outSparseImage);
     } else if (group_size > 0) {
 	icetRaiseDebug("Doing tree compose");
 	icetTreeCompose(compose_group, group_size, group_image_dest,
-			image, inImage);
+			image, inSparseImageBuffer, outSparseImage);
     } else {
 	icetRaiseDebug("Clearing pixels");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        icetClearImage(image);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
-      /* Clear tile if nothing drawn in it. */
+      /* Return empty image if nothing in this tile. */
 	icetRaiseDebug("Clearing pixels");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        icetClearImage(image);
     }
 
     return image;
 }
 
-static GLint delegate(GLint **tile_image_destp,
-		      GLint **compose_groupp, GLint *group_sizep,
-		      GLint *group_image_destp,
-		      GLint *num_receivingp,
-		      GLint buffer_size)
+static IceTInt delegate(IceTInt **tile_image_destp,
+                        IceTInt **compose_groupp, IceTInt *group_sizep,
+                        IceTInt *group_image_destp,
+                        IceTSizeType buffer_size)
 {
-    GLboolean *all_contained_tiles_masks;
-    GLint *contrib_counts;
-    GLint total_image_count;
+    IceTBoolean *all_contained_tiles_masks;
+    IceTInt *contrib_counts;
+    IceTInt total_image_count;
 
-    GLint num_tiles;
-    GLint num_processes;
-    GLint rank;
-    GLint *tile_display_nodes;
-    GLint *composite_order;
+    IceTInt num_tiles;
+    IceTInt num_processes;
+    IceTInt rank;
+    IceTInt *tile_display_nodes;
+    IceTInt *composite_order;
 
-    GLint *num_proc_for_tile;
-    GLint *node_assignment;
-    GLint *tile_proc_groups;
-    GLint *group_sizes;
-    GLint *tile_image_dest;
-    GLint group_image_dest = 0;
-    GLint *contributors;
+    IceTInt *num_proc_for_tile;
+    IceTInt *node_assignment;
+    IceTInt *tile_proc_groups;
+    IceTInt *group_sizes;
+    IceTInt *tile_image_dest;
+    IceTInt group_image_dest = 0;
+    IceTInt *contributors;
 
-    GLint pcount;
+    IceTInt pcount;
 
-    GLint tile, node;
-    GLint snode, rnode, dest;
-    GLint piece;
-    GLint first_loop;
-    GLint num_receiving;
+    IceTInt tile, node;
+    IceTInt snode, rnode, dest;
+    IceTInt piece;
+    IceTInt first_loop;
 
     all_contained_tiles_masks
-	= icetUnsafeStateGet(ICET_ALL_CONTAINED_TILES_MASKS);
-    contrib_counts = icetUnsafeStateGet(ICET_TILE_CONTRIB_COUNTS);
+	= icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
+    contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
     icetGetIntegerv(ICET_TOTAL_IMAGE_COUNT, &total_image_count);
-    tile_display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
-    composite_order = icetUnsafeStateGet(ICET_COMPOSITE_ORDER);
+    tile_display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
+    composite_order = icetUnsafeStateGetInteger(ICET_COMPOSITE_ORDER);
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processes);
@@ -139,31 +136,30 @@ static GLint delegate(GLint **tile_image_destp,
     if (total_image_count < 1) {
 	icetRaiseDebug("No nodes are drawing.");
 	*group_sizep = 0;
-	*num_receivingp = 0;
 	icetResizeBuffer(buffer_size);
 	return -1;
     }
 
-    icetResizeBuffer(  num_tiles*sizeof(GLint)
-		     + num_processes*sizeof(GLint)
-		     + num_tiles*num_processes*sizeof(GLint)
-		     + num_tiles*sizeof(GLint)
-		     + num_tiles*sizeof(GLint)
-		     + num_processes*sizeof(GLint)
+    icetResizeBuffer(  num_tiles*sizeof(IceTInt)
+		     + num_processes*sizeof(IceTInt)
+		     + num_tiles*num_processes*sizeof(IceTInt)
+		     + num_tiles*sizeof(IceTInt)
+		     + num_tiles*sizeof(IceTInt)
+		     + num_processes*sizeof(IceTInt)
 		     + buffer_size);
-    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    node_assignment   = icetReserveBufferMem(num_processes * sizeof(GLint));
+    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    node_assignment   = icetReserveBufferMem(num_processes * sizeof(IceTInt));
     tile_proc_groups  = icetReserveBufferMem(  num_tiles * num_processes
-					     * sizeof(GLint));
-    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(GLint));
-    contributors      = icetReserveBufferMem(num_processes * sizeof(GLint));
+					     * sizeof(IceTInt));
+    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
+    contributors      = icetReserveBufferMem(num_processes * sizeof(IceTInt));
 
   /* Decide the minimum amount of processes that should be added to each
      tile. */
     pcount = 0;
     for (tile = 0; tile < num_tiles; tile++) {
-	GLint allocate = (contrib_counts[tile]*num_processes)/total_image_count;
+	IceTInt allocate = (contrib_counts[tile]*num_processes)/total_image_count;
       /* Make sure at least one process is assigned to tiles that have at
 	 least one image. */
 	if ((allocate < 1) && (contrib_counts[tile] > 0)) allocate = 1;
@@ -181,7 +177,7 @@ static GLint delegate(GLint **tile_image_destp,
     while (num_processes > pcount) {
       /* Find the tile with the largest image to process ratio that
 	 can still have a process added to it. */
-	GLint max = 0;
+	IceTInt max = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] < contrib_counts[tile])
 		&& (   (num_proc_for_tile[max] == contrib_counts[max])
@@ -204,7 +200,7 @@ static GLint delegate(GLint **tile_image_destp,
     while (num_processes < pcount) {
       /* Find tile with the smallest image to process ratio that can still
 	 have a process removed. */
-	GLint min = 0;
+	IceTInt min = 0;
 	for (tile = 1; tile < num_tiles; tile++) {
 	    if (   (num_proc_for_tile[tile] > 1)
 		&& (   (num_proc_for_tile[min] < 2)
@@ -219,7 +215,7 @@ static GLint delegate(GLint **tile_image_destp,
     }
 
   /* Clear out arrays. */
-    memset(group_sizes, 0, num_tiles*sizeof(GLint));
+    memset(group_sizes, 0, num_tiles*sizeof(IceTInt));
     for (node = 0; node < num_processes; node++) {
 	node_assignment[node] = -1;
     }
@@ -240,7 +236,7 @@ group_sizes[(tile)]++;
   /* Assign each node to a tile it is rendering, if possible. */
     for (node = 0; node < num_processes; node++) {
 	if (node_assignment[node] < 0) {
-	    GLboolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
+	    IceTBoolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
 	    for (tile = 0; tile < num_tiles; tile++) {
 		if (   (tile_mask[tile])
 		    && (group_sizes[tile] < num_proc_for_tile[tile])) {
@@ -260,11 +256,9 @@ group_sizes[(tile)]++;
 	}
     }
 
-    num_receiving = 0;
-
   /* Now figure out who I am sending to and how many I am receiving. */
     for (tile = 0; tile < num_tiles; tile++) {
-	GLint *proc_group = tile_proc_groups + tile*num_processes;
+	IceTInt *proc_group = tile_proc_groups + tile*num_processes;
 
 	if (   (node_assignment[rank] != tile)
 	    && !all_contained_tiles_masks[rank*num_tiles + tile]) {
@@ -281,7 +275,6 @@ group_sizes[(tile)]++;
 	    if (   (node_assignment[rank] == tile)
 		&& all_contained_tiles_masks[rank*num_tiles + tile]) {
 		tile_image_dest[tile] = rank;
-		num_receiving++;
 	    }
 
 	    snode = -1;
@@ -318,18 +311,13 @@ group_sizes[(tile)]++;
 		if (snode == rank) {
 		    tile_image_dest[tile] = dest;
 		}
-
-	      /* Check to see if this node is receiving the image data. */
-		if (dest == rank) {
-		    num_receiving++;
-		}
 	    }
 	} else {
 	  /* We are doing an ordered composite.  It is vital that each process
 	   * gets images that are consecutive in the ordering.  Communication
 	   * costs come second. */
 
-	    GLint num_contributors = 0;
+	    IceTInt num_contributors = 0;
 	    int i;
 	  /* First, we make a list of all processes contributing to this
 	   * tile in the order in which the images need to be composed.
@@ -406,11 +394,6 @@ group_sizes[(tile)]++;
 		if (snode == rank) {
 		    tile_image_dest[tile] = rnode;
 		}
-
-	      /* Check to see if this node is receiving the image data. */
-		if (rnode == rank) {
-		    num_receiving++;
-		}
 	    }
 	}
     }
@@ -420,12 +403,10 @@ group_sizes[(tile)]++;
 	*compose_groupp = NULL;
 	*group_sizep = 0;
 	*group_image_destp = 0;
-	*num_receivingp = 0;
     } else {
 	*compose_groupp = tile_proc_groups+node_assignment[rank]*num_processes;
 	*group_sizep = group_sizes[node_assignment[rank]];
 	*group_image_destp = group_image_dest;
-	*num_receivingp = num_receiving;
     }
     return node_assignment[rank];
 }

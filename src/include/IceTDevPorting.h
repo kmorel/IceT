@@ -8,12 +8,9 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#ifndef _ICET_PORTING_H_
+#define _ICET_PORTING_H_
 
-#include <GL/ice-t.h>
+/* Currently, everything defined in porting.c is declared in IceT.h. */
 
-ICET_EXPORT void icetProjectTile(GLint tile);
-
-ICET_EXPORT void icetGetViewportProject(GLint x, GLint y,
-					GLsizei width, GLsizei height,
-					GLdouble *mat_out);
+#endif /*_ICET_PORTING_H_*/

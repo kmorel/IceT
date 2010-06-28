@@ -8,20 +8,26 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceTDevState.h>
 
-#include <state.h>
-
-#include <GL/ice-t.h>
-#include <context.h>
-#include <diagnostics.h>
+#include <IceT.h>
+#include <IceTDevContext.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-static int typeWidth(GLenum type);
-static void stateSet(GLenum pname, GLint size, GLenum type, const GLvoid *data);
+struct IceTStateValue {
+    IceTEnum type;
+    IceTInt size;
+    void *data;
+    IceTTimeStamp mod_time;
+};
+
+static int typeWidth(IceTEnum type);
+static void stateSet(IceTEnum pname, IceTInt size, IceTEnum type,
+                     const IceTVoid *data);
 
 IceTState icetStateCreate(void)
 {
@@ -35,7 +41,7 @@ IceTState icetStateCreate(void)
 
 void icetStateDestroy(IceTState state)
 {
-    GLenum i;
+    IceTEnum i;
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
         if (state[i].type != ICET_NULL) {
@@ -47,7 +53,7 @@ void icetStateDestroy(IceTState state)
 
 void icetStateCopy(IceTState dest, const IceTState src)
 {
-    GLenum i;
+    IceTEnum i;
     int type_width;
     IceTTimeStamp mod_time;
 
@@ -57,9 +63,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
         if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
             || (i == ICET_DATA_REPLICATION_GROUP)
             || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
-            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS)
-            || (i == ICET_COLOR_BUFFER) || (i == ICET_COLOR_BUFFER_VALID)
-            || (i == ICET_DEPTH_BUFFER) || (i == ICET_DEPTH_BUFFER_VALID) )
+            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS) )
         {
             continue;
         }
@@ -82,21 +86,23 @@ void icetStateCopy(IceTState dest, const IceTState src)
     }
 }
 
-static GLfloat black[] = {0.0, 0.0, 0.0, 0.0};
+static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
 
 void icetStateSetDefaults(void)
 {
-    GLint *int_array;
+    IceTInt *int_array;
     int i;
 
     icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_WARNINGS);
 
     icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
     icetStateSetInteger(ICET_NUM_PROCESSES, ICET_COMM_SIZE());
-    icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1);
+    /* icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1); */
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
     icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
     icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
+    icetStateSetInteger(ICET_COLOR_FORMAT, ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetStateSetInteger(ICET_DEPTH_FORMAT, ICET_IMAGE_DEPTH_FLOAT);
 
     icetResetTiles();
     icetStateSetIntegerv(ICET_DISPLAY_NODES, 0, NULL);
@@ -104,9 +110,8 @@ void icetStateSetDefaults(void)
     icetStateSetDoublev(ICET_GEOMETRY_BOUNDS, 0, NULL);
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
-    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-                           ICET_COLOR_BUFFER_BIT);
-    int_array = malloc(ICET_COMM_SIZE() * sizeof(GLint));
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+    int_array = malloc(ICET_COMM_SIZE() * sizeof(IceTInt));
     for (i = 0; i < ICET_COMM_SIZE(); i++) {
         int_array[i] = i;
     }
@@ -116,85 +121,73 @@ void icetStateSetDefaults(void)
 
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, ICET_COMM_RANK());
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
+    icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
-    icetStateSetInteger(ICET_READ_BUFFER, GL_BACK);
-#ifdef _WIN32
-    icetStateSetInteger(ICET_COLOR_FORMAT, GL_BGRA_EXT);
-#else
-    icetStateSetInteger(ICET_COLOR_FORMAT, GL_RGBA);
-#endif
-    icetStateSetInteger(ICET_FRAME_COUNT, 0);
+    icetStateSetPointer(ICET_RENDER_LAYER_DESTRUCTOR, NULL);
 
     icetEnable(ICET_FLOATING_VIEWPORT);
     icetDisable(ICET_ORDERED_COMPOSITE);
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
-    icetEnable(ICET_DISPLAY);
-    icetDisable(ICET_DISPLAY_COLORED_BACKGROUND);
-    icetDisable(ICET_DISPLAY_INFLATE);
-    icetEnable(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
+    icetEnable(ICET_COMPOSITE_ONE_BUFFER);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
-
-    icetStateSetPointer(ICET_COLOR_BUFFER, NULL);
-    icetStateSetPointer(ICET_DEPTH_BUFFER, NULL);
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
+    icetStateSetBoolean(ICET_RENDER_BUFFER_SIZE, 0);
 
     icetStateResetTiming();
 }
 
-void icetStateSetDoublev(GLenum pname, GLint size, const GLdouble *data)
+void icetStateSetDoublev(IceTEnum pname, IceTInt size, const IceTDouble *data)
 {
     stateSet(pname, size, ICET_DOUBLE, data);
 }
-void icetStateSetFloatv(GLenum pname, GLint size, const GLfloat *data)
+void icetStateSetFloatv(IceTEnum pname, IceTInt size, const IceTFloat *data)
 {
     stateSet(pname, size, ICET_FLOAT, data);
 }
-void icetStateSetIntegerv(GLenum pname, GLint size, const GLint *data)
+void icetStateSetIntegerv(IceTEnum pname, IceTInt size, const IceTInt *data)
 {
     stateSet(pname, size, ICET_INT, data);
 }
-void icetStateSetBooleanv(GLenum pname, GLint size, const GLboolean *data)
+void icetStateSetBooleanv(IceTEnum pname, IceTInt size, const IceTBoolean *data)
 {
     stateSet(pname, size, ICET_BOOLEAN, data);
 }
-void icetStateSetPointerv(GLenum pname, GLint size, const GLvoid **data)
+void icetStateSetPointerv(IceTEnum pname, IceTInt size, const IceTVoid **data)
 {
     stateSet(pname, size, ICET_POINTER, data);
 }
 
-void icetStateSetDouble(GLenum pname, GLdouble value)
+void icetStateSetDouble(IceTEnum pname, IceTDouble value)
 {
     stateSet(pname, 1, ICET_DOUBLE, &value);
 }
-void icetStateSetFloat(GLenum pname, GLfloat value)
+void icetStateSetFloat(IceTEnum pname, IceTFloat value)
 {
     stateSet(pname, 1, ICET_FLOAT, &value);
 }
-void icetStateSetInteger(GLenum pname, GLint value)
+void icetStateSetInteger(IceTEnum pname, IceTInt value)
 {
     stateSet(pname, 1, ICET_INT, &value);
 }
-void icetStateSetBoolean(GLenum pname, GLboolean value)
+void icetStateSetBoolean(IceTEnum pname, IceTBoolean value)
 {
     stateSet(pname, 1, ICET_BOOLEAN, &value);
 }
-void icetStateSetPointer(GLenum pname, const GLvoid *value)
+void icetStateSetPointer(IceTEnum pname, const IceTVoid *value)
 {
     stateSet(pname, 1, ICET_POINTER, &value);
 }
 
-GLenum icetStateGetType(GLenum pname)
+IceTEnum icetStateGetType(IceTEnum pname)
 {
     return icetGetState()[pname].type;
 }
-GLint icetStateGetSize(GLenum pname)
+IceTInt icetStateGetSize(IceTEnum pname)
 {
     return icetGetState()[pname].size;
 }
-IceTTimeStamp icetStateGetTime(GLenum pname)
+IceTTimeStamp icetStateGetTime(IceTEnum pname)
 {
     return icetGetState()[pname].mod_time;
 }
@@ -207,16 +200,16 @@ IceTTimeStamp icetStateGetTime(GLenum pname)
 #define copyArray(type_dest, array_dest, type_src, array_src, size)            \
     switch (type_src) {                                                        \
       case ICET_DOUBLE:                                                        \
-          copyArrayGivenCType(type_dest,array_dest, GLdouble,array_src, size); \
+          copyArrayGivenCType(type_dest,array_dest, IceTDouble,array_src, size); \
           break;                                                               \
       case ICET_FLOAT:                                                         \
-          copyArrayGivenCType(type_dest,array_dest, GLfloat,array_src, size);  \
+          copyArrayGivenCType(type_dest,array_dest, IceTFloat,array_src, size);  \
           break;                                                               \
       case ICET_BOOLEAN:                                                       \
-          copyArrayGivenCType(type_dest,array_dest, GLboolean,array_src, size);\
+          copyArrayGivenCType(type_dest,array_dest, IceTBoolean,array_src, size);\
           break;                                                               \
       case ICET_INT:                                                           \
-          copyArrayGivenCType(type_dest,array_dest, GLint,array_src, size);    \
+          copyArrayGivenCType(type_dest,array_dest, IceTInt,array_src, size);    \
           break;                                                               \
       case ICET_NULL:                                                          \
           {                                                                    \
@@ -233,32 +226,53 @@ IceTTimeStamp icetStateGetTime(GLenum pname)
           }                                                                    \
     }
 
-void icetGetDoublev(GLenum pname, GLdouble *params)
+void icetGetDoublev(IceTEnum pname, IceTDouble *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
-    copyArray(GLdouble, params, value->type, value->data, value->size);
+    copyArray(IceTDouble, params, value->type, value->data, value->size);
 }
-void icetGetFloatv(GLenum pname, GLfloat *params)
+void icetGetFloatv(IceTEnum pname, IceTFloat *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
-    copyArray(GLfloat, params, value->type, value->data, value->size);
+    copyArray(IceTFloat, params, value->type, value->data, value->size);
 }
-void icetGetBooleanv(GLenum pname, GLboolean *params)
+void icetGetBooleanv(IceTEnum pname, IceTBoolean *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
-    copyArray(GLboolean, params, value->type, value->data, value->size);
+    copyArray(IceTBoolean, params, value->type, value->data, value->size);
 }
-void icetGetIntegerv(GLenum pname, GLint *params)
+void icetGetIntegerv(IceTEnum pname, IceTInt *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
-    copyArray(GLint, params, value->type, value->data, value->size);
+    copyArray(IceTInt, params, value->type, value->data, value->size);
 }
 
-void icetGetPointerv(GLenum pname, GLvoid **params)
+void icetGetEnumv(IceTEnum pname, IceTEnum *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTEnum, params, value->type, value->data, value->size);
+}
+void icetGetBitFieldv(IceTEnum pname, IceTBitField *params)
+{
+    struct IceTStateValue *value = icetGetState() + pname;
+    int i;
+    if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
+        icetRaiseError("Floating point values cannot be enumerations.",
+                       ICET_BAD_CAST);
+    }
+    copyArray(IceTBitField, params, value->type, value->data, value->size);
+}
+
+void icetGetPointerv(IceTEnum pname, IceTVoid **params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
@@ -272,10 +286,10 @@ void icetGetPointerv(GLenum pname, GLvoid **params)
         sprintf(msg, "Could not cast value for 0x%x.", (int)pname);
         icetRaiseError(msg, ICET_BAD_CAST);
     }
-    copyArrayGivenCType(GLvoid *, params, GLvoid *, value->data, value->size);
+    copyArrayGivenCType(IceTVoid *, params, IceTVoid *, value->data, value->size);
 }
 
-void icetEnable(GLenum pname)
+void icetEnable(IceTEnum pname)
 {
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
         icetRaiseError("Bad value to icetEnable", ICET_INVALID_VALUE);
@@ -284,7 +298,7 @@ void icetEnable(GLenum pname)
     icetStateSetBoolean(pname, ICET_TRUE);
 }
 
-void icetDisable(GLenum pname)
+void icetDisable(IceTEnum pname)
 {
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
         icetRaiseError("Bad value to icetDisable", ICET_INVALID_VALUE);
@@ -293,9 +307,9 @@ void icetDisable(GLenum pname)
     icetStateSetBoolean(pname, ICET_FALSE);
 }
 
-GLboolean icetIsEnabled(GLenum pname)
+IceTBoolean icetIsEnabled(IceTEnum pname)
 {
-    GLboolean isEnabled;
+    IceTBoolean isEnabled;
 
     if ((pname < ICET_STATE_ENABLE_START) || (pname >= ICET_STATE_ENABLE_END)) {
         icetRaiseError("Bad value to icetIsEnabled", ICET_INVALID_VALUE);
@@ -305,21 +319,21 @@ GLboolean icetIsEnabled(GLenum pname)
     return isEnabled;
 }
 
-static int typeWidth(GLenum type)
+static int typeWidth(IceTEnum type)
 {
     switch (type) {
       case ICET_DOUBLE:
-          return sizeof(GLdouble);
+          return sizeof(IceTDouble);
       case ICET_FLOAT:
-          return sizeof(GLfloat);
+          return sizeof(IceTFloat);
       case ICET_BOOLEAN:
-          return sizeof(GLboolean);
+          return sizeof(IceTBoolean);
       case ICET_SHORT:
-          return sizeof(GLshort);
+          return sizeof(IceTShort);
       case ICET_INT:
-          return sizeof(GLint);
+          return sizeof(IceTInt);
       case ICET_POINTER:
-          return sizeof(GLvoid *);
+          return sizeof(IceTVoid *);
       case ICET_NULL:
           return 0;
       default:
@@ -329,7 +343,7 @@ static int typeWidth(GLenum type)
     return 0;
 }
 
-void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type, GLvoid *data)
+void icetUnsafeStateSet(IceTEnum pname, IceTInt size, IceTEnum type, IceTVoid *data)
 {
     IceTState state = icetGetState();
 
@@ -343,7 +357,7 @@ void icetUnsafeStateSet(GLenum pname, GLint size, GLenum type, GLvoid *data)
     state[pname].data = data;
 }
 
-static void stateSet(GLenum pname, GLint size, GLenum type, const GLvoid *data)
+static void stateSet(IceTEnum pname, IceTInt size, IceTEnum type, const IceTVoid *data)
 {
     IceTState state;
     int type_width;
@@ -364,12 +378,38 @@ static void stateSet(GLenum pname, GLint size, GLenum type, const GLvoid *data)
     }
 }
 
-void *icetUnsafeStateGet(GLenum pname)
+static void *icetUnsafeStateGet(IceTEnum pname, IceTEnum type)
 {
+    if (icetGetState()[pname].type != type) {
+	icetRaiseError("Mismatched types in unsafe state get.",
+		       ICET_SANITY_CHECK_FAIL);
+	return NULL;
+    }
     return icetGetState()[pname].data;
 }
 
-GLenum icetStateType(GLenum pname)
+IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_DOUBLE);
+}
+IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_FLOAT);
+}
+IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_INT);
+}
+IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_BOOLEAN);
+}
+IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
+{
+    return icetUnsafeStateGet(pname, ICET_POINTER);
+}
+
+IceTEnum icetStateType(IceTEnum pname)
 {
     return icetGetState()[pname].type;
 }
@@ -396,7 +436,7 @@ void icetStateResetTiming(void)
 
 void icetStateDump(void)
 {
-    GLenum i;
+    IceTEnum i;
     IceTState state;
 
     state = icetGetState();

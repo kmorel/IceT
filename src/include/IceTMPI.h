@@ -8,12 +8,10 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_MPI_H_
 #define _ICET_MPI_H_
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 #include <mpi.h>
 
 #ifdef __cplusplus

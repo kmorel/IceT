@@ -8,8 +8,6 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
 
@@ -20,20 +18,24 @@ extern "C" {
 }
 #endif
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 
 extern IceTStrategy strategy_list[];
 extern int STRATEGY_LIST_SIZE;
 
-extern int SCREEN_WIDTH;
-extern int SCREEN_HEIGHT;
+extern IceTSizeType SCREEN_WIDTH;
+extern IceTSizeType SCREEN_HEIGHT;
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
+
+int run_test(int (*test_function)(void));
+
+void swap_buffers(void);
 
 void finalize_test(int result);
 
 void write_ppm(const char *filename,
-               const GLubyte *image,
+               const IceTUByte *image,
                int width, int height);
 
 #ifdef __cplusplus

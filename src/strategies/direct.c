@@ -8,14 +8,12 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceT.h>
 
-#include <GL/ice-t.h>
-
-#include <image.h>
-#include <context.h>
-#include <state.h>
-#include <diagnostics.h>
+#include <IceTDevImage.h>
+#include <IceTDevContext.h>
+#include <IceTDevState.h>
+#include <IceTDevDiagnostics.h>
 #include <string.h>
 #include "common.h"
 
@@ -25,52 +23,58 @@ IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
 
 static IceTImage directCompose(void)
 {
-    IceTSparseImage inImage;
-    IceTSparseImage outImage;
     IceTImage image;
-    GLint *contrib_counts;
-    GLint *display_nodes;
-    GLint max_pixels;
-    GLint num_tiles;
-    GLint num_contributors;
-    GLint display_tile;
-    GLint tile;
-    GLint *tile_image_dest;
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType rawImageSize, sparseImageSize;
+    IceTInt *contrib_counts;
+    IceTInt *display_nodes;
+    IceTInt max_width, max_height;
+    IceTInt num_tiles;
+    IceTInt num_contributors;
+    IceTInt display_tile;
+    IceTInt tile;
+    IceTInt *tile_image_dest;
     icetRaiseDebug("In Direct Compose");
 
-    icetGetIntegerv(ICET_TILE_MAX_PIXELS, &max_pixels);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
-    icetResizeBuffer(  2*icetSparseImageSize(max_pixels)
-		     + icetFullImageSize(max_pixels)
-		     + num_tiles*sizeof(GLint));
-    inImage     = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    outImage    = icetReserveBufferMem(icetSparseImageSize(max_pixels));
-    image	= icetReserveBufferMem(icetFullImageSize(max_pixels));
-    tile_image_dest = icetReserveBufferMem(num_tiles*sizeof(GLint));
+    rawImageSize = icetImageBufferSize(max_width, max_height);
+    sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
+
+    icetResizeBuffer(  rawImageSize
+		     + 2*sparseImageSize
+		     + num_tiles*sizeof(IceTInt));
+    image               = icetReserveBufferImage(max_width, max_height);
+    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
+    outSparseImage      = icetReserveBufferSparseImage(max_width, max_height);
+    tile_image_dest     = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
-	contrib_counts = icetUnsafeStateGet(ICET_TILE_CONTRIB_COUNTS);
+	contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
 	num_contributors = contrib_counts[display_tile];
     } else {
 	num_contributors = 0;
     }
 
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     for (tile = 0; tile < num_tiles; tile++) {
 	tile_image_dest[tile] = display_nodes[tile];
     }
 
     icetRaiseDebug("Rendering and transferring images.");
-    icetRenderTransferFullImages(image, inImage, outImage,
-				 num_contributors, tile_image_dest);
+    icetRenderTransferFullImages(image,
+                                 inSparseImageBuffer,
+                                 outSparseImage,
+                                 tile_image_dest);
 
     if ((display_tile >= 0) && (num_contributors < 1)) {
       /* Must be displaying a blank tile. */
 	icetRaiseDebug("Returning blank tile.");
-	icetInitializeImage(image, max_pixels);
-	icetClearImage(image);
+        icetClearImage(image);
     }
 
     return image;

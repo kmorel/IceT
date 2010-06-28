@@ -8,98 +8,123 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceTDevContext.h>
 
-#include <context.h>
-#include <GL/ice-t.h>
-#include <diagnostics.h>
+#include <IceT.h>
+
+#include <IceTDevDiagnostics.h>
+#include <IceTDevImage.h>
 
 #include <stdlib.h>
 #include <string.h>
 
-static struct IceTContext *context_list = NULL;
+#define CONTEXT_MAGIC_NUMBER ((IceTEnum)0x12358D15)
 
-static int num_contexts = 0;
+struct IceTContextStruct {
+    IceTEnum magic_number;
+    IceTState state;
+    IceTCommunicator communicator;
+    IceTStrategy strategy;
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+    IceTSizeType buffer_offset;
+};
 
-static int current_context_index;
-
-struct IceTContext *icet_current_context = NULL;
+static IceTContext icet_current_context = NULL;
 
 IceTContext icetCreateContext(IceTCommunicator comm)
 {
-    int idx;
+    IceTContext context = malloc(sizeof(struct IceTContextStruct));
 
-    for (idx = 0; idx < num_contexts; idx++) {
-        if (context_list[idx].state == NULL) {
-            break;
-        }
-    }
+    context->magic_number = CONTEXT_MAGIC_NUMBER;
 
-    if (idx >= num_contexts) {
-        num_contexts += 4;
-        context_list = realloc(context_list,
-                               num_contexts*sizeof(struct IceTContext));
-        memset(context_list + idx, 0, 4 * sizeof(struct IceTContext));
-    }
+    context->communicator = comm->Duplicate(comm);
 
-    context_list[idx].communicator = comm->Duplicate(comm);
+    context->buffer = NULL;
+    context->buffer_size = 0;
+    context->buffer_offset = 0;
 
-    context_list[idx].buffer = NULL;
-    context_list[idx].buffer_size = 0;
-    context_list[idx].buffer_offset = 0;
+    context->state = icetStateCreate();
 
-    context_list[idx].display_inflate_texture = 0;
-
-    context_list[idx].state = icetStateCreate();
-
-    icetSetContext(idx);
+    icetSetContext(context);
     icetStateSetDefaults();
 
-    return idx;
+    return context;
+}
+
+static void callDestructor(IceTEnum dtor_variable)
+{
+    IceTVoid *void_dtor_pointer;
+    void (*dtor_function)(void);
+
+    icetGetPointerv(dtor_variable, &void_dtor_pointer);
+    dtor_function = (void (*)(void))void_dtor_pointer;
+
+    if (dtor_function) {
+        (*dtor_function)();
+    }
 }
 
 void icetDestroyContext(IceTContext context)
 {
-    struct IceTContext *cp = &(context_list[context]);
+    IceTContext saved_current_context;
 
-    if (context == current_context_index) {
+    saved_current_context = icetGetContext();
+    if (context == saved_current_context) {
         icetRaiseDebug("Destroying current context.");
+        saved_current_context = NULL;
     }
 
-    icetStateDestroy(cp->state);
-    cp->state = NULL;
+  /* Temporarily make the context to be destroyed current. */
+    icetSetContext(context);
 
-    free(cp->buffer);
-    cp->communicator->Destroy(cp->communicator);
-    cp->buffer = NULL;
-    cp->buffer_size = 0;
-    cp->buffer_offset = 0;
+  /* Call destructors for other dependent units. */
+    callDestructor(ICET_RENDER_LAYER_DESTRUCTOR);
 
-    if (cp->display_inflate_texture != 0) {
-        glDeleteTextures(1, &(cp->display_inflate_texture));
-    }
+  /* From here on out be careful.  We are invalidating the context. */
+    context->magic_number = 0;
+
+    icetStateDestroy(context->state);
+    context->state = NULL;
+
+    free(context->buffer);
+    context->communicator->Destroy(context->communicator);
+    context->buffer = NULL;
+    context->buffer_size = 0;
+    context->buffer_offset = 0;
+
+  /* The context is now completely destroyed and now null.  Restore saved
+     context. */
+    icetSetContext(saved_current_context);
 }
 
 IceTContext icetGetContext(void)
 {
-    return current_context_index;
+    return icet_current_context;
 }
 
 void icetSetContext(IceTContext context)
 {
-    if (   (context < 0)
-        || (context >= num_contexts)
-        || (context_list[context].state == NULL) ) {
-        icetRaiseError("No such context", ICET_INVALID_VALUE);
+    if (context && (context->magic_number != CONTEXT_MAGIC_NUMBER)) {
+        icetRaiseError("Invalid context.", ICET_INVALID_VALUE);
         return;
     }
-    current_context_index = context;
-    icet_current_context = &(context_list[context]);
+    icet_current_context = context;
 }
 
-void *icetReserveBufferMem(int size)
+IceTState icetGetState()
 {
-    void *mem = ((GLubyte *)icet_current_context->buffer)
+    return icet_current_context->state;
+}
+
+IceTCommunicator icetGetCommunicator()
+{
+    return icet_current_context->communicator;
+}
+
+IceTVoid *icetReserveBufferMem(IceTSizeType size)
+{
+    IceTVoid *mem = ((IceTUByte *)icet_current_context->buffer)
         + icet_current_context->buffer_offset;
 
   /* Integer boundries are good. */
@@ -116,13 +141,38 @@ void *icetReserveBufferMem(int size)
     return mem;
 }
 
-void icetCopyState(IceTContext dest, const IceTContext src)
+IceTImage icetReserveBufferImage(IceTSizeType width, IceTSizeType height)
 {
-    icetStateCopy(context_list[dest].state, context_list[src].state);
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetImageBufferSize(width, height);
+    buffer = icetReserveBufferMem(buffer_size);
+
+    return icetImageAssignBuffer(buffer, width, height);
 }
 
-void icetResizeBuffer(int size)
+IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
+                                             IceTSizeType height)
 {
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetSparseImageBufferSize(width, height);
+    buffer = icetReserveBufferMem(buffer_size);
+
+    return icetSparseImageAssignBuffer(buffer, width, height);
+}
+
+void icetCopyState(IceTContext dest, const IceTContext src)
+{
+    icetStateCopy(dest->state, src->state);
+}
+
+void icetResizeBuffer(IceTSizeType size)
+{
+    icetRaiseDebug1("Resizing buffer to %d bytes.", (IceTInt)size);
+
   /* Add some padding in case the user's data does not lie on byte boundries. */
     size += 32*sizeof(IceTInt64);
     if (icet_current_context->buffer_size < size) {
@@ -145,9 +195,4 @@ void icetResizeBuffer(int size)
     }
 
     icet_current_context->buffer_offset = 0;
-
-  /* The color and depth buffers rely on this memory pool, so we have
-     probably just invalidated them. */
-    icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 0);
-    icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 0);
 }

@@ -1,6 +1,4 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ** license for use of this work by or on behalf of the U.S. Government.
@@ -17,20 +15,24 @@
 ** processors.  This should flag some problems with assumed far depths.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 static int iteration;
 static int global_rank;
+static int result;
 
 static void draw(void)
 {
     printf("In draw\n");
+    if (global_rank == 0) {
+        printf("ERROR: Draw called on rank 0!\n");
+        result = TEST_FAILED;
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (global_rank != iteration) {
         glBegin(GL_QUADS);
@@ -43,15 +45,11 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int DisplayNoDraw(int argc, char *argv[])
+static int DisplayNoDrawRun()
 {
-    int result = TEST_PASSED;
+    result = TEST_PASSED;
     int i;
-    GLint rank, num_proc;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
+    IceTInt rank, num_proc;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -64,7 +62,10 @@ int DisplayNoDraw(int argc, char *argv[])
     icetResetTiles();
     icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
+
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     if (rank == 0) {
         icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
@@ -83,15 +84,16 @@ int DisplayNoDraw(int argc, char *argv[])
     glColor4f(1.0, 1.0, 1.0, 1.0);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        GLubyte *color_buffer;
+        IceTImage image;
+        IceTUByte *color_buffer;
 
         icetStrategy(strategy_list[i]);
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
 
         for (iteration = 0; iteration < num_proc; iteration++) {
-            printf("Blank tile is rank %d\n", iteration);
+            printf("Blank image is rank %d\n", iteration);
 
-            icetDrawFrame();
+            image = icetGLDrawFrame();
             swap_buffers();
 
             if (   (rank == 0)
@@ -103,7 +105,7 @@ int DisplayNoDraw(int argc, char *argv[])
                 int p;
                 int bad_count = 0;
                 printf("Checking pixels.\n");
-                color_buffer = icetGetColorBuffer();
+                color_buffer = icetImageGetColorUByte(image);
                 for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
                     if (color_buffer[p] != 255) {
                         char filename[256];
@@ -124,6 +126,14 @@ int DisplayNoDraw(int argc, char *argv[])
         }
     }
 
-    finalize_test(result);
     return result;
+}
+
+int DisplayNoDraw(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(DisplayNoDrawRun);
 }

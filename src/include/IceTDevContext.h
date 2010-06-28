@@ -8,31 +8,22 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_CONTEXT_H_
 #define _ICET_CONTEXT_H_
 
-#include <GL/ice-t.h>
-#include <state.h>
+#include <IceT.h>
+#include <IceTDevState.h>
+#include <IceTDevImage.h>
 
-struct IceTContext {
-    IceTState state;
-    IceTCommunicator communicator;
-    IceTStrategy strategy;
-    void *buffer;
-    int buffer_size;
-    int buffer_offset;
-    GLuint display_inflate_texture;
-};
+IceTState icetGetState();
+IceTCommunicator icetGetCommunicator();
 
-ICET_EXPORT extern struct IceTContext *icet_current_context;
-
-#define icetGetState()          (icet_current_context->state)
-#define icetGetCommunicator()   (icet_current_context->communicator)
-
-ICET_EXPORT void    icetResizeBuffer(int size);
-ICET_EXPORT void *  icetReserveBufferMem(int size);
+ICET_EXPORT void            icetResizeBuffer(IceTSizeType size);
+ICET_EXPORT IceTVoid *      icetReserveBufferMem(IceTSizeType size);
+ICET_EXPORT IceTImage       icetReserveBufferImage(IceTSizeType width,
+                                                   IceTSizeType height);
+ICET_EXPORT IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
+                                                         IceTSizeType height);
 
 #define ICET_COMM_DUPLICTE()                                            \
     (icetGetCommunicator()->Duplicate(icetGetCommunicator()))

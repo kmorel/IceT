@@ -8,19 +8,17 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceT.h>
 
-#include <GL/ice-t.h>
-
-#include <state.h>
-#include <context.h>
-#include <diagnostics.h>
+#include <IceTDevState.h>
+#include <IceTDevContext.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 
 void icetResetTiles(void)
 {
-    GLint iarray[4];
+    IceTInt iarray[4];
 
     icetStateSetInteger(ICET_NUM_TILES, 0);
     icetStateSetIntegerv(ICET_TILE_VIEWPORTS, 0, NULL);
@@ -32,7 +30,8 @@ void icetResetTiles(void)
 
     icetStateSetInteger(ICET_TILE_MAX_WIDTH, 0);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, 0);
-    icetStateSetInteger(ICET_TILE_MAX_PIXELS, 0);
+
+    icetPhysicalRenderSize(0, 0);
 }
 
 #ifndef MIN
@@ -41,28 +40,28 @@ void icetResetTiles(void)
 #ifndef MAX
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #endif
-int  icetAddTile(GLint x, GLint y, GLsizei width, GLsizei height,
+int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
 		 int display_rank)
 {
-    GLint num_tiles;
-    GLint *viewports;
-    GLint gvp[4];
-    GLint max_width, max_height;
-    GLint *display_nodes;
-    GLint rank;
-    GLint num_processors;
+    IceTInt num_tiles;
+    IceTInt *viewports;
+    IceTInt gvp[4];
+    IceTInt max_width, max_height;
+    IceTInt *display_nodes;
+    IceTInt rank;
+    IceTInt num_processors;
     char msg[256];
     int i;
 
   /* Get current number of tiles and viewports. */
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    viewports = malloc((num_tiles+1)*4*sizeof(GLint));
+    viewports = malloc((num_tiles+1)*4*sizeof(IceTInt));
     icetGetIntegerv(ICET_TILE_VIEWPORTS, viewports);
 
   /* Get display node information. */
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_processors);
-    display_nodes = malloc((num_tiles+1)*4*sizeof(GLint));
+    display_nodes = malloc((num_tiles+1)*4*sizeof(IceTInt));
     icetGetIntegerv(ICET_DISPLAY_NODES, display_nodes);
 
   /* Check and update display ranks. */
@@ -120,20 +119,35 @@ int  icetAddTile(GLint x, GLint y, GLsizei width, GLsizei height,
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     max_height = MAX(max_height, height);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, max_height);
-  /* When storing max pixels, leave some padding so that pixels may be
-     dropped if the image needs to be divided amongst processors. */
-    icetStateSetInteger(ICET_TILE_MAX_PIXELS,
-			max_width*max_height + num_processors);
+
+    icetPhysicalRenderSize(max_width, max_height);
 
   /* Return index to tile. */
     return num_tiles;
 }
 
-void icetBoundingBoxd(GLdouble x_min, GLdouble x_max,
-		      GLdouble y_min, GLdouble y_max,
-		      GLdouble z_min, GLdouble z_max)
+void icetPhysicalRenderSize(IceTInt width, IceTInt height)
 {
-    GLdouble vertices[8*3];
+    IceTInt max_width, max_height;
+
+  /* Perhaps this test should be moved to right before the render callback
+     is invoked. */
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
+    if ((width < max_width) || (height < max_height)) {
+	icetRaiseWarning("Physical render dimensions not large enough"
+			 " to render all tiles.", ICET_INVALID_VALUE);
+    }
+
+    icetStateSetInteger(ICET_PHYSICAL_RENDER_WIDTH, width);
+    icetStateSetInteger(ICET_PHYSICAL_RENDER_HEIGHT, height);
+}
+
+void icetBoundingBoxd(IceTDouble x_min, IceTDouble x_max,
+		      IceTDouble y_min, IceTDouble y_max,
+		      IceTDouble z_min, IceTDouble z_max)
+{
+    IceTDouble vertices[8*3];
 
     vertices[3*0+0] = x_min;  vertices[3*0+1] = y_min;  vertices[3*0+2] = z_min;
     vertices[3*1+0] = x_min;  vertices[3*1+1] = y_min;  vertices[3*1+2] = z_max;
@@ -148,25 +162,25 @@ void icetBoundingBoxd(GLdouble x_min, GLdouble x_max,
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 8);
 }
 
-void icetBoundingBoxf(GLfloat x_min, GLfloat x_max,
-		      GLfloat y_min, GLfloat y_max,
-		      GLfloat z_min, GLfloat z_max)
+void icetBoundingBoxf(IceTFloat x_min, IceTFloat x_max,
+		      IceTFloat y_min, IceTFloat y_max,
+		      IceTFloat z_min, IceTFloat z_max)
 {
     icetBoundingBoxd(x_min, x_max, y_min, y_max, z_min, z_max);
 }
 
-void icetBoundingVertices(GLint size, GLenum type, GLsizei stride,
-			  GLsizei count, const GLvoid *pointer)
+void icetBoundingVertices(IceTInt size, IceTEnum type, IceTSizeType stride,
+			  IceTSizeType count, const IceTVoid *pointer)
 {
-    GLdouble *verts;
+    IceTDouble *verts;
     int i, j;
 
     if (stride < 1) {
 	switch (type) {
-	  case ICET_SHORT:  stride = size*sizeof(GLshort);  break;
-	  case ICET_INT:    stride = size*sizeof(GLint);    break;
-	  case ICET_FLOAT:  stride = size*sizeof(GLfloat);  break;
-	  case ICET_DOUBLE: stride = size*sizeof(GLdouble); break;
+	  case ICET_SHORT:  stride = size*sizeof(IceTShort);  break;
+	  case ICET_INT:    stride = size*sizeof(IceTInt);    break;
+	  case ICET_FLOAT:  stride = size*sizeof(IceTFloat);  break;
+	  case ICET_DOUBLE: stride = size*sizeof(IceTDouble); break;
 	  default:
 	      icetRaiseError("Bad type to icetBoundingVertices.",
 			     ICET_INVALID_VALUE);
@@ -174,7 +188,7 @@ void icetBoundingVertices(GLint size, GLenum type, GLsizei stride,
 	}
     }
 
-    verts = malloc(count*3*sizeof(GLdouble));
+    verts = malloc(count*3*sizeof(IceTDouble));
     for (i = 0; i < count; i++) {
 	for (j = 0; j < 3; j++) {
 	    switch (type) {
@@ -189,13 +203,13 @@ void icetBoundingVertices(GLint size, GLenum type, GLsizei stride,
   }									\
   break;
 	      case ICET_SHORT:
-		  castcopy(GLshort);
+		  castcopy(IceTShort);
 	      case ICET_INT:
-		  castcopy(GLint);
+		  castcopy(IceTInt);
 	      case ICET_FLOAT:
-		  castcopy(GLfloat);
+		  castcopy(IceTFloat);
 	      case ICET_DOUBLE:
-		  castcopy(GLdouble);
+		  castcopy(IceTDouble);
 	      default:
 		  icetRaiseError("Bad type to icetBoundingVertices.",
 				 ICET_INVALID_VALUE);

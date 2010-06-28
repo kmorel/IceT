@@ -8,16 +8,14 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
-
 #ifndef _ICET_DIAGNOSTICS_H_
 #define _ICET_DIAGNOSTICS_H_
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 #include <stdio.h>
 
-ICET_EXPORT void icetRaiseDiagnostic(const char *msg, GLenum type,
-				     GLbitfield level,
+ICET_EXPORT void icetRaiseDiagnostic(const char *msg, IceTEnum type,
+				     IceTBitField level,
 				     const char *file, int line);
 
 #define icetRaiseError(msg, type)			\

@@ -11,6 +11,14 @@
 **
 *****************************************************************************
 
+Revision 2.0: A major restructuring of the IceT code comprising the
+	following changes:
+
+	* Remove the dependence of OpenGL from the core library.  Segregate
+	  all OpenGL references and linkages to its own library.
+
+	* Use the Glut library for OpenGL window creation in the tests.
+
 Revision 1.0: Basically the same as 0.5.4, which has been stable for years
 	now, with the addition of offical documentation.
 

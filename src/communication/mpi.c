@@ -8,12 +8,9 @@
  * of authorship are reproduced on all copies.
  */
 
-/* Id */
+#include <IceTMPI.h>
 
-#define USE_STDARG
-#include <GL/ice-t_mpi.h>
-
-#include <diagnostics.h>
+#include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -22,26 +19,28 @@
 #define BREAK_ON_MPI_ERROR
 #endif
 
+#define ICET_MPI_REQUEST_MAGIC_NUMBER ((IceTEnum)0xD7168B00)
+
 static IceTCommunicator Duplicate(IceTCommunicator self);
 static void Destroy(IceTCommunicator self);
 static void Send(IceTCommunicator self,
-                 const void *buf, int count, GLenum datatype, int dest,
+                 const void *buf, int count, IceTEnum datatype, int dest,
                  int tag);
 static void Recv(IceTCommunicator self,
-                 void *buf, int count, GLenum datatype, int src, int tag);
+                 void *buf, int count, IceTEnum datatype, int src, int tag);
 static void Sendrecv(IceTCommunicator self,
-                     const void *sendbuf, int sendcount, GLenum sendtype,
+                     const void *sendbuf, int sendcount, IceTEnum sendtype,
                      int dest, int sendtag,
-                     void *recvbuf, int recvcount, GLenum recvtype,
+                     void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
 static void Allgather(IceTCommunicator self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);
 static IceTCommRequest Isend(IceTCommunicator self,
-                             const void *buf, int count, GLenum datatype,
+                             const void *buf, int count, IceTEnum datatype,
                              int dest, int tag);
 static IceTCommRequest Irecv(IceTCommunicator self,
-                             void *buf, int count, GLenum datatype,
+                             void *buf, int count, IceTEnum datatype,
                              int src, int tag);
 static void Waitone(IceTCommunicator self, IceTCommRequest *request);
 static int  Waitany(IceTCommunicator self,
@@ -49,55 +48,68 @@ static int  Waitany(IceTCommunicator self,
 static int Comm_size(IceTCommunicator self);
 static int Comm_rank(IceTCommunicator self);
 
-struct IceTMPICommRequestStruct {
+typedef struct IceTMPICommRequestInternalsStruct {
     MPI_Request request;
-};
+} *IceTMPICommRequestInternals;
 
-#define REQUEST_POOL        1
+static MPI_Request getMPIRequest(IceTCommRequest icet_request)
+{
+    if (icet_request == ICET_COMM_REQUEST_NULL) {
+        return MPI_REQUEST_NULL;
+    }
 
-#if REQUEST_POOL
-/* Note that the use of this array is not thread safe. */
-static struct IceTMPICommRequestStruct *request_pool = NULL;
-static int request_pool_count = 0;
-#endif
+    if (icet_request->magic_number != ICET_MPI_REQUEST_MAGIC_NUMBER) {
+        icetRaiseError("Request object is not from the MPI communicator.",
+                       ICET_INVALID_VALUE);
+        return MPI_REQUEST_NULL;
+    }
+
+    return (((IceTMPICommRequestInternals)icet_request->internals)->request);
+}
+
+static void setMPIRequest(IceTCommRequest icet_request, MPI_Request mpi_request)
+{
+    if (icet_request == ICET_COMM_REQUEST_NULL) {
+        icetRaiseError("Cannot set MPI request in null request.",
+                       ICET_SANITY_CHECK_FAIL);
+        return;
+    }
+
+    if (icet_request->magic_number != ICET_MPI_REQUEST_MAGIC_NUMBER) {
+        icetRaiseError("Request object is not from the MPI communicator.",
+                       ICET_SANITY_CHECK_FAIL);
+        return;
+    }
+
+    (((IceTMPICommRequestInternals)icet_request->internals)->request)
+        = mpi_request;
+}
 
 static IceTCommRequest create_request(void)
 {
-#if REQUEST_POOL
-    IceTCommRequest i;
-    for (i = 0; i < request_pool_count; i++) {
-        if (request_pool[i].request == MPI_REQUEST_NULL) break;
-    }
-    if (i == request_pool_count) {
-        request_pool_count += 4;
-        request_pool =
-            realloc(request_pool,
-                    request_pool_count*sizeof(struct IceTMPICommRequestStruct));
-        request_pool[i+1].request = MPI_REQUEST_NULL;
-        request_pool[i+2].request = MPI_REQUEST_NULL;
-        request_pool[i+3].request = MPI_REQUEST_NULL;
-    }
-    return i;
-#else
-    return (IceTCommRequest)malloc(sizeof(struct IceTMPICommRequestStruct));
-#endif
-}
-static void destroy_request(IceTCommRequest req)
-{
-#if REQUEST_POOL
-    request_pool[req].request = MPI_REQUEST_NULL;
-#else
-    free((void *)req);
-#endif
+    IceTCommRequest request;
+
+    request = (IceTCommRequest)malloc(sizeof(struct IceTCommRequestStruct));
+    request->magic_number = ICET_MPI_REQUEST_MAGIC_NUMBER;
+    request->internals=malloc(sizeof(struct IceTMPICommRequestInternalsStruct));
+
+    setMPIRequest(request, MPI_REQUEST_NULL);
+
+    return request;
 }
 
-#if REQUEST_POOL
-#define ICETREQ2MPIREQP(req)        (&request_pool[req].request)
-#else
-#define ICETREQ2MPIREQP(req)        (&((struct IceTMPICommRequestStruct *)req)->request)
-#endif
-#define ICETREQ2MPIREQ(req)                                                \
-    ((req) == ICET_COMM_REQUEST_NULL ? MPI_REQUEST_NULL : *ICETREQ2MPIREQP(req))
+static void destroy_request(IceTCommRequest request)
+{
+    MPI_Request mpi_request = getMPIRequest(request);
+    if (mpi_request != MPI_REQUEST_NULL) {
+        icetRaiseError("Destroying MPI request that is not NULL."
+                       " Probably leaking MPI requests.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+
+    free(request->internals);
+    free(request);
+}
 
 #ifdef BREAK_ON_MPI_ERROR
 static void ErrorHandler(MPI_Comm *comm, int *errorno, ...)
@@ -180,7 +192,7 @@ static void Destroy(IceTCommunicator self)
     }
 
 static void Send(IceTCommunicator self,
-                 const void *buf, int count, GLenum datatype, int dest, int tag)
+                 const void *buf, int count, IceTEnum datatype, int dest, int tag)
 {
     MPI_Datatype mpidatatype;
     CONVERT_DATATYPE(datatype, mpidatatype);
@@ -188,28 +200,27 @@ static void Send(IceTCommunicator self,
 }
 
 static void Recv(IceTCommunicator self,
-                 void *buf, int count, GLenum datatype, int src, int tag)
+                 void *buf, int count, IceTEnum datatype, int src, int tag)
 {
-    MPI_Status status;
     MPI_Datatype mpidatatype;
     CONVERT_DATATYPE(datatype, mpidatatype);
-    MPI_Recv(buf, count, mpidatatype, src, tag, MPI_COMM, &status);
+    MPI_Recv(buf, count, mpidatatype, src, tag, MPI_COMM, MPI_STATUS_IGNORE);
 }
 
 static void Sendrecv(IceTCommunicator self,
-                     const void *sendbuf, int sendcount, GLenum sendtype,
+                     const void *sendbuf, int sendcount, IceTEnum sendtype,
                      int dest, int sendtag,
-                     void *recvbuf, int recvcount, GLenum recvtype,
+                     void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag)
 {
-    MPI_Status status;
     MPI_Datatype mpisendtype;
     MPI_Datatype mpirecvtype;
     CONVERT_DATATYPE(sendtype, mpisendtype);
     CONVERT_DATATYPE(recvtype, mpirecvtype);
 
     MPI_Sendrecv((void *)sendbuf, sendcount, mpisendtype, dest, sendtag,
-                 recvbuf, recvcount, mpirecvtype, src, recvtag, MPI_COMM, &status);
+                 recvbuf, recvcount, mpirecvtype, src, recvtag, MPI_COMM,
+                 MPI_STATUS_IGNORE);
 }
 
 static void Allgather(IceTCommunicator self,
@@ -225,67 +236,79 @@ static void Allgather(IceTCommunicator self,
 }
 
 static IceTCommRequest Isend(IceTCommunicator self,
-                             const void *buf, int count, GLenum datatype,
+                             const void *buf, int count, IceTEnum datatype,
                              int dest, int tag)
 {
     IceTCommRequest icet_request;
+    MPI_Request mpi_request;
     MPI_Datatype mpidatatype;
 
-    icet_request = create_request();
     CONVERT_DATATYPE(datatype, mpidatatype);
     MPI_Isend((void *)buf, count, mpidatatype, dest, tag, MPI_COMM,
-              ICETREQ2MPIREQP(icet_request));
+              &mpi_request);
+
+    icet_request = create_request();
+    setMPIRequest(icet_request, mpi_request);
 
     return icet_request;
 }
 
 static IceTCommRequest Irecv(IceTCommunicator self,
-                             void *buf, int count, GLenum datatype,
+                             void *buf, int count, IceTEnum datatype,
                              int src, int tag)
 {
     IceTCommRequest icet_request;
+    MPI_Request mpi_request;
     MPI_Datatype mpidatatype;
 
-    icet_request = create_request();
     CONVERT_DATATYPE(datatype, mpidatatype);
     MPI_Irecv(buf, count, mpidatatype, src, tag, MPI_COMM,
-              ICETREQ2MPIREQP(icet_request));
+              &mpi_request);
+
+    icet_request = create_request();
+    setMPIRequest(icet_request, mpi_request);
 
     return icet_request;
 }
 
-static void Waitone(IceTCommunicator self , IceTCommRequest *request)
+static void Waitone(IceTCommunicator self , IceTCommRequest *icet_request)
 {
-    MPI_Status status;
+    MPI_Request mpi_request;
 
     /* To remove warning */
     (void)self;
 
-    if (*request == ICET_COMM_REQUEST_NULL) return;
+    if (*icet_request == ICET_COMM_REQUEST_NULL) return;
 
-    MPI_Wait(ICETREQ2MPIREQP(*request), &status);
-    destroy_request(*request);
-    *request = ICET_COMM_REQUEST_NULL;
+    mpi_request = getMPIRequest(*icet_request);
+    MPI_Wait(&mpi_request, MPI_STATUS_IGNORE);
+    setMPIRequest(*icet_request, mpi_request);
+
+    destroy_request(*icet_request);
+    *icet_request = ICET_COMM_REQUEST_NULL;
 }
 
 static int  Waitany(IceTCommunicator  self,
                     int count, IceTCommRequest *array_of_requests)
 {
-    MPI_Status status;
-    MPI_Request *requests;
+    MPI_Request *mpi_requests;
     int idx;
 
     /* To remove warning */
     (void)self;
-    requests = malloc(sizeof(MPI_Request)*count);
+
+    mpi_requests = malloc(sizeof(MPI_Request)*count);
     for (idx = 0; idx < count; idx++) {
-        requests[idx] = ICETREQ2MPIREQ(array_of_requests[idx]);
+        mpi_requests[idx] = getMPIRequest(array_of_requests[idx]);
     }
 
-    MPI_Waitany(count, requests, &idx, &status);
+    MPI_Waitany(count, mpi_requests, &idx, MPI_STATUS_IGNORE);
+
+    setMPIRequest(array_of_requests[idx], mpi_requests[idx]);
     destroy_request(array_of_requests[idx]);
     array_of_requests[idx] = ICET_COMM_REQUEST_NULL;
-    free(requests);
+
+    free(mpi_requests);
 
     return idx;
 }

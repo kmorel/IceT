@@ -1,0 +1,94 @@
+This is a temporary text file storing the interface changes made between
+version 1.0 and version 2.0.  This sticks around long enough for these to
+be moved to the IceT documentation.
+
+Names of include files.
+
+Many GL* types converted to IceT* types.
+
+ICET_READ_BUFFER -> ICET_GL_READ_BUFFER
+
+Added icetGLInitialize.
+
+Added icetGLSetReadBuffer.
+
+ICET_COLOR_FORMAT -> ICET_COLOR_BUFFER.  Also add ICET_DEPTH_BUFFER
+and setting functions icetSetColorFormat and IcetSetDepthFormat.
+
+Added icetPhysicalDisplaySize, ICET_PHYSICAL_RENDER_WIDTH, and
+ICET_PHYSICAL_RENDER_HEIGHT.
+
+Replaced icetUnsafeStateGet with multiple typed versions to make it
+somewhat less unsafe.
+
+Better formalized the IceTImage object and exposed an end user interface
+for creating an image and accessing the data.  This includes
+ICET_IMAGE_COLOR_* and ICET_IMAGE_DEPTH_* enumerations.  It also includes
+adding the functions icetImageBufferSize, icetImageInitialize, and
+icetImageGet*.
+
+Changed the IceTImage object from simply being a pointer to being a struct
+with opaque internals.  This provides several safety features.  First, it
+makes it a compile error to try to assign pretty much anything to an
+IceTImage that is not an IceTImage (and likewise for IceTSparseImage).
+Second, it decouples the idea of a buffer and an image so the two don't get
+mixed up.  Third, the icetImageInitialize now takes a buffer and returns an
+image object (likewise for sparse), so there is never any question about
+the initialization state.  It is either allocated and completely
+initialized or it is not.  Fourth, this also helps encourage me to build
+functions that take responsibility for "creating" images.  It can input a
+buffer and output an image.
+
+Changed icetDrawFrame to return an IceTImage.  If the current process is
+displaying a tile that is emtpy, a "null" image is returned.
+
+Removed icetGetColorBuffer and icetGetDepthBuffer functions.  Also removed
+the ICET_COLOR_BUFFER, ICET_DEPTH_BUFFER, ICET_COLOR_BUFFER_VALID, and
+ICET_DEPTH_BUFFER_VALID state variables.  Rather than store the previous
+image composited, simply return the image from icetDrawFrame.
+
+Converted all depth buffers to floating point.  The OpenGL spec clamps
+floating point depth buffers to the range [0,1], so it should be OK to just
+assume that the max depth is 1.0.
+
+Removed the ICET_ABSOLUTE_FAR_DEPTH state variable (see above).
+
+Added icetGetEnumv and icetGetBitFieldv.  They are similar to
+icetGetIntegerv except that they disallow conversions from floating points
+and pointers.  They also get around errors conerning casting from unsigned
+to signed pointers.
+
+ICET_DISPLAY_* -> ICET_GL_DISPLAY_*.
+
+The function icetDrawFrame now takes three arguments: the projection
+matrix, the modelview matrix, and the background color.  Previously these
+values were taken from OpenGL, but now the user can get them from wherever.
+A function called icetGLDrawFrame has been added that replaces the
+functionality of automatically grabbing these values from OpenGL.  It
+behaves just as the old function did.
+
+Removed ICET_TILE_MAX_PIXELS.
+
+Images hold width/height.  You must specify both when creating them.
+
+Renamed icetDrawFunc -> icetDrawCallback.  Changed the callback function to
+take the three rendering parameters that IceT manipulates (the projection
+and modelview matricies and the background color), a viewport of pixels for
+which data is needed, and an image to put the result in.
+
+Added icetGLDrawCallback.  Provides a callback that replicates the old
+icetDrawFunc.  It has the OpenGL parameters automatically set up and
+automatically reads back the appropriate frame buffers.
+
+Changed the development include files to IceTDev*.h.  This will prevent
+mixing them up with headers from other packages.
+
+Changed IceTContext from being an integer to being a pointer to a (hidden)
+structure.  This still allows == and keeps the internals opaque but also
+provides more type safety and prevents you from using them as integers and
+doing stupid things like add them.
+
+Changed IceTCommRequest from being an integer to being a pointer to a
+structure.  Besides the benefits of type safety, the old method assumed
+that you would cast pointers to 32-bit integers, which quite simply would
+not work on 64-bit machines.
