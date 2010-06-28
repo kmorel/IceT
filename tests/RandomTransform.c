@@ -62,8 +62,12 @@ static int compare_color_buffers(IceTSizeType local_width,
         return 0;
     }
 
-    refcbuf = icetImageGetColorUByte(refimage);
-    cb = icetImageGetColorUByte(testimage);
+    refcbuf = malloc(icetImageGetNumPixels(refimage)*4);
+    icetImageCopyColorUByte(refimage, refcbuf, ICET_IMAGE_COLOR_RGBA_UBYTE);
+
+    cb = malloc(icetImageGetNumPixels(testimage)*4);
+    icetImageCopyColorUByte(testimage, cb, ICET_IMAGE_COLOR_RGBA_UBYTE);
+
     ref_off_x = (rank%tile_dim) * local_width;
     ref_off_y = (rank/tile_dim) * local_height;
     bad_pixel_count = 0;
@@ -147,6 +151,9 @@ static int compare_color_buffers(IceTSizeType local_width,
 #undef REFCBUFB
 #undef REFCBUFA
 #undef CB_EQUALS_REF
+
+    free(refcbuf);
+    free(cb);
 
     return 1;
         
@@ -497,6 +504,35 @@ static int RandomTransformRun()
             }
             check_results(result);
 
+            printf("\nDoing float color buffer.\n");
+            icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
+            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+            icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+            icetEnable(ICET_COMPOSITE_ONE_BUFFER);
+            icetDisable(ICET_ORDERED_COMPOSITE);
+
+            printf("Rendering frame.\n");
+            glColor4f(color[0], color[1], color[2], 1.0);
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
+                    -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
+                    -1, 1);
+            glMatrixMode(GL_MODELVIEW);
+            glLoadMatrixf(mat);
+            image = icetGLDrawFrame();
+            swap_buffers();
+
+            if (rank < tile_dim*tile_dim) {
+                if (!compare_color_buffers(local_width, local_height,
+                                           refimage, image, rank)) {
+                    result = TEST_FAILED;
+                }
+            } else {
+                printf("Not a display node.  Not testing image.\n");
+            }
+            check_results(result);
+
             printf("\nDoing depth buffer.\n");
             icetSetColorFormat(ICET_IMAGE_COLOR_NONE);
             icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
@@ -527,6 +563,34 @@ static int RandomTransformRun()
             if (test_ordering) {
                 printf("\nDoing blended color buffer.\n");
                 icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+                icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+                icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
+                icetEnable(ICET_ORDERED_COMPOSITE);
+
+                printf("Rendering frame.\n");
+                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
+                glMatrixMode(GL_PROJECTION);
+                glLoadIdentity();
+                glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
+                        -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
+                        -1, 1);
+                glMatrixMode(GL_MODELVIEW);
+                glLoadMatrixf(mat);
+                image = icetGLDrawFrame();
+                swap_buffers();
+
+                if (rank < tile_dim*tile_dim) {
+                    if (!compare_color_buffers(local_width, local_height,
+                                               refimage2, image, rank)) {
+                        result = TEST_FAILED;
+                    }
+                } else {
+                    printf("Not a display node.  Not testing image.\n");
+                }
+                check_results(result);
+
+                printf("\nDoing blended float color buffer.\n");
+                icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
                 icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
                 icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
                 icetEnable(ICET_ORDERED_COMPOSITE);
