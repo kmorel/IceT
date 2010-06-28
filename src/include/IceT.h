@@ -41,8 +41,11 @@ typedef struct IceTContextStruct *IceTContext;
 
 struct IceTCommunicatorStruct;
 
-typedef IceTUnsignedInt32 IceTCommRequest;
-#define ICET_COMM_REQUEST_NULL ((IceTCommRequest)-1)
+typedef struct IceTCommRequestStruct {
+    IceTEnum magic_number;
+    IceTVoid *internals;
+} *IceTCommRequest;
+#define ICET_COMM_REQUEST_NULL ((IceTCommRequest)NULL)
 
 struct IceTCommunicatorStruct {
     struct IceTCommunicatorStruct *

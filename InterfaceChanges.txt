@@ -87,3 +87,8 @@ Changed IceTContext from being an integer to being a pointer to a (hidden)
 structure.  This still allows == and keeps the internals opaque but also
 provides more type safety and prevents you from using them as integers and
 doing stupid things like add them.
+
+Changed IceTCommRequest from being an integer to being a pointer to a
+structure.  Besides the benefits of type safety, the old method assumed
+that you would cast pointers to 32-bit integers, which quite simply would
+not work on 64-bit machines.
