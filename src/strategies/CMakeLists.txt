@@ -1,5 +1,3 @@
-# Id
-#
 ## Copyright 2003 Sandia Coporation
 ## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
 ## license for use of this work by or on behalf of the U.S. Government.
@@ -17,12 +15,12 @@ SET(ICET_STRATEGIES_SRCS
         vtree.c
 )
 
-ADD_LIBRARY(icet_strategies ${ICET_STRATEGIES_SRCS})
+ADD_LIBRARY(IceTStrategies ${ICET_STRATEGIES_SRCS})
 
-TARGET_LINK_LIBRARIES(icet_strategies icet)
+TARGET_LINK_LIBRARIES(IceTStrategies IceTCore)
 
 IF(NOT ICET_INSTALL_NO_LIBRARIES)
-  INSTALL(TARGETS icet_strategies 
+  INSTALL(TARGETS IceTStrategies
     RUNTIME DESTINATION ${ICET_INSTALL_BIN_DIR} COMPONENT RuntimeLibraries
     LIBRARY DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
     ARCHIVE DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries)

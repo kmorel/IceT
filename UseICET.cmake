@@ -2,8 +2,9 @@
 #
 # UseICET.cmake - File to INCLUDE in a CMakeLists.txt file to use IceT.
 #
-# After including this file, you need only to add icet, icet_strategies, and,
-# perhaps, icet_mpi libraries with the LINK_LIBRARIES command.
+# After including this file, you need only to add IceTCore, IceTStrategies,
+# and, perhaps, IceTGL and IceTMPI libraries with the LINK_LIBRARIES
+# command.
 #
 ## Copyright 2003 Sandia Coporation
 ## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
@@ -11,9 +12,6 @@
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that this Notice and any statement
 ## of authorship are reproduced on all copies.
-#
-# Id
-#
 
 #Load compiler settings used for IceT.
 #On second thought, why enforce the duplication of compiler flags?
