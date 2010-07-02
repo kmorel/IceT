@@ -95,3 +95,5 @@ not work on 64-bit machines.
 
 Changed the names of the libraries from icet, icet_strategies, and icet_mpi
 to IceTCore, IceTStrategies, and IceTMPI, respectively.
+
+Changed ICET_STRATEGY_SERIAL to ICET_STRATEGY_SEQUENTIAL.

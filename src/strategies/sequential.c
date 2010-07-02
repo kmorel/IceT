@@ -16,11 +16,12 @@
 #include <IceTDevDiagnostics.h>
 #include "common.h"
 
-static IceTImage serialCompose(void);
+static IceTImage sequentialCompose(void);
 
-IceTStrategy ICET_STRATEGY_SERIAL = { "Serial", ICET_TRUE, serialCompose };
+IceTStrategy ICET_STRATEGY_SEQUENTIAL
+    = { "Sequential", ICET_TRUE, sequentialCompose };
 
-static IceTImage serialCompose(void)
+static IceTImage sequentialCompose(void)
 {
     IceTInt num_tiles;
     IceTInt max_width, max_height;

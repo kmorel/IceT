@@ -232,7 +232,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     }
 
     strategy_list[0] = ICET_STRATEGY_DIRECT;
-    strategy_list[1] = ICET_STRATEGY_SERIAL;
+    strategy_list[1] = ICET_STRATEGY_SEQUENTIAL;
     strategy_list[2] = ICET_STRATEGY_SPLIT;
     strategy_list[3] = ICET_STRATEGY_REDUCE;
     strategy_list[4] = ICET_STRATEGY_VTREE;

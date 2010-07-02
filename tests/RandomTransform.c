@@ -393,7 +393,7 @@ static int RandomTransformRun()
 
   /* Let everyone get a base image for comparison. */
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    icetStrategy(ICET_STRATEGY_SERIAL);
+    icetStrategy(ICET_STRATEGY_SEQUENTIAL);
     icetResetTiles();
     for (i = 0; i < num_proc; i++) {
         icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, i);

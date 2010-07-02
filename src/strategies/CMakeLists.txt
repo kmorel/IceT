@@ -9,7 +9,7 @@
 SET(ICET_STRATEGIES_SRCS
         common.c
         direct.c
-        serial.c
+        sequential.c
         split.c
         reduce.c
         vtree.c
