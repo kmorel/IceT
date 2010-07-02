@@ -148,6 +148,19 @@ IceTSizeType icetSparseImageBufferSizeType(IceTEnum color_format,
             + icetImageBufferSizeType(color_format,depth_format,width,height) );
 }
 
+IceTImage icetGetStateBufferImage(IceTEnum pname,
+                                  IceTSizeType width,
+                                  IceTSizeType height)
+{
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetImageBufferSize(width, height);
+    buffer = icetGetStateBuffer(pname, buffer_size);
+
+    return icetImageAssignBuffer(buffer, width, height);
+}
+
 IceTImage icetImageAssignBuffer(IceTVoid *buffer,
                                 IceTSizeType width,
                                 IceTSizeType height)
@@ -203,6 +216,19 @@ IceTImage icetImageNull(void)
 IceTBoolean icetImageIsNull(const IceTImage image)
 {
     return (image.opaque_internals == NULL);
+}
+
+IceTSparseImage icetGetStateBufferSparseImage(IceTEnum pname,
+                                              IceTSizeType width,
+                                              IceTSizeType height)
+{
+    IceTVoid *buffer;
+    IceTSizeType buffer_size;
+
+    buffer_size = icetSparseImageBufferSize(width, height);
+    buffer = icetGetStateBuffer(pname, buffer_size);
+
+    return icetSparseImageAssignBuffer(buffer, width, height);
 }
 
 IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
@@ -1517,52 +1543,29 @@ static IceTImage renderTile(int tile,
 /* This function is full of hackery. */
 static IceTImage getRenderBuffer(void)
 {
-    IceTInt width, height;
-    IceTInt required_buffer_size, stored_buffer_size;
-    IceTVoid *buffer;
+    /* Check to see if we are in the same frame as the last time we returned
+       this buffer.  In that case, just restore the buffer because it still has
+       the image we need. */
+    if (  icetStateGetTime(ICET_RENDER_BUFFER_SIZE)
+        > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
+      /* A little bit of hackery: this assumes that a buffer initialized is the
+         same one returned from icetImagePackageForSend.  It (currently)
+         does. */
+        IceTVoid *buffer;
+        icetRaiseDebug("Last render should still be good.");
+        buffer = icetGetStateBuffer(ICET_RENDER_BUFFER, 0);
+        return icetImageUnpackageFromReceive(buffer);       
+    } else {
+        IceTInt dim[2];
 
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &width);
-    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &height);
-
-    required_buffer_size = icetImageBufferSize(width, height);
-    icetGetIntegerv(ICET_RENDER_BUFFER_SIZE, &stored_buffer_size);
-    if (required_buffer_size <= stored_buffer_size) {
-        buffer = icetUnsafeStateGetInteger(ICET_RENDER_BUFFER);
-
-      /* Check to see if we are in the same frame as the last time we returned
-         this buffer.  In that case, just restore the buffer because it still
-         has the image we need. */
-        if (  icetStateGetTime(ICET_RENDER_BUFFER_SIZE)
-            > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
-          /* A little bit of hackery: this assumes that a buffer initialized is
-             the same one returned from icetImagePackageForSend.  It (currently)
-             does. */
-            icetRaiseDebug("Last render should still be good.");
-            return icetImageUnpackageFromReceive(buffer);
-        }
+        icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &dim[0]);
+        icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &dim[1]);
 
       /* Creating a new image object.  "Touch" the ICET_RENDER_BUFFER_SIZE state
          variable to signify the time we created the image so the above check
          works on the next call. */
-        icetStateSetInteger(ICET_RENDER_BUFFER_SIZE, stored_buffer_size);
+        icetStateSetIntegerv(ICET_RENDER_BUFFER_SIZE, 2, dim);
 
-      /* Create a new image object with this buffer.  Consider the old image
-         overridden. */
-        return icetImageAssignBuffer(buffer, width, height);
+        return icetGetStateBufferImage(ICET_RENDER_BUFFER, dim[0], dim[1]);
     }
-
-    icetRaiseDebug("Allocating new render buffer.");
-
-  /* Stored buffer not big enough.  Create a new one. */
-    buffer = malloc(required_buffer_size);
-
-  /* Store the buffer in the state.  A little more hackery: once given to the
-     state we expect the state to free the memory when it is reallocated or when
-     the context is destroyed. */
-    icetUnsafeStateSet(ICET_RENDER_BUFFER, required_buffer_size/sizeof(IceTInt),
-                       ICET_INT, buffer);
-    icetStateSetInteger(ICET_RENDER_BUFFER_SIZE, required_buffer_size);
-
-  /* Create an image with our buffer. */
-    return icetImageAssignBuffer(buffer, width, height);
 }

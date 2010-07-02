@@ -72,7 +72,7 @@ void icetCompositeOrder(const IceTInt *process_ranks)
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
-        && (icetStateGetSize(ICET_PROCESS_ORDERS) >= num_proc) ) {
+        && (icetStateGetNumEntries(ICET_PROCESS_ORDERS) >= num_proc) ) {
         process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
         new_process_orders = 0;
     } else {

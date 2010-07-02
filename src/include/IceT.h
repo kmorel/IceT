@@ -99,6 +99,7 @@ ICET_EXPORT void        icetCopyState(IceTContext dest, const IceTContext src);
 #define ICET_FLOAT      (IceTEnum)0x8004
 #define ICET_DOUBLE     (IceTEnum)0x8005
 #define ICET_POINTER    (IceTEnum)0x8008
+#define ICET_VOID       (IceTEnum)0x800F
 #define ICET_NULL       (IceTEnum)0x0000
 
 #define ICET_FALSE      0

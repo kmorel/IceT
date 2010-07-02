@@ -23,15 +23,20 @@ void      icetStateDestroy(IceTState state);
 void      icetStateCopy(IceTState dest, const IceTState src);
 void      icetStateSetDefaults(void);
 
-ICET_EXPORT void icetStateSetDoublev(IceTEnum pname, IceTInt size,
+ICET_EXPORT void icetStateSetDoublev(IceTEnum pname,
+                                     IceTSizeType num_entries,
                                      const IceTDouble *data);
-ICET_EXPORT void icetStateSetFloatv(IceTEnum pname, IceTInt size,
+ICET_EXPORT void icetStateSetFloatv(IceTEnum pname,
+                                    IceTSizeType num_entries,
                                     const IceTFloat *data);
-ICET_EXPORT void icetStateSetIntegerv(IceTEnum pname, IceTInt size,
+ICET_EXPORT void icetStateSetIntegerv(IceTEnum pname,
+                                      IceTSizeType num_entries,
                                       const IceTInt *data);
-ICET_EXPORT void icetStateSetBooleanv(IceTEnum pname, IceTInt size,
+ICET_EXPORT void icetStateSetBooleanv(IceTEnum pname,
+                                      IceTSizeType num_entries,
                                       const IceTBoolean *data);
-ICET_EXPORT void icetStateSetPointerv(IceTEnum pname, IceTInt size,
+ICET_EXPORT void icetStateSetPointerv(IceTEnum pname,
+                                      IceTSizeType num_entries,
                                       const IceTVoid **data);
 
 ICET_EXPORT void icetStateSetDouble(IceTEnum pname, IceTDouble value);
@@ -41,10 +46,12 @@ ICET_EXPORT void icetStateSetBoolean(IceTEnum pname, IceTBoolean value);
 ICET_EXPORT void icetStateSetPointer(IceTEnum pname, const IceTVoid *value);
 
 ICET_EXPORT IceTEnum icetStateGetType(IceTEnum pname);
-ICET_EXPORT IceTInt icetStateGetSize(IceTEnum pname);
+ICET_EXPORT IceTSizeType icetStateGetNumEntries(IceTEnum pname);
 ICET_EXPORT IceTTimeStamp icetStateGetTime(IceTEnum pname);
 
-ICET_EXPORT void icetUnsafeStateSet(IceTEnum pname, IceTInt size, IceTEnum type,
+ICET_EXPORT void icetUnsafeStateSet(IceTEnum pname,
+                                    IceTSizeType size,
+                                    IceTEnum type,
                                     IceTVoid *data);
 ICET_EXPORT IceTDouble  *icetUnsafeStateGetDouble(IceTEnum pname);
 ICET_EXPORT IceTFloat   *icetUnsafeStateGetFloat(IceTEnum pname);
@@ -52,6 +59,9 @@ ICET_EXPORT IceTInt     *icetUnsafeStateGetInteger(IceTEnum pname);
 ICET_EXPORT IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname);
 ICET_EXPORT IceTVoid   **icetUnsafeStateGetPointer(IceTEnum pname);
 ICET_EXPORT IceTEnum icetStateType(IceTEnum pname);
+
+ICET_EXPORT IceTVoid       *icetGetStateBuffer(IceTEnum pname,
+                                               IceTSizeType num_bytes);
 
 ICET_EXPORT IceTTimeStamp icetGetTimeStamp(void);
 

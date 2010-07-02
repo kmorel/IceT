@@ -14,6 +14,9 @@
 #include <IceT.h>
 #include <IceTDevState.h>
 
+ICET_EXPORT IceTImage       icetGetStateBufferImage(IceTEnum pname,
+                                                    IceTSizeType width,
+                                                    IceTSizeType height);
 ICET_EXPORT IceTSizeType icetImageBufferSize(IceTSizeType width,
                                              IceTSizeType height);
 ICET_EXPORT IceTSizeType icetImageBufferSizeType(IceTEnum color_format,
@@ -58,6 +61,9 @@ ICET_EXPORT IceTSizeType icetSparseImageBufferSizeType(IceTEnum color_format,
                                                        IceTEnum depth_format,
                                                        IceTSizeType width,
                                                        IceTSizeType height);
+ICET_EXPORT IceTSparseImage icetGetStateBufferSparseImage(IceTEnum pname,
+                                                          IceTSizeType width,
+                                                          IceTSizeType height);
 ICET_EXPORT IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
                                                         IceTSizeType width,
                                                         IceTSizeType height);
