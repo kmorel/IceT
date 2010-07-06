@@ -11,7 +11,6 @@
 #include <IceT.h>
 
 #include <IceTDevImage.h>
-#include <IceTDevContext.h>
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include <string.h>
@@ -21,12 +20,17 @@ static IceTImage directCompose(void);
 
 IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
 
+#define DIRECT_IMAGE_BUFFER             ICET_STRATEGY_BUFFER_0
+#define DIRECT_IN_SPARSE_IMAGE_BUFFER   ICET_STRATEGY_BUFFER_1
+#define DIRECT_OUT_SPARSE_IMAGE_BUFFER  ICET_STRATEGY_BUFFER_2
+#define DIRECT_TILE_IMAGE_DEST_BUFFER   ICET_STRATEGY_BUFFER_3
+
 static IceTImage directCompose(void)
 {
     IceTImage image;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
-    IceTSizeType rawImageSize, sparseImageSize;
+    IceTSizeType sparseImageSize;
     IceTInt *contrib_counts;
     IceTInt *display_nodes;
     IceTInt max_width, max_height;
@@ -41,16 +45,17 @@ static IceTImage directCompose(void)
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
-    rawImageSize = icetImageBufferSize(max_width, max_height);
     sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
 
-    icetResizeBuffer(  rawImageSize
-		     + 2*sparseImageSize
-		     + num_tiles*sizeof(IceTInt));
-    image               = icetReserveBufferImage(max_width, max_height);
-    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
-    outSparseImage      = icetReserveBufferSparseImage(max_width, max_height);
-    tile_image_dest     = icetReserveBufferMem(num_tiles*sizeof(IceTInt));
+    image               = icetGetStateBufferImage(DIRECT_IMAGE_BUFFER,
+                                                  max_width, max_height);
+    inSparseImageBuffer = icetGetStateBuffer(DIRECT_IN_SPARSE_IMAGE_BUFFER,
+                                             sparseImageSize);
+    outSparseImage      = icetGetStateBufferSparseImage(
+                                                 DIRECT_OUT_SPARSE_IMAGE_BUFFER,
+                                                 max_width, max_height);
+    tile_image_dest     = icetGetStateBuffer(DIRECT_TILE_IMAGE_DEST_BUFFER,
+                                             num_tiles*sizeof(IceTInt));
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {

@@ -10,13 +10,20 @@
 
 #include <IceT.h>
 #include <IceTDevImage.h>
-#include <IceTDevState.h>
 #include <IceTDevContext.h>
+#include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include "common.h"
 
 #include <stdlib.h>
 #include <string.h>
+
+#define SPLIT_INCOMING_BUFFERS          ICET_STRATEGY_BUFFER_0
+#define SPLIT_INCOMING_ARRAY_BUFFER     ICET_STRATEGY_BUFFER_1
+#define SPLIT_OUTGOING_BUFFER           ICET_STRATEGY_BUFFER_2
+#define SPLIT_IMAGE_FRAGMENT_BUFFER     ICET_STRATEGY_BUFFER_3
+#define SPLIT_FULL_IMAGE_BUFFER         ICET_STRATEGY_BUFFER_4
+#define SPLIT_REQUEST_BUFFER            ICET_STRATEGY_BUFFER_5
 
 #define IMAGE_DATA        50
 #define COLOR_DATA        51
@@ -58,6 +65,7 @@ static IceTImage splitStrategy(void)
 
     IceTSparseImage incoming;
     IceTVoid **incomingBuffers;
+    IceTVoid *nextInBuf;
     IceTSparseImage outgoing;
     IceTImage imageFragment;
     IceTImage fullImage;
@@ -97,8 +105,8 @@ static IceTImage splitStrategy(void)
         if (tile_displayed >= 0) {
             my_width = tile_viewports[4*tile_displayed + 2];
             my_height = tile_viewports[4*tile_displayed + 3];
-            icetResizeBuffer(icetImageBufferSize(my_width, my_height));
-            fullImage = icetReserveBufferImage(my_width, my_height);
+            fullImage = icetGetStateBufferImage(SPLIT_FULL_IMAGE_BUFFER,
+                                                my_width, my_height);
             icetClearImage(fullImage);
         }
         return fullImage;
@@ -193,30 +201,31 @@ static IceTImage splitStrategy(void)
 
     fragmentSparseImageSize = icetSparseImageBufferSize(my_fragment_size, 1);
 
-    icetResizeBuffer(  sizeof(IceTVoid*)*tile_contribs[my_tile]
-                     + icetSparseImageBufferSize(max_width, max_height)
-                     + icetImageBufferSize(my_fragment_size, 1)
-                     + icetImageBufferSize(max_width, max_height)
-                     + fragmentSparseImageSize*tile_contribs[my_tile]
-                     + sizeof(IceTCommRequest)*num_requests);
     incomingBuffers
-        = icetReserveBufferMem(sizeof(IceTVoid*)*tile_contribs[my_tile]);
-    outgoing      = icetReserveBufferSparseImage(max_width, max_height);
-    imageFragment = icetReserveBufferImage(my_fragment_size, 1);
-    fullImage     = icetReserveBufferImage(max_width, max_height);
-    requests = icetReserveBufferMem(sizeof(IceTCommRequest)*num_requests);
+        = icetGetStateBuffer(SPLIT_INCOMING_ARRAY_BUFFER,
+                             sizeof(IceTVoid*)*tile_contribs[my_tile]);
+    outgoing      = icetGetStateBufferSparseImage(SPLIT_OUTGOING_BUFFER,
+                                                  max_width, max_height);
+    imageFragment = icetGetStateBufferImage(SPLIT_IMAGE_FRAGMENT_BUFFER,
+                                            my_fragment_size, 1);
+    fullImage     = icetGetStateBufferImage(SPLIT_FULL_IMAGE_BUFFER,
+                                            max_width, max_height);
+    requests = icetGetStateBuffer(SPLIT_REQUEST_BUFFER,
+                                  sizeof(IceTCommRequest)*num_requests);
 
   /* Set up asynchronous receives for all incoming image fragments. */
+    nextInBuf = icetGetStateBuffer(SPLIT_INCOMING_BUFFERS,
+                                fragmentSparseImageSize*tile_contribs[my_tile]);
     for (image = 0, node = 0; image < tile_contribs[my_tile]; node++) {
         if (all_contained_tiles_masks[node*num_tiles + my_tile]) {
             icetRaiseDebug1("Setting up receive from node %d", node);
-            incomingBuffers[image]
-              = icetReserveBufferMem(fragmentSparseImageSize);
+            incomingBuffers[image] = nextInBuf;
             requests[image] =
                 ICET_COMM_IRECV(incomingBuffers[image],
                                 fragmentSparseImageSize,
                                 ICET_BYTE, node, IMAGE_DATA);
             image++;
+            nextInBuf += fragmentSparseImageSize;
         }
     }
 

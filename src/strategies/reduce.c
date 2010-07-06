@@ -12,7 +12,6 @@
 
 #include <IceTDevImage.h>
 #include <IceTDevState.h>
-#include <IceTDevContext.h>
 #include <IceTDevDiagnostics.h>
 #include "common.h"
 
@@ -23,11 +22,21 @@
 #pragma warning(disable:4127)
 #endif
 
+#define REDUCE_IMAGE_BUFFER             ICET_STRATEGY_BUFFER_0
+#define REDUCE_IN_SPARSE_IMAGE_BUFFER   ICET_STRATEGY_BUFFER_1
+#define REDUCE_OUT_SPARSE_IMAGE_BUFFER  ICET_STRATEGY_BUFFER_2
+
+#define REDUCE_NUM_PROC_FOR_TILE_BUFFER ICET_STRATEGY_BUFFER_3
+#define REDUCE_NODE_ASSIGNMENT_BUFFER   ICET_STRATEGY_BUFFER_4
+#define REDUCE_TILE_PROC_GROUPS_BUFFER  ICET_STRATEGY_BUFFER_5
+#define REDUCE_GROUP_SIZES_BUFFER       ICET_STRATEGY_BUFFER_6
+#define REDUCE_TILE_IMAGE_DEST_BUFFER   ICET_STRATEGY_BUFFER_7
+#define REDUCE_CONTRIBUTORS_BUFFER      ICET_STRATEGY_BUFFER_8
+
 static IceTImage reduceCompose(void);
 static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
-                        IceTInt *group_image_destp,
-                        IceTSizeType buffer_size);
+                        IceTInt *group_image_destp);
 
 
 IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
@@ -40,8 +49,7 @@ static IceTImage reduceCompose(void)
     IceTInt max_width, max_height;
     IceTInt num_processes;
     IceTInt tile_displayed;
-    IceTSizeType image_size, sparse_image_size;
-    IceTSizeType buffer_size;
+    IceTSizeType sparse_image_size;
 
     IceTInt *tile_image_dest;
     IceTInt *compose_group, group_size, group_image_dest;
@@ -53,16 +61,17 @@ static IceTImage reduceCompose(void)
     icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
 
-    sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
-    image_size = icetImageBufferSize(max_width, max_height);
-    buffer_size = 2*sparse_image_size + image_size;
     compose_tile = delegate(&tile_image_dest,
-			    &compose_group, &group_size, &group_image_dest,
-			    buffer_size);
+			    &compose_group, &group_size, &group_image_dest);
 
-    inSparseImageBuffer  = icetReserveBufferMem(sparse_image_size);
-    outSparseImage       = icetReserveBufferSparseImage(max_width, max_height);
-    image                = icetReserveBufferImage(max_width, max_height);
+    sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
+    inSparseImageBuffer  = icetGetStateBuffer(REDUCE_IN_SPARSE_IMAGE_BUFFER,
+                                              sparse_image_size);
+    outSparseImage       = icetGetStateBufferSparseImage(
+                                                 REDUCE_OUT_SPARSE_IMAGE_BUFFER,
+                                                 max_width, max_height);
+    image                = icetGetStateBufferImage(REDUCE_IMAGE_BUFFER,
+                                                   max_width, max_height);
 
     icetRenderTransferFullImages(image,
                                  inSparseImageBuffer,
@@ -93,9 +102,9 @@ static IceTImage reduceCompose(void)
 }
 
 static IceTInt delegate(IceTInt **tile_image_destp,
-                        IceTInt **compose_groupp, IceTInt *group_sizep,
-                        IceTInt *group_image_destp,
-                        IceTSizeType buffer_size)
+                        IceTInt **compose_groupp,
+                        IceTInt *group_sizep,
+                        IceTInt *group_image_destp)
 {
     IceTBoolean *all_contained_tiles_masks;
     IceTInt *contrib_counts;
@@ -136,24 +145,22 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     if (total_image_count < 1) {
 	icetRaiseDebug("No nodes are drawing.");
 	*group_sizep = 0;
-	icetResizeBuffer(buffer_size);
 	return -1;
     }
 
-    icetResizeBuffer(  num_tiles*sizeof(IceTInt)
-		     + num_processes*sizeof(IceTInt)
-		     + num_tiles*num_processes*sizeof(IceTInt)
-		     + num_tiles*sizeof(IceTInt)
-		     + num_tiles*sizeof(IceTInt)
-		     + num_processes*sizeof(IceTInt)
-		     + buffer_size);
-    num_proc_for_tile = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
-    node_assignment   = icetReserveBufferMem(num_processes * sizeof(IceTInt));
-    tile_proc_groups  = icetReserveBufferMem(  num_tiles * num_processes
-					     * sizeof(IceTInt));
-    group_sizes       = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
-    tile_image_dest   = icetReserveBufferMem(num_tiles * sizeof(IceTInt));
-    contributors      = icetReserveBufferMem(num_processes * sizeof(IceTInt));
+    num_proc_for_tile = icetGetStateBuffer(REDUCE_NUM_PROC_FOR_TILE_BUFFER,
+                                           num_tiles * sizeof(IceTInt));
+    node_assignment   = icetGetStateBuffer(REDUCE_NODE_ASSIGNMENT_BUFFER,
+                                           num_processes * sizeof(IceTInt));
+    tile_proc_groups  = icetGetStateBuffer(REDUCE_TILE_PROC_GROUPS_BUFFER,
+                                             num_tiles * num_processes
+                                           * sizeof(IceTInt));
+    group_sizes       = icetGetStateBuffer(REDUCE_GROUP_SIZES_BUFFER,
+                                           num_tiles * sizeof(IceTInt));
+    tile_image_dest   = icetGetStateBuffer(REDUCE_TILE_IMAGE_DEST_BUFFER,
+                                           num_tiles * sizeof(IceTInt));
+    contributors      = icetGetStateBuffer(REDUCE_CONTRIBUTORS_BUFFER,
+                                           num_processes * sizeof(IceTInt));
 
   /* Decide the minimum amount of processes that should be added to each
      tile. */

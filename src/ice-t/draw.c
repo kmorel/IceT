@@ -131,9 +131,8 @@ void icetDataReplicationGroupColor(IceTInt color)
     IceTInt size;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    icetResizeBuffer(2*sizeof(IceTInt)*num_proc);
-    allcolors = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
-    mygroup = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+    allcolors = malloc(sizeof(IceTInt)*num_proc);
+    mygroup = malloc(sizeof(IceTInt)*num_proc);
 
     ICET_COMM_ALLGATHER(&color, 1, ICET_INT, allcolors);
 
@@ -146,6 +145,9 @@ void icetDataReplicationGroupColor(IceTInt color)
     }
 
     icetDataReplicationGroup(size, mygroup);
+
+    free(allcolors);
+    free(mygroup);
 }
 
 static void find_contained_viewport(const IceTDouble projection_matrix[16],
@@ -201,8 +203,8 @@ static void find_contained_viewport(const IceTDouble projection_matrix[16],
      normalized z.  Leave the results in homogeneous coordinates for now. */
     bound_vert = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
     icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
-    transformed_verts
-        = icetReserveBufferMem(sizeof(IceTDouble)*num_bounding_verts*4);
+    transformed_verts = icetGetStateBuffer(ICET_TRANSFORMED_BOUNDS,
+                                       sizeof(IceTDouble)*num_bounding_verts*4);
     for (i = 0; i < num_bounding_verts; i++) {
         transformed_verts[4*i + 0]
             = (  total_transform[MI(0,0)]*bound_vert[3*i+0]
@@ -416,14 +418,11 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
-    icetResizeBuffer(  sizeof(IceTInt)*num_tiles
-                     + sizeof(IceTBoolean)*num_tiles*(num_proc+1)
-                     + sizeof(int)    /* So stuff can land on byte boundries.*/
-                     + sizeof(IceTInt)*num_tiles*num_proc
-                     + sizeof(IceTInt)*num_proc
-                     + sizeof(IceTDouble)*num_bounding_verts*4 );
-    contained_list = icetReserveBufferMem(sizeof(IceTInt) * num_tiles);
-    contained_mask = icetReserveBufferMem(sizeof(IceTBoolean)*num_tiles);
+
+    contained_list = icetGetStateBuffer(ICET_CONTAINED_LIST_BUF,
+                                        sizeof(IceTInt) * num_tiles);
+    contained_mask = icetGetStateBuffer(ICET_CONTAINED_MASK_BUF,
+                                        sizeof(IceTBoolean)*num_tiles);
 
     icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
     tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
@@ -471,7 +470,10 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE,
                     &data_replication_group_size);
     if (data_replication_group_size > 1) {
-        data_replication_group = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+      /* Need to copy data_replication_group to temporary buffer so that we
+         can modify it based on the current view's projection. */
+        data_replication_group = icetGetStateBuffer(ICET_DATA_REP_GROUP_BUF,
+                                                    sizeof(IceTInt)*num_proc);
         icetGetIntegerv(ICET_DATA_REPLICATION_GROUP, data_replication_group);
         if (data_replication_group_size >= num_contained) {
           /* We have at least as many processes in the group as tiles we
@@ -606,13 +608,13 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
   /* Get information on what tiles other processes are supposed to render. */
     icetRaiseDebug("Gathering rendering information.");
     all_contained_masks
-        = icetReserveBufferMem(sizeof(IceTInt)*num_tiles*num_proc);
+        = icetStateAllocateBoolean(ICET_ALL_CONTAINED_TILES_MASKS,
+                                   num_tiles*num_proc);
     contrib_counts = contained_list;
 
     ICET_COMM_ALLGATHER(contained_mask, num_tiles, ICET_BYTE,
                         all_contained_masks);
-    icetStateSetBooleanv(ICET_ALL_CONTAINED_TILES_MASKS,
-                         num_tiles*num_proc, all_contained_masks);
+
     total_image_count = 0;
     for (i = 0; i < num_tiles; i++) {
         contrib_counts[i] = 0;
