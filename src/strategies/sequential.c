@@ -11,7 +11,6 @@
 #include <IceT.h>
 
 #include <IceTDevImage.h>
-#include <IceTDevContext.h>
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include "common.h"
@@ -20,6 +19,12 @@ static IceTImage sequentialCompose(void);
 
 IceTStrategy ICET_STRATEGY_SEQUENTIAL
     = { "Sequential", ICET_TRUE, sequentialCompose };
+
+#define SEQUENTIAL_IMAGE_BUFFER                 ICET_STRATEGY_BUFFER_0
+#define SEQUENTIAL_IN_SPARSE_IMAGE_BUFFER       ICET_STRATEGY_BUFFER_1
+#define SEQUENTIAL_OUT_SPARSE_IMAGE_BUFFER      ICET_STRATEGY_BUFFER_2
+#define SEQUENTIAL_FINAL_IMAGE_BUFFER           ICET_STRATEGY_BUFFER_3
+#define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_4
 
 static IceTImage sequentialCompose(void)
 {
@@ -33,7 +38,7 @@ static IceTImage sequentialCompose(void)
     IceTImage image;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
-    IceTSizeType rawImageSize, sparseImageSize;
+    IceTSizeType sparseImageSize;
     IceTInt *compose_group;
     int i;
 
@@ -45,16 +50,17 @@ static IceTImage sequentialCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    rawImageSize    = icetImageBufferSize(max_width, max_height);
     sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
 
-    icetResizeBuffer(  rawImageSize*2
-		     + sparseImageSize*2
-		     + sizeof(int)*num_proc);
-    image               = icetReserveBufferImage(max_width, max_height);
-    inSparseImageBuffer = icetReserveBufferMem(sparseImageSize);
-    outSparseImage      = icetReserveBufferSparseImage(max_width, max_height);
-    compose_group       = icetReserveBufferMem(sizeof(IceTInt)*num_proc);
+    image               = icetGetStateBufferImage(SEQUENTIAL_IMAGE_BUFFER,
+                                                  max_width, max_height);
+    inSparseImageBuffer = icetGetStateBuffer(SEQUENTIAL_IN_SPARSE_IMAGE_BUFFER,
+                                             sparseImageSize);
+    outSparseImage      = icetGetStateBufferSparseImage(
+                                             SEQUENTIAL_OUT_SPARSE_IMAGE_BUFFER,
+                                             max_width, max_height);
+    compose_group       = icetGetStateBuffer(SEQUENTIAL_COMPOSE_GROUP_BUFFER,
+                                             sizeof(IceTInt)*num_proc);
 
     myImage = icetImageNull();
 
@@ -85,7 +91,8 @@ static IceTImage sequentialCompose(void)
       /* If this processor is display node, make sure image goes to
          myColorBuffer. */
 	if (d_node == rank) {
-            tileImage = icetReserveBufferImage(max_width, max_height);
+            tileImage = icetGetStateBufferImage(SEQUENTIAL_FINAL_IMAGE_BUFFER,
+                                                max_width, max_height);
 	} else {
 	    tileImage = image;
           /* A previous iteration may have changed the image buffer to remove

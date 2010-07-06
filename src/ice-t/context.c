@@ -25,9 +25,6 @@ struct IceTContextStruct {
     IceTState state;
     IceTCommunicator communicator;
     IceTStrategy strategy;
-    IceTVoid *buffer;
-    IceTSizeType buffer_size;
-    IceTSizeType buffer_offset;
 };
 
 static IceTContext icet_current_context = NULL;
@@ -39,10 +36,6 @@ IceTContext icetCreateContext(IceTCommunicator comm)
     context->magic_number = CONTEXT_MAGIC_NUMBER;
 
     context->communicator = comm->Duplicate(comm);
-
-    context->buffer = NULL;
-    context->buffer_size = 0;
-    context->buffer_offset = 0;
 
     context->state = icetStateCreate();
 
@@ -87,11 +80,7 @@ void icetDestroyContext(IceTContext context)
     icetStateDestroy(context->state);
     context->state = NULL;
 
-    free(context->buffer);
     context->communicator->Destroy(context->communicator);
-    context->buffer = NULL;
-    context->buffer_size = 0;
-    context->buffer_offset = 0;
 
   /* The context is now completely destroyed and now null.  Restore saved
      context. */
@@ -122,77 +111,7 @@ IceTCommunicator icetGetCommunicator()
     return icet_current_context->communicator;
 }
 
-IceTVoid *icetReserveBufferMem(IceTSizeType size)
-{
-    IceTVoid *mem = ((IceTUByte *)icet_current_context->buffer)
-        + icet_current_context->buffer_offset;
-
-  /* Integer boundries are good. */
-    if (size%sizeof(IceTInt64) != 0) {
-        size += sizeof(IceTInt64) - size%sizeof(IceTInt64);
-    }
-
-    icet_current_context->buffer_offset += size;
-
-    if (icet_current_context->buffer_offset > icet_current_context->buffer_size)
-        icetRaiseError("Reserved more memory then allocated.",
-                       ICET_OUT_OF_MEMORY);
-
-    return mem;
-}
-
-IceTImage icetReserveBufferImage(IceTSizeType width, IceTSizeType height)
-{
-    IceTVoid *buffer;
-    IceTSizeType buffer_size;
-
-    buffer_size = icetImageBufferSize(width, height);
-    buffer = icetReserveBufferMem(buffer_size);
-
-    return icetImageAssignBuffer(buffer, width, height);
-}
-
-IceTSparseImage icetReserveBufferSparseImage(IceTSizeType width,
-                                             IceTSizeType height)
-{
-    IceTVoid *buffer;
-    IceTSizeType buffer_size;
-
-    buffer_size = icetSparseImageBufferSize(width, height);
-    buffer = icetReserveBufferMem(buffer_size);
-
-    return icetSparseImageAssignBuffer(buffer, width, height);
-}
-
 void icetCopyState(IceTContext dest, const IceTContext src)
 {
     icetStateCopy(dest->state, src->state);
-}
-
-void icetResizeBuffer(IceTSizeType size)
-{
-    icetRaiseDebug1("Resizing buffer to %d bytes.", (IceTInt)size);
-
-  /* Add some padding in case the user's data does not lie on byte boundries. */
-    size += 32*sizeof(IceTInt64);
-    if (icet_current_context->buffer_size < size) {
-        free(icet_current_context->buffer);
-        icet_current_context->buffer = malloc(size);
-        if (icet_current_context->buffer == NULL) {
-            icetRaiseError("Could not allocate more buffer space",
-                           ICET_OUT_OF_MEMORY);
-          /* Try to back out of change. */
-            icet_current_context->buffer
-                = malloc(icet_current_context->buffer_size);
-            if (icet_current_context->buffer == NULL) {
-                icetRaiseError("Could not back out of memory change",
-                               ICET_OUT_OF_MEMORY);
-                icet_current_context->buffer_size = 0;
-            }
-        } else {
-            icet_current_context->buffer_size = size;
-        }
-    }
-
-    icet_current_context->buffer_offset = 0;
 }

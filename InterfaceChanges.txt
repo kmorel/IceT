@@ -97,3 +97,7 @@ Changed the names of the libraries from icet, icet_strategies, and icet_mpi
 to IceTCore, IceTStrategies, and IceTMPI, respectively.
 
 Changed ICET_STRATEGY_SERIAL to ICET_STRATEGY_SEQUENTIAL.
+
+Got rid of icetResizeBuffer and icetReserveMem.  Buffers can now be
+allocated as part of the IceT state instead using the icetGetStateBuffer*
+functions.

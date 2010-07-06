@@ -18,6 +18,12 @@
 
 #include <string.h>
 
+#define VTREE_IMAGE_BUFFER              ICET_STRATEGY_BUFFER_0
+#define VTREE_IN_SPARSE_IMAGE_BUFFER    ICET_STRATEGY_BUFFER_1
+#define VTREE_OUT_SPARSE_IMAGE_BUFFER   ICET_STRATEGY_BUFFER_2
+#define VTREE_INFO_BUFFER               ICET_STRATEGY_BUFFER_3
+#define VTREE_ALL_CONTAINED_TMASKS_BUFFER ICET_STRATEGY_BUFFER_4
+
 #define VTREE_IMAGE_DATA 40
 
 struct node_info {
@@ -63,7 +69,7 @@ static IceTImage vtreeCompose(void)
     IceTImage image;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
-    IceTSizeType rawImageSize, sparseImageSize;
+    IceTSizeType sparseImageSize;
     struct node_info *info;
     struct node_info *my_info;
     int tile, node;
@@ -83,18 +89,18 @@ static IceTImage vtreeCompose(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
 
   /* Allocate buffers. */
-    rawImageSize = icetImageBufferSize(max_width, max_height);
     sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
-    icetResizeBuffer(  rawImageSize
-                     + sparseImageSize*2
-                     + sizeof(struct node_info)*num_proc
-                     + sizeof(IceTBoolean)*num_proc*num_tiles);
-    image                = icetReserveBufferImage(max_width, max_height);
-    inSparseImageBuffer  = icetReserveBufferMem(sparseImageSize);
-    outSparseImage       = icetReserveBufferSparseImage(max_width, max_height);
-    info                 = icetReserveBufferMem(
+
+    image                = icetGetStateBufferImage(VTREE_IMAGE_BUFFER,
+                                                   max_width, max_height);
+    inSparseImageBuffer  = icetGetStateBuffer(VTREE_IN_SPARSE_IMAGE_BUFFER,
+                                              sparseImageSize);
+    outSparseImage       = icetGetStateBufferSparseImage(
+                                                  VTREE_OUT_SPARSE_IMAGE_BUFFER,
+                                                  max_width, max_height);
+    info                 = icetGetStateBuffer(VTREE_INFO_BUFFER,
                                              sizeof(struct node_info)*num_proc);
-    all_contained_tmasks = icetReserveBufferMem(
+    all_contained_tmasks = icetGetStateBuffer(VTREE_ALL_CONTAINED_TMASKS_BUFFER,
                                         sizeof(IceTBoolean)*num_proc*num_tiles);
 
     icetGetBooleanv(ICET_ALL_CONTAINED_TILES_MASKS, all_contained_tmasks);
