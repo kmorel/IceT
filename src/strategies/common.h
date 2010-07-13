@@ -122,9 +122,7 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
 */
 void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image,
-                            IceTVoid *inSparseImageBuffer,
-                            IceTSparseImage outSparseImage);
+                            IceTImage image);
 
 #if 0
 /* icetBswapCompose

@@ -21,10 +21,8 @@ IceTStrategy ICET_STRATEGY_SEQUENTIAL
     = { "Sequential", ICET_TRUE, sequentialCompose };
 
 #define SEQUENTIAL_IMAGE_BUFFER                 ICET_STRATEGY_BUFFER_0
-#define SEQUENTIAL_IN_SPARSE_IMAGE_BUFFER       ICET_STRATEGY_BUFFER_1
-#define SEQUENTIAL_OUT_SPARSE_IMAGE_BUFFER      ICET_STRATEGY_BUFFER_2
-#define SEQUENTIAL_FINAL_IMAGE_BUFFER           ICET_STRATEGY_BUFFER_3
-#define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_4
+#define SEQUENTIAL_FINAL_IMAGE_BUFFER           ICET_STRATEGY_BUFFER_1
+#define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_2
 
 static IceTImage sequentialCompose(void)
 {
@@ -36,9 +34,6 @@ static IceTImage sequentialCompose(void)
     IceTBoolean ordered_composite;
     IceTImage myImage;
     IceTImage image;
-    IceTVoid *inSparseImageBuffer;
-    IceTSparseImage outSparseImage;
-    IceTSizeType sparseImageSize;
     IceTInt *compose_group;
     int i;
 
@@ -50,15 +45,8 @@ static IceTImage sequentialCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    sparseImageSize = icetSparseImageBufferSize(max_width, max_height);
-
     image               = icetGetStateBufferImage(SEQUENTIAL_IMAGE_BUFFER,
                                                   max_width, max_height);
-    inSparseImageBuffer = icetGetStateBuffer(SEQUENTIAL_IN_SPARSE_IMAGE_BUFFER,
-                                             sparseImageSize);
-    outSparseImage      = icetGetStateBufferSparseImage(
-                                             SEQUENTIAL_OUT_SPARSE_IMAGE_BUFFER,
-                                             max_width, max_height);
     compose_group       = icetGetStateBuffer(SEQUENTIAL_COMPOSE_GROUP_BUFFER,
                                              sizeof(IceTInt)*num_proc);
 
@@ -102,8 +90,7 @@ static IceTImage sequentialCompose(void)
 	}
 
 	icetGetTileImage(i, tileImage);
-	icetSingleImageCompose(compose_group, num_proc, image_dest,
-                               tileImage, inSparseImageBuffer, outSparseImage);
+	icetSingleImageCompose(compose_group, num_proc, image_dest, tileImage);
 
         if (d_node == rank) {
             myImage = tileImage;

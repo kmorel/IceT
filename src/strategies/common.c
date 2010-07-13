@@ -749,10 +749,19 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
 
 void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image,
-                            IceTVoid *inSparseImageBuffer,
-                            IceTSparseImage outSparseImage)
+                            IceTImage image)
 {
+    IceTVoid *inSparseImageBuffer;
+    IceTSparseImage outSparseImage;
+    IceTSizeType width = icetImageGetWidth(image);
+    IceTSizeType height = icetImageGetHeight(image);
+
+    inSparseImageBuffer = icetGetStateBuffer(ICET_SI_STRATEGY_BUFFER_0,
+                                             icetSparseImageBufferSize(width,
+                                                                       height));
+    outSparseImage = icetGetStateBufferSparseImage(ICET_SI_STRATEGY_BUFFER_1,
+                                                   width, height);
+
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
 	icetBswapCompose(compose_group, group_size, image_dest,
