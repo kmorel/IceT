@@ -171,6 +171,23 @@ ICET_EXPORT void icetStrategy(IceTStrategy strategy);
 
 ICET_EXPORT const char *icetGetStrategyName(void);
 
+typedef struct _IceTSingleImageStrategy {
+    const char *name;
+    void (*compose)(IceTInt *compose_group, IceTInt group_size,
+                    IceTInt image_dest, IceTImage image);
+} IceTSingleImageStrategy;
+
+ICET_STRATEGY_EXPORT
+extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
+ICET_STRATEGY_EXPORT
+extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+ICET_STRATEGY_EXPORT
+extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_TREE;
+
+ICET_EXPORT void icetSingleImageStrategy(IceTSingleImageStrategy strategy);
+
+ICET_EXPORT const char *icetGetSingleImageStrategyName(void);
+
 #define ICET_COMPOSITE_MODE_Z_BUFFER    (IceTEnum)0x0301
 #define ICET_COMPOSITE_MODE_BLEND       (IceTEnum)0x0302
 ICET_EXPORT void icetCompositeMode(IceTEnum mode);

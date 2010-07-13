@@ -107,3 +107,7 @@ functions are now placed in a new header file, IceTDevCommunication.h.
 They also now automatically count the sent bytes.  Therefore, the
 pseudofunction icetAddSentBytes is no longer necessary and has been
 removed.
+
+Added the concept of a single image strategy.  This is a sub-algorithm that
+can be used for the main multi-tile strategy to composite a single image.
+The strategy is set with icetSingleImageStrategy.
