@@ -10,7 +10,7 @@
 
 #include <IceT.h>
 #include <IceTDevImage.h>
-#include <IceTDevContext.h>
+#include <IceTDevCommunication.h>
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include "common.h"
@@ -221,9 +221,9 @@ static IceTImage splitStrategy(void)
             icetRaiseDebug1("Setting up receive from node %d", node);
             incomingBuffers[image] = nextInBuf;
             requests[image] =
-                ICET_COMM_IRECV(incomingBuffers[image],
-                                fragmentSparseImageSize,
-                                ICET_BYTE, node, IMAGE_DATA);
+                icetCommIrecv(incomingBuffers[image],
+                              fragmentSparseImageSize,
+                              ICET_BYTE, node, IMAGE_DATA);
             image++;
             nextInBuf += fragmentSparseImageSize;
         }
@@ -255,9 +255,8 @@ static IceTImage splitStrategy(void)
                                  truncated_size, outgoing);
             icetSparseImagePackageForSend(outgoing,
                                           &package_buffer, &package_size);
-            icetAddSentBytes(package_size);
-            ICET_COMM_SEND(package_buffer, package_size,
-                           ICET_BYTE, node, IMAGE_DATA);
+            icetCommSend(package_buffer, package_size,
+                         ICET_BYTE, node, IMAGE_DATA);
             offset += truncated_size;
         }
     }
@@ -266,7 +265,7 @@ static IceTImage splitStrategy(void)
     first_incoming = 1;
     for (image = 0; image < tile_contribs[my_tile]; image++) {
         int idx;
-        idx = ICET_COMM_WAITANY(tile_contribs[my_tile], requests);
+        idx = icetCommWaitany(tile_contribs[my_tile], requests);
         incoming = icetSparseImageUnpackageFromReceive(incomingBuffers[idx]);
         if (first_incoming) {
             icetRaiseDebug1("Got first image (%d).", idx);
@@ -289,22 +288,20 @@ static IceTImage splitStrategy(void)
     if (color_format != ICET_IMAGE_COLOR_NONE) {
         IceTVoid *outgoing_data = icetImageGetColorVoid(imageFragment,
                                                         &pixel_size);
-        icetAddSentBytes(pixel_size*my_fragment_size);
-        requests[0] = ICET_COMM_ISEND(outgoing_data,
-                                      pixel_size*my_fragment_size,
-                                      ICET_BYTE,
-                                      display_nodes[my_tile],
-                                      COLOR_DATA);
+        requests[0] = icetCommIsend(outgoing_data,
+                                    pixel_size*my_fragment_size,
+                                    ICET_BYTE,
+                                    display_nodes[my_tile],
+                                    COLOR_DATA);
     }
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
         IceTVoid *outgoing_data = icetImageGetDepthVoid(imageFragment,
                                                         &pixel_size);
-        icetAddSentBytes(pixel_size*my_fragment_size);
-        requests[1] = ICET_COMM_ISEND(outgoing_data,
-                                      pixel_size*my_fragment_size,
-                                      ICET_BYTE,
-                                      display_nodes[my_tile],
-                                      DEPTH_DATA);
+        requests[1] = icetCommIsend(outgoing_data,
+                                    pixel_size*my_fragment_size,
+                                    ICET_BYTE,
+                                    display_nodes[my_tile],
+                                    DEPTH_DATA);
     }
 
   /* If I am displaying a tile, receive image data. */
@@ -327,8 +324,8 @@ static IceTImage splitStrategy(void)
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final color fragment from %d",
                                     node);
-                    ICET_COMM_RECV(cb, pixel_size*displayed_fragment_size,
-                                   ICET_BYTE, node, COLOR_DATA);
+                    icetCommRecv(cb, pixel_size*displayed_fragment_size,
+                                 ICET_BYTE, node, COLOR_DATA);
                     cb += pixel_size*displayed_fragment_size;
                 }
             }
@@ -338,8 +335,8 @@ static IceTImage splitStrategy(void)
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final depth fragment from %d",
                                     node);
-                    ICET_COMM_RECV(db, pixel_size*displayed_fragment_size,
-                                   ICET_INT, node, DEPTH_DATA);
+                    icetCommRecv(db, pixel_size*displayed_fragment_size,
+                                 ICET_INT, node, DEPTH_DATA);
                     db += pixel_size*displayed_fragment_size;
                 }
             }
@@ -349,10 +346,10 @@ static IceTImage splitStrategy(void)
     }
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
-        ICET_COMM_WAIT(&requests[0]);
+        icetCommWait(&requests[0]);
     }
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        ICET_COMM_WAIT(&requests[1]);
+        icetCommWait(&requests[1]);
     }
 
     free(tile_groups);

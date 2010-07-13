@@ -12,6 +12,8 @@
 
 #include <IceT.h>
 
+#include <IceTDevDiagnostics.h>
+
 #ifndef WIN32
 #include <sys/time.h>
 #else
@@ -52,3 +54,31 @@ double icetWallTime(void)
     }
 }
 #endif /*WIN32*/
+
+IceTSizeType icetTypeWidth(IceTEnum type)
+{
+    switch (type) {
+      case ICET_BOOLEAN:
+          return sizeof(IceTBoolean);
+      case ICET_BYTE:
+          return sizeof(IceTByte);
+      case ICET_SHORT:
+          return sizeof(IceTShort);
+      case ICET_INT:
+          return sizeof(IceTInt);
+      case ICET_FLOAT:
+          return sizeof(IceTFloat);
+      case ICET_DOUBLE:
+          return sizeof(IceTDouble);
+      case ICET_POINTER:
+          return sizeof(IceTVoid *);
+      case ICET_VOID:
+          return 1;
+      case ICET_NULL:
+          return 0;
+      default:
+          icetRaiseError("Bad type identifier.", ICET_INVALID_VALUE);
+    }
+
+    return 0;
+}

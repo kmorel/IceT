@@ -12,6 +12,7 @@
 
 #include <IceT.h>
 
+#include <IceTDevCommunication.h>
 #include <IceTDevContext.h>
 
 #include <stdlib.h>
@@ -64,7 +65,7 @@ void icetRaiseDiagnostic(const char *msg, IceTEnum type,
         FINISH;
     }
 
-    rank = ICET_COMM_RANK();
+    rank = icetCommRank();
     if ((diagLevel & ICET_DIAG_ALL_NODES) != 0) {
       /* Reporting on all nodes. */
         sprintf(m, "ICET,%d:", rank);

@@ -101,3 +101,9 @@ Changed ICET_STRATEGY_SERIAL to ICET_STRATEGY_SEQUENTIAL.
 Got rid of icetResizeBuffer and icetReserveMem.  Buffers can now be
 allocated as part of the IceT state instead using the icetGetStateBuffer*
 functions.
+
+Replaced all the ICET_COMM_* macros with icetComm* functions.  These
+functions are now placed in a new header file, IceTDevCommunication.h.
+They also now automatically count the sent bytes.  Therefore, the
+pseudofunction icetAddSentBytes is no longer necessary and has been
+removed.

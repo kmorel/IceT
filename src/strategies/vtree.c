@@ -11,7 +11,7 @@
 #include <IceT.h>
 
 #include <IceTDevImage.h>
-#include <IceTDevContext.h>
+#include <IceTDevCommunication.h>
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include "common.h"
@@ -377,14 +377,13 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
         }
 
         if (my_info->tile_sending != -1) {
-            icetAddSentBytes(package_size);
-            ICET_COMM_SENDRECV(package_buffer, package_size, ICET_BYTE,
-                               my_info->send_dest, VTREE_IMAGE_DATA,
-                               inSparseImageBuffer, inSparseImageBufferSize,
-                               ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
+            icetCommSendrecv(package_buffer, package_size, ICET_BYTE,
+                             my_info->send_dest, VTREE_IMAGE_DATA,
+                             inSparseImageBuffer, inSparseImageBufferSize,
+                             ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         } else {
-            ICET_COMM_RECV(inSparseImageBuffer, inSparseImageBufferSize,
-                           ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
+            icetCommRecv(inSparseImageBuffer, inSparseImageBufferSize,
+                         ICET_BYTE, my_info->recv_src, VTREE_IMAGE_DATA);
         }
         inSparseImage =icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
 
@@ -395,8 +394,7 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
         }
 
     } else if (my_info->tile_sending != -1) {
-        icetAddSentBytes(package_size);
-        ICET_COMM_SEND(package_buffer, package_size, ICET_BYTE,
-                       my_info->send_dest, VTREE_IMAGE_DATA);
+        icetCommSend(package_buffer, package_size, ICET_BYTE,
+                     my_info->send_dest, VTREE_IMAGE_DATA);
     }
 }

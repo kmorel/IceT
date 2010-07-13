@@ -11,8 +11,8 @@
 #include <IceT.h>
 
 #include <IceTDevState.h>
-#include <IceTDevContext.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevPorting.h>
 
 #include <stdlib.h>
 
@@ -176,16 +176,7 @@ void icetBoundingVertices(IceTInt size, IceTEnum type, IceTSizeType stride,
     int i, j;
 
     if (stride < 1) {
-	switch (type) {
-	  case ICET_SHORT:  stride = size*sizeof(IceTShort);  break;
-	  case ICET_INT:    stride = size*sizeof(IceTInt);    break;
-	  case ICET_FLOAT:  stride = size*sizeof(IceTFloat);  break;
-	  case ICET_DOUBLE: stride = size*sizeof(IceTDouble); break;
-	  default:
-	      icetRaiseError("Bad type to icetBoundingVertices.",
-			     ICET_INVALID_VALUE);
-	      return;
-	}
+        stride = size*icetTypeWidth(type);
     }
 
     verts = malloc(count*3*sizeof(IceTDouble));
