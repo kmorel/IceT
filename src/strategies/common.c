@@ -12,7 +12,7 @@
 
 #include <IceT.h>
 #include <IceTDevState.h>
-#include <IceTDevContext.h>
+#include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
@@ -116,15 +116,14 @@ void icetRenderTransferFullImages(IceTImage image,
 
 static void startLargeRecv(void *buf, IceTSizeType size, IceTInt src,
                            IceTCommRequest *req) {
-    *req = ICET_COMM_IRECV(buf, size, ICET_BYTE, src, LARGE_MESSAGE);
+    *req = icetCommIrecv(buf, size, ICET_BYTE, src, LARGE_MESSAGE);
 }
 static void startLargeSend(IceTInt dest, IceTCommRequest *req,
                            IceTGenerateData callback, IceTInt *sendIds) {
     IceTSizeType data_size;
     IceTVoid *data;
     data = (*callback)(sendIds[dest], dest, &data_size);
-    icetAddSentBytes(data_size);
-    *req = ICET_COMM_ISEND(data, data_size, ICET_BYTE, dest, LARGE_MESSAGE);
+    *req = icetCommIsend(data, data_size, ICET_BYTE, dest, LARGE_MESSAGE);
 }
 static IceTInt *sendIds = NULL;
 static char *myDests = NULL;
@@ -194,7 +193,7 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     myDests[rank] = 0;
 
   /* Gather masks for all processes. */
-    ICET_COMM_ALLGATHER(myDests, comm_size, ICET_BYTE, allDests);
+    icetCommAllgather(myDests, comm_size, ICET_BYTE, allDests);
 
   /* Determine communications.  We will determine communications in a
      series of steps.  At each step, we will try to find the most send/recv
@@ -291,7 +290,7 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     }
     while ((rqi < numRecv) || (sqi < numSend)) {
         icetRaiseDebug("Starting wait.");
-        i = ICET_COMM_WAITANY(2, requests);
+        i = icetCommWaitany(2, requests);
         icetRaiseDebug1("Wait returned with %d finished.", (int)i);
         switch (i) {
           case RECV_IDX:
@@ -358,15 +357,15 @@ static void BswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
             BIT_REVERSE(src, i, group_size);
             if (src != group_rank) {
                 requests[i] =
-                    ICET_COMM_IRECV(colorBuffer + pixel_size*pixel_count*i,
-                                    pixel_size*pixel_count, ICET_BYTE,
-                                    compose_group[src], SWAP_IMAGE_DATA);
+                    icetCommIrecv(colorBuffer + pixel_size*pixel_count*i,
+                                  pixel_size*pixel_count, ICET_BYTE,
+                                  compose_group[src], SWAP_IMAGE_DATA);
             } else {
                 requests[i] = ICET_COMM_REQUEST_NULL;
             }
         }
         for (i = 0; i < group_size; i++) {
-            ICET_COMM_WAIT(requests + i);
+            icetCommWait(requests + i);
         }
     }
 
@@ -381,15 +380,15 @@ static void BswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
             BIT_REVERSE(src, i, group_size);
             if (src != group_rank) {
                 requests[i] =
-                    ICET_COMM_IRECV(depthBuffer + pixel_size*pixel_count*i,
-                                    pixel_size*pixel_count, ICET_BYTE,
-                                    compose_group[src], SWAP_DEPTH_DATA);
+                    icetCommIrecv(depthBuffer + pixel_size*pixel_count*i,
+                                  pixel_size*pixel_count, ICET_BYTE,
+                                  compose_group[src], SWAP_DEPTH_DATA);
             } else {
                 requests[i] = ICET_COMM_REQUEST_NULL;
             }
         }
         for (i = 0; i < group_size; i++) {
-            ICET_COMM_WAIT(requests + i);
+            icetCommWait(requests + i);
         }
     }
     free(requests);
@@ -416,10 +415,9 @@ static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
         IceTSizeType pixel_size;
         colorBuffer = icetImageGetColorVoid(image, &pixel_size);
         icetRaiseDebug("Sending image data.");
-        icetAddSentBytes(pixel_size*pixel_count);
-        ICET_COMM_SEND(colorBuffer + pixel_size*offset,
-                       pixel_size*pixel_count, ICET_BYTE,
-                       compose_group[image_dest], SWAP_IMAGE_DATA);
+        icetCommSend(colorBuffer + pixel_size*offset,
+                     pixel_size*pixel_count, ICET_BYTE,
+                     compose_group[image_dest], SWAP_IMAGE_DATA);
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
@@ -427,10 +425,9 @@ static void BswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
         IceTSizeType pixel_size;
         depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
         icetRaiseDebug("Sending depth data.");
-        icetAddSentBytes(pixel_size*pixel_count);
-        ICET_COMM_SEND(depthBuffer + pixel_size*offset,
-                       pixel_size*pixel_count, ICET_BYTE,
-                       compose_group[image_dest], SWAP_DEPTH_DATA);
+        icetCommSend(depthBuffer + pixel_size*offset,
+                     pixel_size*pixel_count, ICET_BYTE,
+                     compose_group[image_dest], SWAP_DEPTH_DATA);
     }
 }
 
@@ -504,12 +501,11 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                                      outSparseImage);
                 icetSparseImagePackageForSend(outSparseImage,
                                               &package_buffer, &package_size);
-                icetAddSentBytes(package_size);
               /* Send to processor in lower "half" that has same part of
                * image. */
-                ICET_COMM_SEND(package_buffer, package_size, ICET_BYTE,
-                               compose_group[dest_rank],
-                               SWAP_IMAGE_DATA);
+                icetCommSend(package_buffer, package_size, ICET_BYTE,
+                             compose_group[dest_rank],
+                             SWAP_IMAGE_DATA);
             }
         }
         return;
@@ -560,14 +556,13 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
 
             icetSparseImagePackageForSend(outSparseImage,
                                           &package_buffer, &package_size);
-            icetAddSentBytes(package_size);
             incoming_size = icetSparseImageBufferSizeType(color_format,
                                                           depth_format,
                                                           pixel_count, 1);
-            ICET_COMM_SENDRECV(package_buffer, package_size,
-                               ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA,
-                               inSparseImageBuffer, incoming_size,
-                               ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA);
+            icetCommSendrecv(package_buffer, package_size,
+                             ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA,
+                             inSparseImageBuffer, incoming_size,
+                             ICET_BYTE, compose_group[pair], SWAP_IMAGE_DATA);
 
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
@@ -588,8 +583,8 @@ static void BswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                                                           depth_format,
                                                           pixel_count, 1);
             src = pow2size + (group_rank & (extra_pow2size-1));
-            ICET_COMM_RECV(inSparseImageBuffer, incoming_size,
-                           ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
+            icetCommRecv(inSparseImageBuffer, incoming_size,
+                         ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
             icetCompressedSubComposite(image, offset, inSparseImage, 0);
@@ -715,9 +710,8 @@ static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
         icetCompressImage(image, outSparseImage);
         icetSparseImagePackageForSend(outSparseImage,
                                       &package_buffer, &package_size);
-        icetAddSentBytes(package_size);
-        ICET_COMM_SEND(package_buffer, package_size, ICET_BYTE,
-                       compose_group[pair_proc], TREE_IMAGE_DATA);
+        icetCommSend(package_buffer, package_size, ICET_BYTE,
+                     compose_group[pair_proc], TREE_IMAGE_DATA);
     } else if (current_image == RECV_IMAGE) {
       /* Get my image. */
         IceTSparseImage inSparseImage;
@@ -728,8 +722,8 @@ static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
                                             icetImageGetDepthFormat(image),
                                             icetImageGetWidth(image),
                                             icetImageGetHeight(image));
-        ICET_COMM_RECV(inSparseImageBuffer, incoming_size, ICET_BYTE,
-                       compose_group[pair_proc], TREE_IMAGE_DATA);
+        icetCommRecv(inSparseImageBuffer, incoming_size, ICET_BYTE,
+                     compose_group[pair_proc], TREE_IMAGE_DATA);
         inSparseImage
             = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
         icetCompressedComposite(image, inSparseImage,

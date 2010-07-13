@@ -11,7 +11,7 @@
 #include <IceT.h>
 
 #include <IceTDevState.h>
-#include <IceTDevContext.h>
+#include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
 
@@ -134,7 +134,7 @@ void icetDataReplicationGroupColor(IceTInt color)
     allcolors = malloc(sizeof(IceTInt)*num_proc);
     mygroup = malloc(sizeof(IceTInt)*num_proc);
 
-    ICET_COMM_ALLGATHER(&color, 1, ICET_INT, allcolors);
+    icetCommAllgather(&color, 1, ICET_INT, allcolors);
 
     size = 0;
     for (i = 0; i < num_proc; i++) {
@@ -612,8 +612,8 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
                                    num_tiles*num_proc);
     contrib_counts = contained_list;
 
-    ICET_COMM_ALLGATHER(contained_mask, num_tiles, ICET_BYTE,
-                        all_contained_masks);
+    icetCommAllgather(contained_mask, num_tiles, ICET_BYTE,
+                      all_contained_masks);
 
     total_image_count = 0;
     for (i = 0; i < num_tiles; i++) {

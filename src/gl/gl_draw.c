@@ -9,7 +9,6 @@
 
 #include <IceTDevDiagnostics.h>
 #include <IceTDevState.h>
-#include <IceTDevContext.h>
 
 #include <IceTDevGLImage.h>
 

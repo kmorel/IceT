@@ -11,7 +11,9 @@
 *****************************************************************************/
 
 #include <IceTGL.h>
-#include <IceTDevContext.h>
+#include <IceTDevCommunication.h>
+#include <IceTDevState.h>
+#include <IceTDevImage.h>
 #include "test_codes.h"
 #include "test-util.h"
 
@@ -247,15 +249,15 @@ static void check_results(int result)
 
     if (rank+1 < num_proc) {
         int in_fail;
-        ICET_COMM_RECV(&in_fail, 1, ICET_INT, rank+1, 1111);
+        icetCommRecv(&in_fail, 1, ICET_INT, rank+1, 1111);
         fail |= in_fail;
     }
     if (rank-1 >= 0) {
-        ICET_COMM_SEND(&fail, 1, ICET_INT, rank-1, 1111);
-        ICET_COMM_RECV(&fail, 1, ICET_INT, rank-1, 2222);
+        icetCommSend(&fail, 1, ICET_INT, rank-1, 1111);
+        icetCommRecv(&fail, 1, ICET_INT, rank-1, 2222);
     }
     if (rank+1 < num_proc) {
-        ICET_COMM_SEND(&fail, 1, ICET_INT, rank+1, 2222);
+        icetCommSend(&fail, 1, ICET_INT, rank+1, 2222);
     }
 
     if (fail) {
@@ -309,14 +311,14 @@ static int RandomTransformRun()
         }
         printf("Data replication group sizes: %d\n", rep_group_size);
         for (i = 1; i < num_proc; i++) {
-            ICET_COMM_SEND(&seed, 1, ICET_INT, i, 29);
-            ICET_COMM_SEND(image_order, num_proc, ICET_INT, i, 30);
-            ICET_COMM_SEND(&rep_group_size, 1, ICET_INT, i, 31);
+            icetCommSend(&seed, 1, ICET_INT, i, 29);
+            icetCommSend(image_order, num_proc, ICET_INT, i, 30);
+            icetCommSend(&rep_group_size, 1, ICET_INT, i, 31);
         }
     } else {
-        ICET_COMM_RECV(&seed, 1, ICET_INT, 0, 29);
-        ICET_COMM_RECV(image_order, num_proc, ICET_INT, 0, 30);
-        ICET_COMM_RECV(&rep_group_size, 1, ICET_INT, 0, 31);
+        icetCommRecv(&seed, 1, ICET_INT, 0, 29);
+        icetCommRecv(image_order, num_proc, ICET_INT, 0, 30);
+        icetCommRecv(&rep_group_size, 1, ICET_INT, 0, 31);
         srand(seed + rank);
     }
     icetCompositeOrder(image_order);
@@ -327,10 +329,10 @@ static int RandomTransformRun()
         background_color[1] = (float)rand()/(float)RAND_MAX;
         background_color[2] = (float)rand()/(float)RAND_MAX;
         for (i = 1; i < num_proc; i++) {
-            ICET_COMM_SEND(background_color, 3, ICET_FLOAT, i, 32);
+            icetCommSend(background_color, 3, ICET_FLOAT, i, 32);
         }
     } else {
-        ICET_COMM_RECV(background_color, 3, ICET_FLOAT, 0, 32);
+        icetCommRecv(background_color, 3, ICET_FLOAT, 0, 32);
     }
 
   /* Set up IceT. */
@@ -379,10 +381,10 @@ static int RandomTransformRun()
     rep_group = icetUnsafeStateGetInteger(ICET_DATA_REPLICATION_GROUP);
     if (rep_group[0] == rank) {
         for (i = 1; i < rep_group_size; i++) {
-            ICET_COMM_SEND(mat, 16, ICET_FLOAT, rep_group[i], 40);
+            icetCommSend(mat, 16, ICET_FLOAT, rep_group[i], 40);
         }
     } else {
-        ICET_COMM_RECV(mat, 16, ICET_FLOAT, rep_group[0], 40);
+        icetCommRecv(mat, 16, ICET_FLOAT, rep_group[0], 40);
     }
 
     printf("Transformation:\n");

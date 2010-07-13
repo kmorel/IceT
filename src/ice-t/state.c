@@ -11,8 +11,10 @@
 #include <IceTDevState.h>
 
 #include <IceT.h>
+#include <IceTDevCommunication.h>
 #include <IceTDevContext.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevPorting.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +27,6 @@ struct IceTStateValue {
     IceTTimeStamp mod_time;
 };
 
-static IceTSizeType typeWidth(IceTEnum type);
 static IceTVoid *stateAllocate(IceTEnum pname,
                                IceTSizeType num_entries,
                                IceTEnum type);
@@ -75,7 +76,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
             free(dest[i].data);
         }
 
-        type_width = typeWidth(src[i].type);
+        type_width = icetTypeWidth(src[i].type);
 
         dest[i].type = src[i].type;
         dest[i].num_entries = src[i].num_entries;
@@ -95,11 +96,14 @@ void icetStateSetDefaults(void)
 {
     IceTInt *int_array;
     int i;
+    int comm_size, comm_rank;
 
     icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_WARNINGS);
 
-    icetStateSetInteger(ICET_RANK, ICET_COMM_RANK());
-    icetStateSetInteger(ICET_NUM_PROCESSES, ICET_COMM_SIZE());
+    comm_size = icetCommSize();
+    comm_rank = icetCommRank();
+    icetStateSetInteger(ICET_RANK, comm_rank);
+    icetStateSetInteger(ICET_NUM_PROCESSES, comm_size);
     /* icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 1); */
   /*icetStateSetInteger(ICET_ABSOLUTE_FAR_DEPTH, 0xFFFFFFFF);*/
     icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
@@ -114,15 +118,15 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
     icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-    int_array = malloc(ICET_COMM_SIZE() * sizeof(IceTInt));
-    for (i = 0; i < ICET_COMM_SIZE(); i++) {
+    int_array = malloc(comm_size * sizeof(IceTInt));
+    for (i = 0; i < comm_size; i++) {
         int_array[i] = i;
     }
-    icetStateSetIntegerv(ICET_COMPOSITE_ORDER, ICET_COMM_SIZE(), int_array);
-    icetStateSetIntegerv(ICET_PROCESS_ORDERS, ICET_COMM_SIZE(), int_array);
+    icetStateSetIntegerv(ICET_COMPOSITE_ORDER, comm_size, int_array);
+    icetStateSetIntegerv(ICET_PROCESS_ORDERS, comm_size, int_array);
     free(int_array);
 
-    icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, ICET_COMM_RANK());
+    icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, comm_rank);
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
     icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
@@ -334,30 +338,6 @@ IceTBoolean icetIsEnabled(IceTEnum pname)
     return isEnabled;
 }
 
-static IceTSizeType typeWidth(IceTEnum type)
-{
-    switch (type) {
-      case ICET_DOUBLE:
-          return sizeof(IceTDouble);
-      case ICET_FLOAT:
-          return sizeof(IceTFloat);
-      case ICET_BOOLEAN:
-          return sizeof(IceTBoolean);
-      case ICET_SHORT:
-          return sizeof(IceTShort);
-      case ICET_INT:
-          return sizeof(IceTInt);
-      case ICET_POINTER:
-          return sizeof(IceTVoid *);
-      case ICET_NULL:
-          return 0;
-      default:
-          icetRaiseError("Bad type detected in state.", ICET_SANITY_CHECK_FAIL);
-    }
-
-    return 0;
-}
-
 void icetUnsafeStateSet(IceTEnum pname,
                         IceTSizeType num_entries,
                         IceTEnum type,
@@ -388,7 +368,7 @@ static IceTVoid *stateAllocate(IceTEnum pname,
         return state[pname].data;
     } else {
       /* Create a new buffer. */
-        IceTVoid *buffer = malloc(num_entries * typeWidth(type));
+        IceTVoid *buffer = malloc(num_entries * icetTypeWidth(type));
         icetUnsafeStateSet(pname, num_entries, type, buffer);
         return buffer;
     }
@@ -399,7 +379,7 @@ static void stateSet(IceTEnum pname,
                      IceTEnum type,
                      const IceTVoid *data)
 {
-    IceTSizeType type_width = typeWidth(type);
+    IceTSizeType type_width = icetTypeWidth(type);
     void *datacopy = stateAllocate(pname, num_entries, type);
 
     memcpy(datacopy, data, num_entries * type_width);

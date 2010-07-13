@@ -11,6 +11,10 @@
 #ifndef _ICET_PORTING_H_
 #define _ICET_PORTING_H_
 
-/* Currently, everything defined in porting.c is declared in IceT.h. */
+#include <IceT.h>
+
+/* Returns the size of the type given by the identifier (ICET_INT, ICET_FLOAT,
+   etc.)  in bytes. */
+ICET_EXPORT IceTSizeType icetTypeWidth(IceTEnum type);
 
 #endif /*_ICET_PORTING_H_*/

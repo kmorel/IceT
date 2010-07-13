@@ -11,6 +11,7 @@ SET(ICET_SRCS
         context.c
         state.c
         diagnostics.c
+	communication.c
         tiles.c
         projections.c
         draw.c
