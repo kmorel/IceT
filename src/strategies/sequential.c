@@ -102,8 +102,8 @@ static IceTImage sequentialCompose(void)
 	}
 
 	icetGetTileImage(i, tileImage);
-	icetBswapCompose(compose_group, num_proc, image_dest,
-			 tileImage, inSparseImageBuffer, outSparseImage);
+	icetSingleImageCompose(compose_group, num_proc, image_dest,
+                               tileImage, inSparseImageBuffer, outSparseImage);
 
         if (d_node == rank) {
             myImage = tileImage;

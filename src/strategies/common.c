@@ -746,3 +746,23 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
     RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
                          imageBuffer, inSparseImageBuffer, outSparseImage);
 }
+
+void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
+                            IceTInt image_dest,
+                            IceTImage image,
+                            IceTVoid *inSparseImageBuffer,
+                            IceTSparseImage outSparseImage)
+{
+    if (group_size >= 8) {
+	icetRaiseDebug("Doing bswap compose");
+	icetBswapCompose(compose_group, group_size, image_dest,
+			 image, inSparseImageBuffer, outSparseImage);
+    } else if (group_size > 0) {
+	icetRaiseDebug("Doing tree compose");
+	icetTreeCompose(compose_group, group_size, image_dest,
+			image, inSparseImageBuffer, outSparseImage);
+    } else {
+	icetRaiseDebug("Clearing pixels");
+        icetClearImage(image);
+    }
+}
