@@ -315,6 +315,15 @@ void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
                             IceTImage image)
 {
-    ICET_SINGLE_IMAGE_STRATEGY_BSWAP.compose(
-                                  compose_group, group_size, image_dest, image);
+    IceTVoid *compose_pointer;
+    IceTSingleImageStrategy strategy;
+
+    if (icetStateType(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE) == ICET_NULL) {
+      /* Single image strategy never set.  Set it now. */
+        icetSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC);
+    }
+
+    icetGetPointerv(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE, &compose_pointer);
+    strategy.compose = compose_pointer;
+    (*strategy.compose)(compose_group, group_size, image_dest, image);
 }
