@@ -78,7 +78,12 @@ static IceTImage reduceCompose(void)
                                  outSparseImage,
                                  tile_image_dest);
 
-    icetSingleImageCompose(compose_group, group_size, group_image_dest, image);
+    if (compose_tile >= 0) {
+        icetSingleImageCompose(compose_group, group_size,
+                               group_image_dest, image);
+    } else {
+      /* Not assigned to compose any tile.  Do nothing. */
+    }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {

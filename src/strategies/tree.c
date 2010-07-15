@@ -133,7 +133,15 @@ static void treeCompose(IceTInt *compose_group, IceTInt group_size,
                                                   icetImageGetHeight(image));
 
     icetGetIntegerv(ICET_RANK, &rank);
-    for (group_rank = 0; compose_group[group_rank] != rank; group_rank++);
+    group_rank = 0;
+    while ((group_rank < group_size) && (compose_group[group_rank] != rank)) {
+        group_rank++;
+    }
+    if (group_rank >= group_size) {
+        icetRaiseError("Local process not in compose_group?",
+                       ICET_SANITY_CHECK_FAIL);
+        return;
+    }
 
     RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
                          image, inSparseImageBuffer, outSparseImage);

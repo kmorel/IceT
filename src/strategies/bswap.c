@@ -316,7 +316,15 @@ static void bswapCompose(IceTInt *compose_group, IceTInt group_size,
     icetRaiseDebug("In bswapCompose");
 
     icetGetIntegerv(ICET_RANK, &rank);
-    for (group_rank = 0; compose_group[group_rank] != rank; group_rank++);
+    group_rank = 0;
+    while ((group_rank < group_size) && (compose_group[group_rank] != rank)) {
+        group_rank++;
+    }
+    if (group_rank >= group_size) {
+        icetRaiseError("Local process not in compose_group?",
+                       ICET_SANITY_CHECK_FAIL);
+        return;
+    }
 
   /* Make size of group be a power of 2. */
     for (pow2size = 1; pow2size <= group_size; pow2size *= 2);
