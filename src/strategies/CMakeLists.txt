@@ -13,6 +13,9 @@ SET(ICET_STRATEGIES_SRCS
         split.c
         reduce.c
         vtree.c
+	bswap.c
+	tree.c
+	automatic.c
 )
 
 ADD_LIBRARY(IceTStrategies ${ICET_STRATEGIES_SRCS})

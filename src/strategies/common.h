@@ -96,7 +96,6 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTVoid *incomingBuffer,
                                IceTSizeType bufferSize);
 
-
 /* icetBswapCompose
 
    Performs a binary swap composition amongst a subset of processors in the
@@ -116,44 +115,9 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         be computed or this processor is not rank
         compose_group[compose_group], the buffer has undefined partial
         results when the function returns.
-   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
-        image data.  They must be large enough to store any compressed buffer
-        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
-        compute the number of bytes to allocate.
 */
-void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
-                      IceTInt image_dest,
-                      IceTImage image,
-                      IceTVoid *inSparseImageBuffer,
-                      IceTSparseImage outSparseImage);
-
-/* icetTreeCompose
-
-   Performs a binary tree composition amongst a subset of processors in the
-   current communicator (see context.h).
-
-   compose_group - A mapping of processors from the MPI ranks to the "group"
-        ranks.  The composed image ends up in the processor with rank
-        compose_group[image_dest].
-   group_size - The number of processors in the group.  The compose_group
-        array should have group_size entries.
-   image_dest - The location of where the final composed image should be
-        placed.  It is an index into compose_group, not the actual rank
-        of the process.
-   image - The input image colors and/or depth to be used.  If this
-        processor has rank compose_group[image_dest], any output data will
-        be put in this buffer.  If the color or depth value is not to be
-        computed or this processor is not rank compose_group[image_dest],
-        the buffer has undefined partial results when the function returns.
-   inSparseImageBuffer/outSparseImage - two buffers for holding sparse
-        image data.  They must be large enough to store any compressed buffer
-        of size ICET_MAX_PIXELS.  Use icetSparseImageBufferSize to
-        compute the number of bytes to allocate.
-*/
-void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
-                     IceTInt image_dest,
-                     IceTImage image,
-                     IceTVoid *inSparseImageBuffer,
-                     IceTSparseImage outSparseImage);
+void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
+                            IceTInt image_dest,
+                            IceTImage image);
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/

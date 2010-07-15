@@ -42,6 +42,10 @@ IceTStrategy strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
+IceTSingleImageStrategy single_image_strategy_list[3];
+int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 3;
+/* int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 1; */
+
 IceTSizeType SCREEN_WIDTH;
 IceTSizeType SCREEN_HEIGHT;
 
@@ -236,6 +240,25 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     strategy_list[2] = ICET_STRATEGY_SPLIT;
     strategy_list[3] = ICET_STRATEGY_REDUCE;
     strategy_list[4] = ICET_STRATEGY_VTREE;
+
+    single_image_strategy_list[0] = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
+    single_image_strategy_list[1] = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+    single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+}
+
+IceTBoolean strategy_uses_single_image_strategy(IceTStrategy strategy)
+{
+    if (   (strategy.compose == ICET_STRATEGY_DIRECT.compose)
+        || (strategy.compose == ICET_STRATEGY_SPLIT.compose)
+        || (strategy.compose == ICET_STRATEGY_VTREE.compose) ) {
+        return ICET_FALSE;
+    } else if (   (strategy.compose == ICET_STRATEGY_SEQUENTIAL.compose)
+               || (strategy.compose == ICET_STRATEGY_REDUCE.compose) ) {
+        return ICET_TRUE;
+    } else {
+        printf("ERROR: unknown strategy type.");
+        return ICET_TRUE;
+    }
 }
 
 static void no_op()

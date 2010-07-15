@@ -52,6 +52,24 @@ const char *icetGetStrategyName(void)
     return name;
 }
 
+void icetSingleImageStrategy(IceTSingleImageStrategy strategy)
+{
+    icetStateSetPointer(ICET_SINGLE_IMAGE_STRATEGY_NAME, strategy.name);
+    icetStateSetPointer(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE,
+                        (IceTVoid *)strategy.compose);
+}
+
+const char *icetGetSingleImageStrategyName(void)
+{
+    IceTVoid *name;
+    if (icetStateType(ICET_SINGLE_IMAGE_STRATEGY_NAME) == ICET_NULL) {
+        return "(not set)";
+    } else {
+        icetGetPointerv(ICET_SINGLE_IMAGE_STRATEGY_NAME, &name);
+    }
+    return name;
+}
+
 void icetCompositeMode(IceTEnum mode)
 {
     if (    (mode != ICET_COMPOSITE_MODE_Z_BUFFER)

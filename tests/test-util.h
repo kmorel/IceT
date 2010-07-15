@@ -23,6 +23,9 @@ extern "C" {
 extern IceTStrategy strategy_list[];
 extern int STRATEGY_LIST_SIZE;
 
+extern IceTSingleImageStrategy single_image_strategy_list[];
+extern int SINGLE_IMAGE_STRATEGY_LIST_SIZE;
+
 extern IceTSizeType SCREEN_WIDTH;
 extern IceTSizeType SCREEN_HEIGHT;
 
@@ -37,6 +40,8 @@ void finalize_test(int result);
 void write_ppm(const char *filename,
                const IceTUByte *image,
                int width, int height);
+
+IceTBoolean strategy_uses_single_image_strategy(IceTStrategy strategy);
 
 #ifdef __cplusplus
 }

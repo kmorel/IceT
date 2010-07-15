@@ -78,17 +78,11 @@ static IceTImage reduceCompose(void)
                                  outSparseImage,
                                  tile_image_dest);
 
-    if (group_size >= 8) {
-	icetRaiseDebug("Doing bswap compose");
-	icetBswapCompose(compose_group, group_size, group_image_dest,
-			 image, inSparseImageBuffer, outSparseImage);
-    } else if (group_size > 0) {
-	icetRaiseDebug("Doing tree compose");
-	icetTreeCompose(compose_group, group_size, group_image_dest,
-			image, inSparseImageBuffer, outSparseImage);
+    if (compose_tile >= 0) {
+        icetSingleImageCompose(compose_group, group_size,
+                               group_image_dest, image);
     } else {
-	icetRaiseDebug("Clearing pixels");
-        icetClearImage(image);
+      /* Not assigned to compose any tile.  Do nothing. */
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
