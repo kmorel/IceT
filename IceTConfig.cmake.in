@@ -12,8 +12,6 @@
 ## modification, are permitted provided that this Notice and any statement
 ## of authorship are reproduced on all copies.
 #
-# Id
-#
 
 # The IceT include file directories.
 SET(ICET_INCLUDE_DIRS "@ICET_INCLUDE_DIRS_CONFIG@")
@@ -29,9 +27,6 @@ SET(ICET_REQUIRED_CXX_FLAGS "@ICET_REQUIRED_CXX_FLAGS@")
 SET(ICET_MAJOR_VERSION "@ICET_MAJOR_VERSION@")
 SET(ICET_MINOR_VERSION "@ICET_MINOR_VERSION@")
 SET(ICET_PATCH_VERSION "@ICET_PATCH_VERSION@")
-
-# The location of the UseICET.cmake file.
-SET(ICET_USE_FILE "@ICET_USE_FILE_CONFIG@")
 
 # The build settings file.
 SET(ICET_BUILD_SETTINGS_FILE "@ICET_BUILD_SETTINGS_FILE_CONFIG@")
