@@ -16,12 +16,22 @@ SET(ICET_SRCS
         projections.c
         draw.c
         image.c
+
+        ../strategies/common.c
+        ../strategies/direct.c
+        ../strategies/sequential.c
+        ../strategies/split.c
+        ../strategies/reduce.c
+        ../strategies/vtree.c
+	../strategies/bswap.c
+	../strategies/tree.c
+	../strategies/automatic.c
 )
 
 ADD_LIBRARY(IceTCore ${ICET_SRCS})
 
 IF(NOT ICET_INSTALL_NO_LIBRARIES)
-  INSTALL(TARGETS IceTCore 
+  INSTALL(TARGETS IceTCore
         RUNTIME DESTINATION ${ICET_INSTALL_BIN_DIR} COMPONENT RuntimeLibraries
         LIBRARY DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
 	ARCHIVE DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries)

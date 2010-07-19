@@ -27,7 +27,6 @@ ADD_EXECUTABLE(icetTests_mpi ${Tests} ${UTIL_SRCS})
 TARGET_LINK_LIBRARIES(icetTests_mpi
   IceTCore
   IceTGL
-  IceTStrategies
   IceTMPI
   ${OPENGL_glu_LIBRARY}
   ${GLUT_LIBRARIES}
