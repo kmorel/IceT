@@ -13,6 +13,8 @@
 
 #include <IceTGL.h>
 
+#define __USE_POSIX
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
