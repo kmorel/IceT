@@ -93,8 +93,9 @@ structure.  Besides the benefits of type safety, the old method assumed
 that you would cast pointers to 32-bit integers, which quite simply would
 not work on 64-bit machines.
 
-Changed the names of the libraries from icet, icet_strategies, and icet_mpi
-to IceTCore, IceTStrategies, and IceTMPI, respectively.
+Changed the names of the libraries from icet and icet_mpi to IceTCore and
+IceTMPI, respectively.  The library icet_strategies is now rolled into the
+IceTCore library.
 
 Changed ICET_STRATEGY_SERIAL to ICET_STRATEGY_SEQUENTIAL.
 

@@ -24,18 +24,15 @@
 #if defined(WIN32) && defined(ICET_BUILD_SHARED_LIBS)
 #  ifdef IceTCore_EXPORTS
 #    define ICET_EXPORT __declspec( dllexport )
+#    define ICET_STRATEGY_EXPORT __declspec( dllexport )
 #  else
 #    define ICET_EXPORT __declspec( dllimport )
+#    define ICET_STRATEGY_EXPORT __declspec( dllimport )
 #  endif
 #  ifdef IceTGL_EXPORTS
 #    define ICET_GL_EXPORT __declspec( dllexport )
 #  else
 #    define ICET_GL_EXPORT __declspec( dllimport )
-#  endif
-#  ifdef IceTStrategies_EXPORTS
-#    define ICET_STRATEGY_EXPORT __declspec( dllexport )
-#  else
-#    define ICET_STRATEGY_EXPORT __declspec( dllimport )
 #  endif
 #  ifdef IceTMPI_EXPORTS
 #    define ICET_MPI_EXPORT __declspec( dllexport )

@@ -38,11 +38,11 @@
 #define dup2(fildes, fildes2)   _dup2(fildes, fildes2)
 #endif
 
-IceTStrategy strategy_list[5];
+IceTEnum strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
-IceTSingleImageStrategy single_image_strategy_list[3];
+IceTEnum single_image_strategy_list[3];
 int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 3;
 /* int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 1; */
 
@@ -145,7 +145,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 
   /* This is convenient code to attach a debugger to a particular process at the
      start of a test. */
-    /* if (rank == 1) { */
+    /* if (rank == 0) { */
     /*     int i = 0; */
     /*     printf("Waiting in process %d\n", getpid()); */
     /*     while (i == 0) sleep(1); */
@@ -246,18 +246,17 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
 }
 
-IceTBoolean strategy_uses_single_image_strategy(IceTStrategy strategy)
+IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy)
 {
-    if (   (strategy.compose == ICET_STRATEGY_DIRECT.compose)
-        || (strategy.compose == ICET_STRATEGY_SPLIT.compose)
-        || (strategy.compose == ICET_STRATEGY_VTREE.compose) ) {
-        return ICET_FALSE;
-    } else if (   (strategy.compose == ICET_STRATEGY_SEQUENTIAL.compose)
-               || (strategy.compose == ICET_STRATEGY_REDUCE.compose) ) {
-        return ICET_TRUE;
-    } else {
-        printf("ERROR: unknown strategy type.");
-        return ICET_TRUE;
+    switch (strategy) {
+      case ICET_STRATEGY_DIRECT:        return ICET_FALSE;
+      case ICET_STRATEGY_SEQUENTIAL:    return ICET_TRUE;
+      case ICET_STRATEGY_SPLIT:         return ICET_FALSE;
+      case ICET_STRATEGY_REDUCE:        return ICET_TRUE;
+      case ICET_STRATEGY_VTREE:         return ICET_FALSE;
+      default:
+          printf("ERROR: unknown strategy type.");
+          return ICET_TRUE;
     }
 }
 

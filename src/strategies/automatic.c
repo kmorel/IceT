@@ -9,26 +9,22 @@
 
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
+#include <IceTDevStrategySelect.h>
 
-static void automaticCompose(IceTInt *compose_group, IceTInt group_size,
-                             IceTInt image_dest,
-                             IceTImage image);
-
-IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC
-    = { "Automatic", automaticCompose };
-
-static void automaticCompose(IceTInt *compose_group, IceTInt group_size,
-                             IceTInt image_dest,
-                             IceTImage image)
+void icetAutomaticCompose(IceTInt *compose_group, IceTInt group_size,
+                          IceTInt image_dest,
+                          IceTImage image)
 {
     if (group_size >= 8) {
 	icetRaiseDebug("Doing bswap compose");
-        ICET_SINGLE_IMAGE_STRATEGY_BSWAP.compose(
-                                  compose_group, group_size, image_dest, image);
+        icetInvokeSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_BSWAP,
+                                      compose_group, group_size,
+                                      image_dest, image);
     } else if (group_size > 0) {
 	icetRaiseDebug("Doing tree compose");
-        ICET_SINGLE_IMAGE_STRATEGY_TREE.compose(
-                                  compose_group, group_size, image_dest, image);
+        icetInvokeSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_TREE,
+                                      compose_group, group_size,
+                                      image_dest, image);
     } else {
 	icetRaiseDebug("Clearing pixels");
         icetClearImage(image);

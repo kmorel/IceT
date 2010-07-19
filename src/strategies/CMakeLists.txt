@@ -6,25 +6,8 @@
 ## of authorship are reproduced on all copies.
 #
 
-SET(ICET_STRATEGIES_SRCS
-        common.c
-        direct.c
-        sequential.c
-        split.c
-        reduce.c
-        vtree.c
-	bswap.c
-	tree.c
-	automatic.c
-)
-
-ADD_LIBRARY(IceTStrategies ${ICET_STRATEGIES_SRCS})
-
-TARGET_LINK_LIBRARIES(IceTStrategies IceTCore)
-
-IF(NOT ICET_INSTALL_NO_LIBRARIES)
-  INSTALL(TARGETS IceTStrategies
-    RUNTIME DESTINATION ${ICET_INSTALL_BIN_DIR} COMPONENT RuntimeLibraries
-    LIBRARY DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
-    ARCHIVE DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries)
-ENDIF(NOT ICET_INSTALL_NO_LIBRARIES)
+# These source files are actually compiled in the Core IceT source
+# directory.  They are separated in a separate directory for convenience.
+ADD_CUSTOM_TARGET(strategies_target ALL
+  DEPENDS IceTCore
+  )

@@ -24,7 +24,6 @@ struct IceTContextStruct {
     IceTEnum magic_number;
     IceTState state;
     IceTCommunicator communicator;
-    IceTStrategy strategy;
 };
 
 static IceTContext icet_current_context = NULL;

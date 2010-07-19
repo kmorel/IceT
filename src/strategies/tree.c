@@ -11,13 +11,6 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
 
-static void treeCompose(IceTInt *compose_group, IceTInt group_size,
-                        IceTInt image_dest,
-                        IceTImage image);
-
-IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_TREE
-    = { "Tree Compose" , treeCompose };
-
 #define TREE_IN_SPARSE_IMAGE_BUFFER     ICET_SI_STRATEGY_BUFFER_0
 #define TREE_OUT_SPARSE_IMAGE_BUFFER    ICET_SI_STRATEGY_BUFFER_1
 
@@ -117,7 +110,7 @@ static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
     }
 }
 
-static void treeCompose(IceTInt *compose_group, IceTInt group_size,
+void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
                         IceTInt image_dest,
                         IceTImage image)
 {
@@ -125,12 +118,18 @@ static void treeCompose(IceTInt *compose_group, IceTInt group_size,
     IceTInt rank;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
+    IceTSizeType width, height;
+    IceTSizeType sparseBufferSize;
+
+    width = icetImageGetWidth(image);
+    height = icetImageGetHeight(image);
+
+    sparseBufferSize = icetSparseImageBufferSize(width, height);
 
     inSparseImageBuffer = icetGetStateBuffer(TREE_IN_SPARSE_IMAGE_BUFFER,
-                                             icetImageGetNumPixels(image));
+                                             sparseBufferSize);
     outSparseImage =icetGetStateBufferSparseImage(TREE_OUT_SPARSE_IMAGE_BUFFER,
-                                                  icetImageGetWidth(image),
-                                                  icetImageGetHeight(image));
+                                                  width, height);
 
     icetGetIntegerv(ICET_RANK, &rank);
     group_rank = 0;

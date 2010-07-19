@@ -11,13 +11,6 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
 
-static void bswapCompose(IceTInt *compose_group, IceTInt group_size,
-                         IceTInt image_dest,
-                         IceTImage image);
-
-IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_BSWAP
-    = { "Binary Swap", bswapCompose };
-
 #define BSWAP_IN_SPARSE_IMAGE_BUFFER    ICET_SI_STRATEGY_BUFFER_0
 #define BSWAP_OUT_SPARSE_IMAGE_BUFFER   ICET_SI_STRATEGY_BUFFER_1
 
@@ -302,9 +295,9 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
     }
 }
 
-static void bswapCompose(IceTInt *compose_group, IceTInt group_size,
-                         IceTInt image_dest,
-                         IceTImage image)
+void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
+                      IceTInt image_dest,
+                      IceTImage image)
 {
     IceTInt group_rank;
     IceTInt rank;

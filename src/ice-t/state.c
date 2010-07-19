@@ -15,6 +15,7 @@
 #include <IceTDevContext.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevPorting.h>
+#include <IceTDevStrategySelect.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -116,7 +117,8 @@ void icetStateSetDefaults(void)
 
     icetStateSetDoublev(ICET_GEOMETRY_BOUNDS, 0, NULL);
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, 0);
-    icetStateSetPointer(ICET_STRATEGY_COMPOSE, NULL);
+    icetStateSetInteger(ICET_STRATEGY, ICET_STRATEGY_UNDEFINED);
+    icetSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     int_array = malloc(comm_size * sizeof(IceTInt));
     for (i = 0; i < comm_size; i++) {

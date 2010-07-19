@@ -33,15 +33,12 @@
 #define REDUCE_TILE_IMAGE_DEST_BUFFER   ICET_STRATEGY_BUFFER_7
 #define REDUCE_CONTRIBUTORS_BUFFER      ICET_STRATEGY_BUFFER_8
 
-static IceTImage reduceCompose(void);
 static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
                         IceTInt *group_image_destp);
 
 
-IceTStrategy ICET_STRATEGY_REDUCE = { "Reduce", ICET_TRUE, reduceCompose };
-
-static IceTImage reduceCompose(void)
+IceTImage icetReduceCompose(void)
 {
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;

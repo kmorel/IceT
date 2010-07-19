@@ -11,9 +11,10 @@
 #include "common.h"
 
 #include <IceT.h>
-#include <IceTDevState.h>
 #include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevState.h>
+#include <IceTDevStrategySelect.h>
 
 #include <stdlib.h>
 
@@ -315,15 +316,11 @@ void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
                             IceTImage image)
 {
-    IceTVoid *compose_pointer;
-    IceTSingleImageStrategy strategy;
+    IceTEnum strategy;
 
-    if (icetStateType(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE) == ICET_NULL) {
-      /* Single image strategy never set.  Set it now. */
-        icetSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC);
-    }
-
-    icetGetPointerv(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE, &compose_pointer);
-    strategy.compose = compose_pointer;
-    (*strategy.compose)(compose_group, group_size, image_dest, image);
+    icetGetEnumv(ICET_SINGLE_IMAGE_STRATEGY, &strategy);
+    icetInvokeSingleImageStrategy(strategy,
+                                  compose_group, group_size,
+                                  image_dest,
+                                  image);
 }
