@@ -36,7 +36,6 @@ struct node_info {
     int recv_src;
 };
 
-static IceTImage vtreeCompose(void);
 static void sort_by_contained(struct node_info *info, int size);
 static int find_sender(struct node_info *info, int num_proc,
                        int recv_node, int tile,
@@ -54,10 +53,7 @@ static void do_send_receive(const struct node_info *my_info, int tile_held,
                             IceTSizeType inSparseImageBufferSize,
                             IceTSparseImage outSparseImage);
 
-IceTStrategy ICET_STRATEGY_VTREE
-    = { "Virtual Trees", ICET_FALSE, vtreeCompose };
-
-static IceTImage vtreeCompose(void)
+IceTImage icetVtreeCompose(void)
 {
     IceTInt rank, num_proc;
     IceTInt num_tiles;

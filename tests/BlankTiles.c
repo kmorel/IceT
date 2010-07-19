@@ -97,7 +97,7 @@ static int BlankTilesRun()
 
     for (strategy_index = 0;
          strategy_index < STRATEGY_LIST_SIZE; strategy_index++) {
-        IceTStrategy strategy = strategy_list[strategy_index];
+        IceTEnum strategy = strategy_list[strategy_index];
         int single_image_strategy_index;
         int num_single_image_strategy;
 
@@ -114,7 +114,7 @@ static int BlankTilesRun()
         for (single_image_strategy_index = 0;
              single_image_strategy_index < num_single_image_strategy;
              single_image_strategy_index++) {
-            IceTSingleImageStrategy single_image_strategy
+            IceTEnum single_image_strategy
                 = single_image_strategy_list[single_image_strategy_index];
             int test_result;
 

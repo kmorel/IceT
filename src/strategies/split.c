@@ -33,12 +33,7 @@
 #define FRAG_SIZE(total_pixels, num_pieces) \
     (((total_pixels)+(num_pieces)-1)/(num_pieces))
 
-static IceTImage splitStrategy(void);
-
-IceTStrategy ICET_STRATEGY_SPLIT
-    = { "Image Split and Delegate", ICET_FALSE, splitStrategy };
-
-static IceTImage splitStrategy(void)
+IceTImage icetSplitCompose(void)
 {
     int *tile_groups;
     int my_tile;

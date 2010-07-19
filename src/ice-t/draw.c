@@ -10,10 +10,11 @@
 
 #include <IceT.h>
 
-#include <IceTDevState.h>
 #include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
+#include <IceTDevState.h>
+#include <IceTDevStrategySelect.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -33,41 +34,46 @@ void icetDrawCallback(IceTDrawCallbackType func)
     icetStateSetPointer(ICET_DRAW_FUNCTION, (IceTVoid *)func);
 }
 
-void icetStrategy(IceTStrategy strategy)
+void icetStrategy(IceTEnum strategy)
 {
-    icetStateSetPointer(ICET_STRATEGY_NAME, strategy.name);
-    icetStateSetBoolean(ICET_STRATEGY_SUPPORTS_ORDERING,
-                        strategy.supports_ordering);
-    icetStateSetPointer(ICET_STRATEGY_COMPOSE, (IceTVoid *)strategy.compose);
+    if (icetStrategyValid(strategy)) {
+        icetStateSetInteger(ICET_STRATEGY, strategy);
+        icetStateSetBoolean(ICET_STRATEGY_SUPPORTS_ORDERING,
+                            icetStrategySupportsOrdering(strategy));
+    } else {
+        icetRaiseError("Invalid strategy.", ICET_INVALID_ENUM);
+    }
 }
 
 const char *icetGetStrategyName(void)
 {
-    IceTVoid *name;
-    if (icetStateType(ICET_STRATEGY_NAME) == ICET_NULL) {
-        return NULL;
+    IceTEnum strategy;
+
+    icetGetEnumv(ICET_STRATEGY, &strategy);
+    if (strategy != ICET_STRATEGY_UNDEFINED) {
+        return icetStrategyNameFromEnum(strategy);
     } else {
-        icetGetPointerv(ICET_STRATEGY_NAME, &name);
+        icetRaiseError("No strategy set. Use icetStrategy to set the strategy.",
+                       ICET_INVALID_ENUM);
+        return NULL;
     }
-    return name;
 }
 
-void icetSingleImageStrategy(IceTSingleImageStrategy strategy)
+void icetSingleImageStrategy(IceTEnum strategy)
 {
-    icetStateSetPointer(ICET_SINGLE_IMAGE_STRATEGY_NAME, strategy.name);
-    icetStateSetPointer(ICET_SINGLE_IMAGE_STRATEGY_COMPOSE,
-                        (IceTVoid *)strategy.compose);
+    if (icetSingleImageStrategyValid(strategy)) {
+        icetStateSetInteger(ICET_SINGLE_IMAGE_STRATEGY, strategy);
+    } else {
+        icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);
+    }
 }
 
 const char *icetGetSingleImageStrategyName(void)
 {
-    IceTVoid *name;
-    if (icetStateType(ICET_SINGLE_IMAGE_STRATEGY_NAME) == ICET_NULL) {
-        return "(not set)";
-    } else {
-        icetGetPointerv(ICET_SINGLE_IMAGE_STRATEGY_NAME, &name);
-    }
-    return name;
+    IceTEnum strategy;
+
+    icetGetEnumv(ICET_SINGLE_IMAGE_STRATEGY, &strategy);
+    return icetSingleImageStrategyNameFromEnum(strategy);
 }
 
 void icetCompositeMode(IceTEnum mode)
@@ -370,7 +376,7 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     IceTInt global_viewport[4];
     IceTInt contained_viewport[4];
     IceTDouble znear, zfar;
-    IceTStrategy strategy;
+    IceTEnum strategy;
     IceTVoid *value;
     IceTInt num_tiles;
     IceTInt num_bounding_verts;
@@ -652,15 +658,11 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
                        ICET_INVALID_OPERATION);
         return icetImageNull();
     }
-    icetRaiseDebug("Calling strategy.compose");
-    icetGetPointerv(ICET_STRATEGY_COMPOSE, &value);
-    if (value == NULL) {
-        icetRaiseError("Strategy not set.", ICET_INVALID_OPERATION);
-        return icetImageNull();
-    }
-    strategy.compose = (IceTImage (*)(void))value;
+
+    icetRaiseDebug("Calling strategy");
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 1);
-    image = (*strategy.compose)();
+    icetGetEnumv(ICET_STRATEGY, &strategy);
+    image = icetInvokeStrategy(strategy);
 
   /* Correct background color where applicable. */
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)

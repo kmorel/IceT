@@ -16,16 +16,12 @@
 #include <string.h>
 #include "common.h"
 
-static IceTImage directCompose(void);
-
-IceTStrategy ICET_STRATEGY_DIRECT = { "Direct", ICET_TRUE, directCompose };
-
 #define DIRECT_IMAGE_BUFFER             ICET_STRATEGY_BUFFER_0
 #define DIRECT_IN_SPARSE_IMAGE_BUFFER   ICET_STRATEGY_BUFFER_1
 #define DIRECT_OUT_SPARSE_IMAGE_BUFFER  ICET_STRATEGY_BUFFER_2
 #define DIRECT_TILE_IMAGE_DEST_BUFFER   ICET_STRATEGY_BUFFER_3
 
-static IceTImage directCompose(void)
+IceTImage icetDirectCompose(void)
 {
     IceTImage image;
     IceTVoid *inSparseImageBuffer;

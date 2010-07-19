@@ -155,36 +155,21 @@ ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
                                          IceTFloat *depth_buffer,
                                          IceTEnum depth_format);
 
-typedef struct _IceTStrategy {
-    const char *name;
-    IceTBoolean supports_ordering;
-    IceTImage (*compose)(void);
-} IceTStrategy;
+#define ICET_STRATEGY_DIRECT            (IceTEnum)0x6001
+#define ICET_STRATEGY_SEQUENTIAL        (IceTEnum)0x6002
+#define ICET_STRATEGY_SPLIT             (IceTEnum)0x6003
+#define ICET_STRATEGY_REDUCE            (IceTEnum)0x6004
+#define ICET_STRATEGY_VTREE             (IceTEnum)0x6005
 
-ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_DIRECT;
-ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_SEQUENTIAL;
-ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_SPLIT;
-ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_REDUCE;
-ICET_STRATEGY_EXPORT extern IceTStrategy ICET_STRATEGY_VTREE;
-
-ICET_EXPORT void icetStrategy(IceTStrategy strategy);
+ICET_EXPORT void icetStrategy(IceTEnum strategy);
 
 ICET_EXPORT const char *icetGetStrategyName(void);
 
-typedef struct _IceTSingleImageStrategy {
-    const char *name;
-    void (*compose)(IceTInt *compose_group, IceTInt group_size,
-                    IceTInt image_dest, IceTImage image);
-} IceTSingleImageStrategy;
+#define ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC    (IceTEnum)0x7001
+#define ICET_SINGLE_IMAGE_STRATEGY_BSWAP        (IceTEnum)0x7002
+#define ICET_SINGLE_IMAGE_STRATEGY_TREE         (IceTEnum)0x7003
 
-ICET_STRATEGY_EXPORT
-extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
-ICET_STRATEGY_EXPORT
-extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
-ICET_STRATEGY_EXPORT
-extern IceTSingleImageStrategy ICET_SINGLE_IMAGE_STRATEGY_TREE;
-
-ICET_EXPORT void icetSingleImageStrategy(IceTSingleImageStrategy strategy);
+ICET_EXPORT void icetSingleImageStrategy(IceTEnum strategy);
 
 ICET_EXPORT const char *icetGetSingleImageStrategyName(void);
 
@@ -244,10 +229,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 
 #define ICET_GEOMETRY_BOUNDS    (ICET_STATE_ENGINE_START | (IceTEnum)0x0022)
 #define ICET_NUM_BOUNDING_VERTS (ICET_STATE_ENGINE_START | (IceTEnum)0x0023)
-#define ICET_STRATEGY_NAME      (ICET_STATE_ENGINE_START | (IceTEnum)0x0024)
-#define ICET_STRATEGY_COMPOSE   (ICET_STATE_ENGINE_START | (IceTEnum)0x0025)
-#define ICET_SINGLE_IMAGE_STRATEGY_NAME (ICET_STATE_ENGINE_START | (IceTEnum)0x0026)
-#define ICET_SINGLE_IMAGE_STRATEGY_COMPOSE (ICET_STATE_ENGINE_START | (IceTEnum)0x0027)
+#define ICET_STRATEGY           (ICET_STATE_ENGINE_START | (IceTEnum)0x0024)
+#define ICET_SINGLE_IMAGE_STRATEGY (ICET_STATE_ENGINE_START | (IceTEnum)0x0025)
 #define ICET_COMPOSITE_MODE     (ICET_STATE_ENGINE_START | (IceTEnum)0x0028)
 #define ICET_COMPOSITE_ORDER    (ICET_STATE_ENGINE_START | (IceTEnum)0x0029)
 #define ICET_PROCESS_ORDERS     (ICET_STATE_ENGINE_START | (IceTEnum)0x002A)

@@ -18,6 +18,7 @@ SET(ICET_SRCS
         image.c
 
         ../strategies/common.c
+	../strategies/select.c
         ../strategies/direct.c
         ../strategies/sequential.c
         ../strategies/split.c

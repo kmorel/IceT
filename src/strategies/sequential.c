@@ -15,16 +15,11 @@
 #include <IceTDevDiagnostics.h>
 #include "common.h"
 
-static IceTImage sequentialCompose(void);
-
-IceTStrategy ICET_STRATEGY_SEQUENTIAL
-    = { "Sequential", ICET_TRUE, sequentialCompose };
-
 #define SEQUENTIAL_IMAGE_BUFFER                 ICET_STRATEGY_BUFFER_0
 #define SEQUENTIAL_FINAL_IMAGE_BUFFER           ICET_STRATEGY_BUFFER_1
 #define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_2
 
-static IceTImage sequentialCompose(void)
+IceTImage icetSequentialCompose(void)
 {
     IceTInt num_tiles;
     IceTInt max_width, max_height;
