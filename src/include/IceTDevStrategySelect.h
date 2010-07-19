@@ -33,4 +33,4 @@ ICET_STRATEGY_EXPORT void icetInvokeSingleImageStrategy(IceTEnum strategy,
                                                         IceTInt image_dest,
                                                         IceTImage image);
 
-#endif //__IceTDevStrategySelect_h
+#endif /*__IceTDevStrategySelect_h*/

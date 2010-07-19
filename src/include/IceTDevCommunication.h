@@ -52,4 +52,4 @@ ICET_EXPORT int icetCommWaitany(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT int icetCommSize();
 ICET_EXPORT int icetCommRank();
 
-#endif //_ICET_COMMUNICATION_H_
+#endif /*_ICET_COMMUNICATION_H_*/

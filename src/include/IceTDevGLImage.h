@@ -17,4 +17,4 @@ ICET_GL_EXPORT void icetGLDrawCallbackFunction(
                                             const IceTInt *readback_viewport,
                                             IceTImage result);
 
-#endif //__icetGLImage_h
+#endif /*__icetGLImage_h*/
