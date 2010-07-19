@@ -118,12 +118,18 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
     IceTInt rank;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
+    IceTSizeType width, height;
+    IceTSizeType sparseBufferSize;
+
+    width = icetImageGetWidth(image);
+    height = icetImageGetHeight(image);
+
+    sparseBufferSize = icetSparseImageBufferSize(width, height);
 
     inSparseImageBuffer = icetGetStateBuffer(TREE_IN_SPARSE_IMAGE_BUFFER,
-                                             icetImageGetNumPixels(image));
+                                             sparseBufferSize);
     outSparseImage =icetGetStateBufferSparseImage(TREE_OUT_SPARSE_IMAGE_BUFFER,
-                                                  icetImageGetWidth(image),
-                                                  icetImageGetHeight(image));
+                                                  width, height);
 
     icetGetIntegerv(ICET_RANK, &rank);
     group_rank = 0;
