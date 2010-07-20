@@ -141,19 +141,19 @@ ICET_EXPORT IceTEnum icetImageGetDepthFormat(const IceTImage image);
 ICET_EXPORT IceTSizeType icetImageGetWidth(const IceTImage image);
 ICET_EXPORT IceTSizeType icetImageGetHeight(const IceTImage image);
 ICET_EXPORT IceTSizeType icetImageGetNumPixels(const IceTImage image);
-ICET_EXPORT IceTUByte *icetImageGetColorUByte(IceTImage image);
-ICET_EXPORT IceTUInt *icetImageGetColorUInt(IceTImage image);
-ICET_EXPORT IceTFloat *icetImageGetColorFloat(IceTImage image);
-ICET_EXPORT IceTFloat *icetImageGetDepthFloat(IceTImage image);
-ICET_EXPORT void icetImageCopyColorUByte(const IceTImage image,
-                                         IceTUByte *color_buffer,
-                                         IceTEnum color_format);
-ICET_EXPORT void icetImageCopyColorFloat(const IceTImage image,
-                                         IceTFloat *color_buffer,
-                                         IceTEnum color_format);
-ICET_EXPORT void icetImageCopyDepthFloat(const IceTImage image,
-                                         IceTFloat *depth_buffer,
-                                         IceTEnum depth_format);
+ICET_EXPORT IceTUByte *icetImageGetColorub(IceTImage image);
+ICET_EXPORT IceTUInt *icetImageGetColorui(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetColorf(IceTImage image);
+ICET_EXPORT IceTFloat *icetImageGetDepthf(IceTImage image);
+ICET_EXPORT void icetImageCopyColorub(const IceTImage image,
+                                      IceTUByte *color_buffer,
+                                      IceTEnum color_format);
+ICET_EXPORT void icetImageCopyColorf(const IceTImage image,
+                                     IceTFloat *color_buffer,
+                                     IceTEnum color_format);
+ICET_EXPORT void icetImageCopyDepthf(const IceTImage image,
+                                     IceTFloat *depth_buffer,
+                                     IceTEnum depth_format);
 
 #define ICET_STRATEGY_DIRECT            (IceTEnum)0x6001
 #define ICET_STRATEGY_SEQUENTIAL        (IceTEnum)0x6002

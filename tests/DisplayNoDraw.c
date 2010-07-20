@@ -96,7 +96,7 @@ static void DisplayNoDrawDoTest(void)
             int p;
             int bad_count = 0;
             printf("Checking pixels.\n");
-            color_buffer = icetImageGetColorUByte(image);
+            color_buffer = icetImageGetColorub(image);
             for (p = 0;
                  (p < SCREEN_WIDTH*SCREEN_HEIGHT*4) && (bad_count < 10); p++) {
                 if (color_buffer[p] != 255) {

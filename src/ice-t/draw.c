@@ -673,14 +673,14 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
         blend_time = icetWallTime() - blend_time;
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUByte *color = icetImageGetColorUByte(image);
+            IceTUByte *color = icetImageGetColorub(image);
             IceTUByte *bc = (IceTUByte *)(&background_color_word);
             IceTSizeType p;
             for (p = 0; p < pixels; p++, color += 4) {
                 ICET_UNDER_UBYTE(bc, color);
             }
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *color = icetImageGetColorFloat(image);
+            IceTFloat *color = icetImageGetColorf(image);
             IceTSizeType p;
             for (p = 0; p < pixels; p++, color += 4) {
                 ICET_UNDER_FLOAT(background_color, color);

@@ -79,14 +79,14 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         timer = icetWallTime();
 
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            IceTUInt *colorBuffer = icetImageGetColorUInt(result);
+            IceTUInt *colorBuffer = icetImageGetColorui(result);
             glReadPixels(x_offset, y_offset,
                          readback_viewport[2], readback_viewport[3],
                          GL_RGBA, GL_UNSIGNED_BYTE,
                          colorBuffer + (  readback_viewport[0]
                                         + width*readback_viewport[1]));
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            IceTFloat *colorBuffer = icetImageGetColorFloat(result);
+            IceTFloat *colorBuffer = icetImageGetColorf(result);
             glReadPixels(x_offset, y_offset,
                          readback_viewport[2], readback_viewport[3],
                          GL_RGBA, GL_FLOAT,
@@ -97,7 +97,7 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         }
 
         if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-            IceTFloat *depthBuffer = icetImageGetDepthFloat(result);;
+            IceTFloat *depthBuffer = icetImageGetDepthf(result);;
             glReadPixels(x_offset, y_offset,
                          readback_viewport[2], readback_viewport[3],
                          GL_DEPTH_COMPONENT, GL_FLOAT,

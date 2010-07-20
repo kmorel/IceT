@@ -203,7 +203,7 @@ void icetBoundingVertices(IceTInt size, IceTEnum type, IceTSizeType stride,
 		  castcopy(IceTDouble);
 	      default:
 		  icetRaiseError("Bad type to icetBoundingVertices.",
-				 ICET_INVALID_VALUE);
+				 ICET_INVALID_ENUM);
 		  free(verts);
 		  return;
 	    }

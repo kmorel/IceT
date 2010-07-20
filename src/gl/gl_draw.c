@@ -109,11 +109,11 @@ IceTImage icetGLDrawFrame(void)
           /* This could be made more efficient by natively handling all the
              image formats.  Don't forget to free memory later if necessary. */
             if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                colorBuffer = icetImageGetColorUByte(image);
+                colorBuffer = icetImageGetColorub(image);
             } else {
                 colorBuffer = malloc(4*icetImageGetNumPixels(image));
-                icetImageCopyColorUByte(image, colorBuffer,
-                                        ICET_IMAGE_COLOR_RGBA_UBYTE);
+                icetImageCopyColorub(image, colorBuffer,
+                                     ICET_IMAGE_COLOR_RGBA_UBYTE);
             }
 
             glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);

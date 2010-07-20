@@ -95,7 +95,7 @@ static int BoundsBehindViewerRun()
 
   /* Test the resulting image to make sure the polygon was drawn over it. */
     if (rank == 0) {
-        IceTUInt *cb = icetImageGetColorUInt(image);
+        IceTUInt *cb = icetImageGetColorui(image);
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
             return TEST_FAILED;

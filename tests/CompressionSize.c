@@ -41,7 +41,7 @@ static void InitPathologicalImage(IceTImage image)
 
     format = icetImageGetColorFormat(image);
     if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-        IceTUByte *buffer = icetImageGetColorUByte(image);
+        IceTUByte *buffer = icetImageGetColorub(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[4*i + 0] = 255*(IceTUByte)(i%2);
@@ -50,7 +50,7 @@ static void InitPathologicalImage(IceTImage image)
             buffer[4*i + 3] = 255*(IceTUByte)(i%2);
         }
     } else if (format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-        IceTFloat *buffer = icetImageGetColorFloat(image);
+        IceTFloat *buffer = icetImageGetColorf(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[4*i + 0] = (IceTFloat)(i%2);
@@ -64,7 +64,7 @@ static void InitPathologicalImage(IceTImage image)
 
     format = icetImageGetDepthFormat(image);
     if (format == ICET_IMAGE_DEPTH_FLOAT) {
-        IceTFloat *buffer = icetImageGetDepthFloat(image);
+        IceTFloat *buffer = icetImageGetDepthf(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[i] = (IceTFloat)(i%2);
@@ -89,7 +89,7 @@ static void InitActiveImage(IceTImage image)
 
     format = icetImageGetColorFormat(image);
     if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-        IceTUByte *buffer = icetImageGetColorUByte(image);
+        IceTUByte *buffer = icetImageGetColorub(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[4*i + 0] = (IceTUByte)(rand()%255 + 1);
@@ -98,7 +98,7 @@ static void InitActiveImage(IceTImage image)
             buffer[4*i + 3] = (IceTUByte)(rand()%255 + 1);
         }
     } else if (format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-        IceTFloat *buffer = icetImageGetColorFloat(image);
+        IceTFloat *buffer = icetImageGetColorf(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[4*i + 0] = ((IceTFloat)(rand()%255 + 1))/255;
@@ -112,7 +112,7 @@ static void InitActiveImage(IceTImage image)
 
     format = icetImageGetDepthFormat(image);
     if (format == ICET_IMAGE_DEPTH_FLOAT) {
-        IceTFloat *buffer = icetImageGetDepthFloat(image);
+        IceTFloat *buffer = icetImageGetDepthf(image);
         IceTSizeType i;
         for (i = 0; i < num_pixels; i++) {
             buffer[i] = ((IceTFloat)(rand()%255))/255;

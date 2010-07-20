@@ -65,10 +65,10 @@ static int compare_color_buffers(IceTSizeType local_width,
     }
 
     refcbuf = malloc(icetImageGetNumPixels(refimage)*4);
-    icetImageCopyColorUByte(refimage, refcbuf, ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetImageCopyColorub(refimage, refcbuf, ICET_IMAGE_COLOR_RGBA_UBYTE);
 
     cb = malloc(icetImageGetNumPixels(testimage)*4);
-    icetImageCopyColorUByte(testimage, cb, ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetImageCopyColorub(testimage, cb, ICET_IMAGE_COLOR_RGBA_UBYTE);
 
     ref_off_x = (rank%tile_dim) * local_width;
     ref_off_y = (rank/tile_dim) * local_height;
@@ -175,8 +175,8 @@ static int compare_depth_buffers(IceTSizeType local_width,
     IceTFloat *db;
 
     printf("Checking returned image.\n");
-    refdbuf = icetImageGetDepthFloat(refimage);
-    db = icetImageGetDepthFloat(testimage);
+    refdbuf = icetImageGetDepthf(refimage);
+    db = icetImageGetDepthf(testimage);
     ref_off_x = (rank%tile_dim) * local_width;
     ref_off_y = (rank/tile_dim) * local_height;
     bad_pixel_count = 0;

@@ -239,7 +239,11 @@ IceTImage icetImageNull(void)
 
 IceTBoolean icetImageIsNull(const IceTImage image)
 {
-    return (image.opaque_internals == NULL);
+    if (image.opaque_internals == NULL) {
+        return ICET_TRUE;
+    } else {
+        return ICET_FALSE;
+    }
 }
 
 IceTSparseImage icetGetStateBufferSparseImage(IceTEnum pname,
@@ -478,7 +482,7 @@ IceTVoid *icetImageGetColorVoid(IceTImage image, IceTSizeType *pixel_size)
 
     return ICET_IMAGE_DATA(image);
 }
-IceTUByte *icetImageGetColorUByte(IceTImage image)
+IceTUByte *icetImageGetColorub(IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
@@ -490,11 +494,11 @@ IceTUByte *icetImageGetColorUByte(IceTImage image)
 
     return icetImageGetColorVoid(image, NULL);
 }
-IceTUInt *icetImageGetColorUInt(IceTImage image)
+IceTUInt *icetImageGetColorui(IceTImage image)
 {
-    return (IceTUInt *)icetImageGetColorUByte(image);
+    return (IceTUInt *)icetImageGetColorub(image);
 }
-IceTFloat *icetImageGetColorFloat(IceTImage image)
+IceTFloat *icetImageGetColorf(IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
@@ -522,7 +526,7 @@ IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
 
     return ICET_IMAGE_DATA(image) + color_format_bytes;
 }
-IceTFloat *icetImageGetDepthFloat(IceTImage image)
+IceTFloat *icetImageGetDepthf(IceTImage image)
 {
     IceTEnum depth_format = icetImageGetDepthFormat(image);
 
@@ -535,9 +539,9 @@ IceTFloat *icetImageGetDepthFloat(IceTImage image)
     return icetImageGetDepthVoid(image, NULL);
 }
 
-void icetImageCopyColorUByte(const IceTImage image,
-                             IceTUByte *color_buffer,
-                             IceTEnum out_color_format)
+void icetImageCopyColorub(const IceTImage image,
+                          IceTUByte *color_buffer,
+                          IceTEnum out_color_format)
 {
     IceTEnum in_color_format = icetImageGetColorFormat(image);
 
@@ -553,15 +557,13 @@ void icetImageCopyColorUByte(const IceTImage image,
     }
 
     if (in_color_format == out_color_format) {
-        const IceTUByte *in_buffer
-            = icetImageGetColorUByte((IceTImage)image);
+        const IceTUByte *in_buffer = icetImageGetColorub((IceTImage)image);
         IceTSizeType color_format_bytes = (  icetImageGetNumPixels(image)
                                            * colorPixelSize(in_color_format) );
         memcpy(color_buffer, in_buffer, color_format_bytes);
     } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
                && (out_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) ) {
-        const IceTFloat *in_buffer
-            = icetImageGetColorFloat((IceTImage)image);
+        const IceTFloat *in_buffer = icetImageGetColorf((IceTImage)image);
         IceTSizeType num_pixels = icetImageGetNumPixels(image);
         IceTSizeType i;
         const IceTFloat *in;
@@ -576,9 +578,9 @@ void icetImageCopyColorUByte(const IceTImage image,
     }
 }
 
-void icetImageCopyColorFloat(const IceTImage image,
-                             IceTFloat *color_buffer,
-                             IceTEnum out_color_format)
+void icetImageCopyColorf(const IceTImage image,
+                         IceTFloat *color_buffer,
+                         IceTEnum out_color_format)
 {
     IceTEnum in_color_format = icetImageGetColorFormat(image);
 
@@ -594,15 +596,13 @@ void icetImageCopyColorFloat(const IceTImage image,
     }
 
     if (in_color_format == out_color_format) {
-        const IceTFloat *in_buffer
-            = icetImageGetColorFloat((IceTImage)image);
+        const IceTFloat *in_buffer = icetImageGetColorf((IceTImage)image);
         IceTSizeType color_format_bytes = (  icetImageGetNumPixels(image)
                                            * colorPixelSize(in_color_format) );
         memcpy(color_buffer, in_buffer, color_format_bytes);
     } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
                && (out_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) ) {
-        const IceTUByte *in_buffer
-            = icetImageGetColorUByte((IceTImage)image);
+        const IceTUByte *in_buffer = icetImageGetColorub((IceTImage)image);
         IceTSizeType num_pixels = icetImageGetNumPixels(image);
         IceTSizeType i;
         const IceTUByte *in;
@@ -617,9 +617,9 @@ void icetImageCopyColorFloat(const IceTImage image,
     }
 }
 
-void icetImageCopyDepthFloat(const IceTImage image,
-                             IceTFloat *depth_buffer,
-                             IceTEnum out_depth_format)
+void icetImageCopyDepthf(const IceTImage image,
+                         IceTFloat *depth_buffer,
+                         IceTEnum out_depth_format)
 {
     IceTEnum in_depth_format = icetImageGetDepthFormat(image);
 
@@ -636,8 +636,7 @@ void icetImageCopyDepthFloat(const IceTImage image,
 
   /* Currently only possibility is
      in_color_format == out_color_format == ICET_IMAGE_DEPTH_FLOAT. */
-    const IceTFloat *in_buffer
-        = icetImageGetDepthFloat((IceTImage)image);
+    const IceTFloat *in_buffer = icetImageGetDepthf((IceTImage)image);
     IceTSizeType depth_format_bytes = (  icetImageGetNumPixels(image)
                                        * depthPixelSize(in_depth_format) );
     memcpy(depth_buffer, in_buffer, depth_format_bytes);
@@ -771,7 +770,7 @@ void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
     IceTSizeType x, y;
 
     if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-        IceTUInt *color_buffer = icetImageGetColorUInt(image);
+        IceTUInt *color_buffer = icetImageGetColorui(image);
         IceTUInt background_color;
 
         icetGetIntegerv(ICET_BACKGROUND_COLOR_WORD,(IceTInt*)&background_color);
@@ -800,7 +799,7 @@ void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
             }
         }
     } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-        IceTFloat *color_buffer = icetImageGetColorFloat(image);
+        IceTFloat *color_buffer = icetImageGetColorf(image);
         IceTFloat background_color[4];
 
         icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
@@ -845,7 +844,7 @@ void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
     }
 
     if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-        IceTFloat *depth_buffer = icetImageGetDepthFloat(image);
+        IceTFloat *depth_buffer = icetImageGetDepthf(image);
 
       /* Clear out bottom. */
         for (y = 0; y < region[1]; y++) {
@@ -1237,12 +1236,12 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
 
     if (composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
         if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
-            const IceTFloat *srcDepthBuffer = icetImageGetDepthFloat(srcBuffer);
-            IceTFloat *destDepthBuffer = icetImageGetDepthFloat(destBuffer);
+            const IceTFloat *srcDepthBuffer = icetImageGetDepthf(srcBuffer);
+            IceTFloat *destDepthBuffer = icetImageGetDepthf(destBuffer);
 
             if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                const IceTUInt *srcColorBuffer=icetImageGetColorUInt(srcBuffer);
-                IceTUInt *destColorBuffer = icetImageGetColorUInt(destBuffer);
+                const IceTUInt *srcColorBuffer=icetImageGetColorui(srcBuffer);
+                IceTUInt *destColorBuffer = icetImageGetColorui(destBuffer);
                 for (i = 0; i < pixels; i++) {
                     if (srcDepthBuffer[i] < destDepthBuffer[i]) {
                         destDepthBuffer[i] = srcDepthBuffer[i];
@@ -1250,9 +1249,8 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                     }
                 }
             } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-                const IceTFloat *srcColorBuffer
-                    = icetImageGetColorFloat(srcBuffer);
-                IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
+                const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+                IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
                 for (i = 0; i < pixels; i++) {
                     if (srcDepthBuffer[i] < destDepthBuffer[i]) {
                         destDepthBuffer[i] = srcDepthBuffer[i];
@@ -1286,8 +1284,8 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                              ICET_INVALID_VALUE);
         }
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            const IceTUByte *srcColorBuffer = icetImageGetColorUByte(srcBuffer);
-            IceTUByte *destColorBuffer = icetImageGetColorUByte(destBuffer);
+            const IceTUByte *srcColorBuffer = icetImageGetColorub(srcBuffer);
+            IceTUByte *destColorBuffer = icetImageGetColorub(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
                     ICET_OVER_UBYTE(srcColorBuffer + i*4,
@@ -1300,8 +1298,8 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                 }
             }
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            const IceTFloat *srcColorBuffer = icetImageGetColorFloat(srcBuffer);
-            IceTFloat *destColorBuffer = icetImageGetColorFloat(destBuffer);
+            const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+            IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
                     ICET_OVER_FLOAT(srcColorBuffer + i*4,

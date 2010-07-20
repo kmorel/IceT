@@ -93,7 +93,7 @@
     if (_composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
         if (_depth_format == ICET_IMAGE_DEPTH_FLOAT) {
           /* Use Z buffer for active pixel testing and compositing. */
-            IceTFloat *_depth = icetImageGetDepthFloat(OUTPUT_IMAGE);
+            IceTFloat *_depth = icetImageGetDepthf(OUTPUT_IMAGE);
 #ifdef OFFSET
             _depth += OFFSET;
 #endif
@@ -102,7 +102,7 @@
                 const IceTUInt *_c_in;
                 const IceTFloat *_d_in;
                 IceTUInt _background_color;
-                _color = icetImageGetColorUInt(OUTPUT_IMAGE);
+                _color = icetImageGetColorui(OUTPUT_IMAGE);
 #ifdef OFFSET
                 _color += OFFSET;
 #endif
@@ -146,7 +146,7 @@
                 const IceTFloat *_c_in;
                 const IceTFloat *_d_in;
                 IceTFloat _background_color[4];
-                _color = icetImageGetColorFloat(OUTPUT_IMAGE);
+                _color = icetImageGetColorf(OUTPUT_IMAGE);
 #ifdef OFFSET
                 _color += 4*(OFFSET);
 #endif
@@ -245,7 +245,7 @@
             IceTUInt *_color;
             const IceTUInt *_c_in;
             IceTUInt _background_color;
-            _color = icetImageGetColorUInt(OUTPUT_IMAGE);
+            _color = icetImageGetColorui(OUTPUT_IMAGE);
 #ifdef OFFSET
             _color += OFFSET;
 #endif
@@ -280,7 +280,7 @@
             IceTFloat *_color;
             const IceTFloat *_c_in;
             IceTFloat _background_color[4];
-            _color = icetImageGetColorFloat(OUTPUT_IMAGE);
+            _color = icetImageGetColorf(OUTPUT_IMAGE);
 #ifdef OFFSET
             _color += 4*(OFFSET);
 #endif

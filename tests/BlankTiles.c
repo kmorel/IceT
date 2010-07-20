@@ -66,7 +66,7 @@ static int BlankTilesDoTest(void)
             IceTUByte *cb;
             int pixel;
             printf("Checking returned image.\n");
-            cb = icetImageGetColorUByte(image);
+            cb = icetImageGetColorub(image);
             for (pixel = 0; pixel < SCREEN_WIDTH*SCREEN_HEIGHT*4; pixel++) {
                 if (cb[pixel] != 0) {
                     printf("Found bad pixel!!!!!!!!\n");
