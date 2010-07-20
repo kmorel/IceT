@@ -305,8 +305,12 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     IceTUInt pixel_count;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
+    IceTSizeType width, height;
 
     icetRaiseDebug("In bswapCompose");
+
+    width = icetImageGetWidth(image);
+    height = icetImageGetHeight(image);
 
     icetGetIntegerv(ICET_RANK, &rank);
     group_rank = 0;
@@ -330,10 +334,9 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     pixel_count = ((pixel_count+pow2size-1)/pow2size)*pow2size;
 
     inSparseImageBuffer = icetGetStateBuffer(BSWAP_IN_SPARSE_IMAGE_BUFFER,
-                                             icetImageGetNumPixels(image));
+                                      icetSparseImageBufferSize(width, height));
     outSparseImage =icetGetStateBufferSparseImage(BSWAP_OUT_SPARSE_IMAGE_BUFFER,
-                                                  icetImageGetWidth(image),
-                                                  icetImageGetHeight(image));
+                                                  width, height);
 
   /* Do actual bswap. */
     bswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
