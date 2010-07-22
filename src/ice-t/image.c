@@ -547,7 +547,7 @@ void icetImageCopyColorub(const IceTImage image,
 
     if (out_color_format != ICET_IMAGE_COLOR_RGBA_UBYTE) {
         icetRaiseError("Color format is not of type ubyte.",
-                       ICET_INVALID_OPERATION);
+                       ICET_INVALID_ENUM);
         return;
     }
     if (in_color_format == ICET_IMAGE_COLOR_NONE) {
@@ -586,7 +586,7 @@ void icetImageCopyColorf(const IceTImage image,
 
     if (out_color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
         icetRaiseError("Color format is not of type float.",
-                       ICET_INVALID_OPERATION);
+                       ICET_INVALID_ENUM);
         return;
     }
     if (in_color_format == ICET_IMAGE_COLOR_NONE) {
@@ -625,7 +625,7 @@ void icetImageCopyDepthf(const IceTImage image,
 
     if (out_depth_format != ICET_IMAGE_DEPTH_FLOAT) {
         icetRaiseError("Depth format is not of type float.",
-                       ICET_INVALID_OPERATION);
+                       ICET_INVALID_ENUM);
         return;
     }
     if (in_depth_format == ICET_IMAGE_DEPTH_NONE) {
