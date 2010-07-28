@@ -126,10 +126,10 @@ typedef struct { IceTVoid *opaque_internals; } IceTImage;
 
 #define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
 #define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
-#define ICET_IMAGE_COLOR_NONE           (IceTEnum)0x0000
+#define ICET_IMAGE_COLOR_NONE           (IceTEnum)0xC000
 
 #define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001
-#define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0x0000
+#define ICET_IMAGE_DEPTH_NONE           (IceTEnum)0xD000
 
 ICET_EXPORT void icetSetColorFormat(IceTEnum color_format);
 ICET_EXPORT void icetSetDepthFormat(IceTEnum depth_format);
