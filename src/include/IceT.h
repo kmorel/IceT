@@ -189,7 +189,7 @@ typedef void (*IceTDrawCallbackType)(const IceTDouble *projection_matrix,
                                      const IceTInt *readback_viewport,
                                      IceTImage result);
 
-ICET_EXPORT void icetDrawCallback(IceTDrawCallbackType func);
+ICET_EXPORT void icetDrawCallback(IceTDrawCallbackType callback);
 
 ICET_EXPORT IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
                                     const IceTDouble *modelview_matrix,

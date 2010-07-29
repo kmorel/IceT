@@ -25,13 +25,15 @@ extern "C" {
 
 ICET_GL_EXPORT void icetGLInitialize(void);
 
+ICET_GL_EXPORT IceTBoolean icetGLIsInitialized(void);
+
 ICET_GL_EXPORT void icetGLSetReadBuffer(GLenum mode);
 
 ICET_GL_EXPORT IceTImage icetGLDrawFrame(void);
 
 typedef void (*IceTGLDrawCallbackType)(void);
 
-ICET_GL_EXPORT void icetGLDrawCallback(IceTGLDrawCallbackType func);
+ICET_GL_EXPORT void icetGLDrawCallback(IceTGLDrawCallbackType callback);
 
 #define ICET_GL_STATE_START ICET_RENDER_LAYER_STATE_START
 #define ICET_GL_STATE_END   ICET_RENDER_LAYER_STATE_END
