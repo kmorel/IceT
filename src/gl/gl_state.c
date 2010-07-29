@@ -49,7 +49,8 @@ IceTBoolean icetGLIsInitialized(void)
 void icetGLSetReadBuffer(GLenum mode)
 {
     if (!icetGLIsInitialized()) {
-        icetRaiseError("IceT OpenGL layer not initialized.",
+        icetRaiseError("IceT OpenGL layer not initialized."
+                       " Call icetGLInitialize.",
                        ICET_INVALID_OPERATION);
         return;
     }

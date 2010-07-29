@@ -24,7 +24,8 @@ static void inflateBuffer(IceTUByte *buffer,
 void icetGLDrawCallback(IceTGLDrawCallbackType func)
 {
     if (!icetGLIsInitialized()) {
-        icetRaiseError("IceT OpenGL layer not initialized.",
+        icetRaiseError("IceT OpenGL layer not initialized."
+                       " Call icetGLInitialize.",
                        ICET_INVALID_OPERATION);
         return;
     }
@@ -46,7 +47,8 @@ IceTImage icetGLDrawFrame(void)
     IceTDouble buf_write_time;
 
     if (!icetGLIsInitialized()) {
-        icetRaiseError("IceT OpenGL layer not initialized.",
+        icetRaiseError("IceT OpenGL layer not initialized."
+                       " Call icetGLInitialize.",
                        ICET_INVALID_OPERATION);
         return icetImageNull();
     }
