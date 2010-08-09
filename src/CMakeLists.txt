@@ -13,27 +13,3 @@ ADD_SUBDIRECTORY(strategies)
 IF (ICET_USE_OPENGL)
   ADD_SUBDIRECTORY(gl)
 ENDIF (ICET_USE_OPENGL)
-
-IF (NOT ICET_INSTALL_NO_DEVELOPMENT)
-  SET(resPath 
-      "${CMAKE_CURRENT_SOURCE_DIR}/ice-t"
-      "${CMAKE_CURRENT_SOURCE_DIR}/communication"
-      "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
-  SET(filesToInstall)
-  FOREACH(p ${resPath})
-      SET(tmpFilesToInstall)
-      SET(exts "${p}/*.h;${p}/*.hxx;${p}/*.txx")
-      FOREACH(ext ${exts})
-          FILE(GLOB tmpFilesToInstall
-          RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-          "${ext}")
-          IF(tmpFilesToInstall)
-              SET(filesToInstall "${filesToInstall};${tmpFilesToInstall}")
-          ENDIF(tmpFilesToInstall)
-      ENDFOREACH(ext)
-  ENDFOREACH(p)
-  INSTALL(
-      FILES ${filesToInstall}
-      DESTINATION "${ICET_INSTALL_INCLUDE_DIR}/ice-t"
-      COMPONENT Development)
-ENDIF (NOT ICET_INSTALL_NO_DEVELOPMENT)
