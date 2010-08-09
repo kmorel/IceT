@@ -1,8 +1,10 @@
 /* -*- c -*- *******************************************************/
 /*
  * Copyright (C) 2010 Sandia Corporation
- * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
- * license for use of this work by or on behalf of the U.S. Government.
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
  */
 
 #ifndef __IceTDevStrategySelect_h
