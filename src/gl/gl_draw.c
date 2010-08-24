@@ -20,6 +20,20 @@
 static IceTUByte *display_buffer = NULL;
 static IceTSizeType display_buffer_size = 0;
 
+static void setupOpenGLRender(IceTDouble *projection_matrix,
+                              IceTDouble *modelview_matrix,
+                              IceTFloat *background_color,
+                              IceTDrawCallbackType *original_callback,
+                              IceTBoolean *ok_to_proceed);
+static void finalizeOpenGLRender(const IceTImage image,
+                                 const IceTDouble *projection_matrix,
+                                 const IceTDouble *modelview_matrix,
+                                 const IceTFloat *background_color,
+                                 IceTDrawCallbackType original_callback);
+static void correctOpenGLRenderTimes(IceTDouble total_time);
+
+static void displayImage(const IceTImage image);
+
 static void inflateBuffer(IceTUByte *buffer,
                           IceTSizeType width, IceTSizeType height);
 
@@ -38,28 +52,58 @@ void icetGLDrawCallback(IceTGLDrawCallbackType func)
 IceTImage icetGLDrawFrame(void)
 {
     IceTImage image;
-    IceTInt display_tile;
-    IceTBoolean color_blending;
-    GLint physical_viewport[4];
-    IceTFloat background_color[4];
     IceTDouble projection_matrix[16];
     IceTDouble modelview_matrix[16];
-    IceTVoid *value;
+    IceTFloat background_color[4];
     IceTDrawCallbackType original_callback;
-    IceTDouble buf_write_time;
+    IceTDouble total_time;
+    IceTBoolean ok_to_proceed;
+
+    total_time = icetWallTime();
+
+    setupOpenGLRender(projection_matrix,
+                      modelview_matrix,
+                      background_color,
+                      &original_callback,
+                      &ok_to_proceed);
+    if (!ok_to_proceed) {
+        return icetImageNull();
+    }
+
+  /* Hand control to the core layer to render and composite. */
+    image = icetDrawFrame(projection_matrix,
+                          modelview_matrix,
+                          background_color);
+
+    finalizeOpenGLRender(image,
+                         projection_matrix,
+                         modelview_matrix,
+                         background_color,
+                         original_callback);
+
+    total_time = icetWallTime() - total_time;
+    correctOpenGLRenderTimes(total_time);
+
+    return image;
+}
+
+static void setupOpenGLRender(IceTDouble *projection_matrix,
+                              IceTDouble *modelview_matrix,
+                              IceTFloat *background_color,
+                              IceTDrawCallbackType *original_callback,
+                              IceTBoolean *ok_to_proceed)
+{
+    GLint physical_viewport[4];
+    IceTVoid *value;
+
+    *ok_to_proceed = ICET_FALSE;
 
     if (!icetGLIsInitialized()) {
         icetRaiseError("IceT OpenGL layer not initialized."
                        " Call icetGLInitialize.",
                        ICET_INVALID_OPERATION);
-        return icetImageNull();
+        return;
     }
-
-    icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
-
-    color_blending =
-        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_COMPOSITE_MODE))
-                      == ICET_COMPOSITE_MODE_BLEND);
 
   /* Update physical render size to actual OpenGL viewport. */
     glGetIntegerv(GL_VIEWPORT, physical_viewport);
@@ -77,18 +121,25 @@ IceTImage icetGLDrawFrame(void)
     if (value == NULL) {
         icetRaiseError("GL Drawing function not set.  Call icetGLDrawCallback.",
                        ICET_INVALID_OPERATION);
-        return icetImageNull();
+        return;
     }
 
   /* Set up core callback to call the GL layer. */
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
-    original_callback = (IceTDrawCallbackType)value;
+    *original_callback = (IceTDrawCallbackType)value;
     icetDrawCallback(icetGLDrawCallbackFunction);
 
-  /* Hand control to the core layer to render and composite. */
-    image = icetDrawFrame(projection_matrix,
-                          modelview_matrix,
-                          background_color);
+    *ok_to_proceed = ICET_TRUE;
+}
+
+static void finalizeOpenGLRender(const IceTImage image,
+                                 const IceTDouble *projection_matrix,
+                                 const IceTDouble *modelview_matrix,
+                                 const IceTFloat *background_color,
+                                 IceTDrawCallbackType original_callback)
+{
+    IceTInt display_tile;
+    IceTDouble buf_write_time;
 
   /* Restore core IceT callback. */
     icetDrawCallback(original_callback);
@@ -98,72 +149,15 @@ IceTImage icetGLDrawFrame(void)
                  background_color[2], background_color[3]);
 
   /* Paste final image back to buffer if enabled. */
+    icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     buf_write_time = icetWallTime();
     if (display_tile >= 0) {
         IceTEnum color_format = icetImageGetColorFormat(image);
 
         if (   (color_format != ICET_IMAGE_COLOR_NONE)
             && icetIsEnabled(ICET_GL_DISPLAY) ) {
-            IceTUByte *colorBuffer;
-            IceTInt readBuffer;
-            IceTInt *tile_viewports;
 
-            icetRaiseDebug("Displaying image.");
-
-            icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
-            glDrawBuffer(readBuffer);
-
-          /* Place raster position in lower left corner. */
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
-            glLoadIdentity();
-            glRasterPos2f(-1, -1);
-            glPopMatrix();
-
-          /* This could be made more efficient by natively handling all the
-             image formats.  Don't forget to free memory later if necessary. */
-            if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                colorBuffer = icetImageGetColorub(image);
-            } else {
-                colorBuffer = malloc(4*icetImageGetNumPixels(image));
-                icetImageCopyColorub(image, colorBuffer,
-                                     ICET_IMAGE_COLOR_RGBA_UBYTE);
-            }
-
-            glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);
-            glDisable(GL_TEXTURE_1D);
-            glDisable(GL_TEXTURE_2D);
-#ifdef GL_TEXTURE_3D
-            glDisable(GL_TEXTURE_3D);
-#endif
-            if (   color_blending
-                && icetIsEnabled(ICET_GL_DISPLAY_COLORED_BACKGROUND)
-                && !icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glEnable(GL_BLEND);
-                glClear(GL_COLOR_BUFFER_BIT);
-            } else {
-                glDisable(GL_BLEND);
-            }
-            glClear(GL_DEPTH_BUFFER_BIT);
-            tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
-            if (icetIsEnabled(ICET_GL_DISPLAY_INFLATE)) {
-                inflateBuffer(colorBuffer,
-                              tile_viewports[display_tile*4+2],
-                              tile_viewports[display_tile*4+3]);
-            } else {
-                glDrawPixels(tile_viewports[display_tile*4+2],
-                             tile_viewports[display_tile*4+3],
-                             GL_RGBA, GL_UNSIGNED_BYTE, colorBuffer);
-            }
-            glPopAttrib();
-
-          /* Delete the color buffer if we had to create our own. */
-            if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_RGBA_UBYTE) {
-                free(colorBuffer);
-            }
+            displayImage(image);
         }
     }
 
@@ -176,8 +170,96 @@ IceTImage icetGLDrawFrame(void)
   /* Calculate display times. */
     buf_write_time = icetWallTime() - buf_write_time;
     icetStateSetDouble(ICET_BUFFER_WRITE_TIME, buf_write_time);
+}
 
-    return image;
+static void correctOpenGLRenderTimes(IceTDouble total_time)
+{
+    IceTDouble render_time;
+    IceTDouble buf_read_time;
+    IceTDouble buf_write_time;
+    IceTDouble composite_time;
+
+  /* The OpenGL layer added some time to the rendering.  Update the total
+     time and make sure the rest are consistent. */
+    icetStateSetDouble(ICET_TOTAL_DRAW_TIME, total_time);
+
+    icetGetDoublev(ICET_RENDER_TIME, &render_time);
+    icetGetDoublev(ICET_BUFFER_READ_TIME, &buf_read_time);
+    icetGetDoublev(ICET_BUFFER_WRITE_TIME, &buf_write_time);
+
+    composite_time = total_time - render_time - buf_read_time - buf_write_time;
+    icetStateSetDouble(ICET_COMPOSITE_TIME, composite_time);
+}
+
+static void displayImage(const IceTImage image)
+{
+    IceTUByte *colorBuffer;
+    IceTInt readBuffer;
+    IceTInt *tile_viewports;
+    IceTInt display_tile;
+    IceTBoolean color_blending;
+
+    icetRaiseDebug("Displaying image.");
+
+    icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
+
+    icetGetIntegerv(ICET_GL_READ_BUFFER, &readBuffer);
+    glDrawBuffer(readBuffer);
+
+  /* Place raster position in lower left corner. */
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glRasterPos2f(-1, -1);
+    glPopMatrix();
+
+  /* This could be made more efficient by natively handling all the
+     image formats.  Don't forget to free memory later if necessary. */
+    if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        colorBuffer = icetImageGetColorub(image);
+    } else {
+        colorBuffer = malloc(4*icetImageGetNumPixels(image));
+        icetImageCopyColorub(image, colorBuffer,
+                             ICET_IMAGE_COLOR_RGBA_UBYTE);
+    }
+
+    glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);
+    glDisable(GL_TEXTURE_1D);
+    glDisable(GL_TEXTURE_2D);
+#ifdef GL_TEXTURE_3D
+    glDisable(GL_TEXTURE_3D);
+#endif
+    color_blending =
+        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_COMPOSITE_MODE))
+                      == ICET_COMPOSITE_MODE_BLEND);
+    if (   color_blending
+        && icetIsEnabled(ICET_GL_DISPLAY_COLORED_BACKGROUND)
+        && !icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+        glClear(GL_COLOR_BUFFER_BIT);
+    } else {
+        glDisable(GL_BLEND);
+    }
+    glClear(GL_DEPTH_BUFFER_BIT);
+    tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+    if (icetIsEnabled(ICET_GL_DISPLAY_INFLATE)) {
+        inflateBuffer(colorBuffer,
+                      tile_viewports[display_tile*4+2],
+                      tile_viewports[display_tile*4+3]);
+    } else {
+        glDrawPixels(tile_viewports[display_tile*4+2],
+                     tile_viewports[display_tile*4+3],
+                     GL_RGBA, GL_UNSIGNED_BYTE, colorBuffer);
+    }
+    glPopAttrib();
+
+  /* Delete the color buffer if we had to create our own. */
+    if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        free(colorBuffer);
+    }
 }
 
 static void inflateBuffer(IceTUByte *buffer,
