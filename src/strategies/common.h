@@ -30,7 +30,6 @@
         function in image.h.
    outSparseImage - A sparse image big enough to hold color and/or depth
         values that is ICET_MAX_PIXELS big.
-   num_receiving - number of image this processor is receiving.
    tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
         rendered image for tile t is sent to tile_image_dest[t].
 
@@ -86,7 +85,7 @@ void icetRenderTransferFullImages(IceTImage image,
 */
 typedef IceTVoid *(*IceTGenerateData)(IceTInt id, IceTInt dest,
                                       IceTSizeType *size);
-typedef void (*IceTHandleData)(void *, IceTInt src);
+typedef void (*IceTHandleData)(void *buffer, IceTInt src);
 void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTInt *messageDestinations,
                                IceTBoolean messagesInOrder,
@@ -109,7 +108,7 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         placed.  It is an index into compose_group, not the actual rank
         of the process.
    image - The input image colors and/or depth to be used.  If this
-        processor has rank compose_group[compose_group], any output data
+        processor has rank compose_group[image_dest], any output data
         will be put in this buffer.  If the color or depth value is not to
         be computed or this processor is not rank
         compose_group[compose_group], the buffer has undefined partial
