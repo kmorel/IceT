@@ -347,7 +347,7 @@ ICET_EXPORT void icetGetFloatv(IceTEnum pname, IceTFloat *params);
 ICET_EXPORT void icetGetIntegerv(IceTEnum pname, IceTInt *params);
 ICET_EXPORT void icetGetBooleanv(IceTEnum pname, IceTBoolean *params);
 ICET_EXPORT void icetGetEnumv(IceTEnum pname, IceTEnum *params);
-ICET_EXPORT void icetGetBitFieldv(IceTEnum pname, IceTEnum *bitfield);
+ICET_EXPORT void icetGetBitFieldv(IceTEnum pname, IceTBitField *bitfield);
 ICET_EXPORT void icetGetPointerv(IceTEnum pname, IceTVoid **params);
 
 ICET_EXPORT void icetEnable(IceTEnum pname);
