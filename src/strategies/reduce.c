@@ -58,7 +58,7 @@ IceTImage icetReduceCompose(void)
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
 
     compose_tile = delegate(&tile_image_dest,
-			    &compose_group, &group_size, &group_image_dest);
+                            &compose_group, &group_size, &group_image_dest);
 
     sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
     inSparseImageBuffer  = icetGetStateBuffer(REDUCE_IN_SPARSE_IMAGE_BUFFER,
@@ -84,7 +84,7 @@ IceTImage icetReduceCompose(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
       /* Return empty image if nothing in this tile. */
-	icetRaiseDebug("Clearing pixels");
+        icetRaiseDebug("Clearing pixels");
         icetClearImage(image);
     }
 
@@ -122,7 +122,7 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     IceTInt first_loop;
 
     all_contained_tiles_masks
-	= icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
+        = icetUnsafeStateGetBoolean(ICET_ALL_CONTAINED_TILES_MASKS);
     contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
     icetGetIntegerv(ICET_TOTAL_IMAGE_COUNT, &total_image_count);
     tile_display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
@@ -133,9 +133,12 @@ static IceTInt delegate(IceTInt **tile_image_destp,
     icetGetIntegerv(ICET_RANK, &rank);
 
     if (total_image_count < 1) {
-	icetRaiseDebug("No nodes are drawing.");
-	*group_sizep = 0;
-	return -1;
+        icetRaiseDebug("No nodes are drawing.");
+        *tile_image_destp = NULL;
+        *compose_groupp = NULL;
+        *group_sizep = 0;
+        *group_image_destp = 0;
+        return -1;
     }
 
     num_proc_for_tile = icetGetStateBuffer(REDUCE_NUM_PROC_FOR_TILE_BUFFER,
@@ -156,254 +159,254 @@ static IceTInt delegate(IceTInt **tile_image_destp,
      tile. */
     pcount = 0;
     for (tile = 0; tile < num_tiles; tile++) {
-	IceTInt allocate = (contrib_counts[tile]*num_processes)/total_image_count;
+        IceTInt allocate = (contrib_counts[tile]*num_processes)/total_image_count;
       /* Make sure at least one process is assigned to tiles that have at
-	 least one image. */
-	if ((allocate < 1) && (contrib_counts[tile] > 0)) allocate = 1;
+         least one image. */
+        if ((allocate < 1) && (contrib_counts[tile] > 0)) allocate = 1;
       /* Don't allocate more processes to a tile than images for that
          tile. */
-	if (allocate > contrib_counts[tile]) allocate = contrib_counts[tile];
+        if (allocate > contrib_counts[tile]) allocate = contrib_counts[tile];
 
-	num_proc_for_tile[tile] = allocate;
+        num_proc_for_tile[tile] = allocate;
 
       /* Keep track of how many processes have been allocated. */
-	pcount += allocate;
+        pcount += allocate;
     }
 
   /* Handle when we have not allocated all the processes. */
     while (num_processes > pcount) {
       /* Find the tile with the largest image to process ratio that
-	 can still have a process added to it. */
-	IceTInt max = 0;
-	for (tile = 1; tile < num_tiles; tile++) {
-	    if (   (num_proc_for_tile[tile] < contrib_counts[tile])
-		&& (   (num_proc_for_tile[max] == contrib_counts[max])
-		    || (  (float)contrib_counts[max]/num_proc_for_tile[max]
-			< (float)contrib_counts[tile]/num_proc_for_tile[tile])))
-	    {
-		max = tile;
-	    }
-	}
-	if (num_proc_for_tile[max] < contrib_counts[max]) {
-	    num_proc_for_tile[max]++;
-	    pcount++;
-	} else {
-	  /* Cannot assign any more processes. */
-	    break;
-	}
+         can still have a process added to it. */
+        IceTInt max = 0;
+        for (tile = 1; tile < num_tiles; tile++) {
+            if (   (num_proc_for_tile[tile] < contrib_counts[tile])
+                && (   (num_proc_for_tile[max] == contrib_counts[max])
+                    || (  (float)contrib_counts[max]/num_proc_for_tile[max]
+                        < (float)contrib_counts[tile]/num_proc_for_tile[tile])))
+            {
+                max = tile;
+            }
+        }
+        if (num_proc_for_tile[max] < contrib_counts[max]) {
+            num_proc_for_tile[max]++;
+            pcount++;
+        } else {
+          /* Cannot assign any more processes. */
+            break;
+        }
     }
 
   /* Handle when we have allocated too many processes. */
     while (num_processes < pcount) {
       /* Find tile with the smallest image to process ratio that can still
-	 have a process removed. */
-	IceTInt min = 0;
-	for (tile = 1; tile < num_tiles; tile++) {
-	    if (   (num_proc_for_tile[tile] > 1)
-		&& (   (num_proc_for_tile[min] < 2)
-		    || (  (float)contrib_counts[min]/num_proc_for_tile[min]
-			> (float)contrib_counts[tile]/num_proc_for_tile[tile])))
-	    {
-		min = tile;
-	    }
-	}
-	num_proc_for_tile[min]--;
-	pcount--;
+         have a process removed. */
+        IceTInt min = 0;
+        for (tile = 1; tile < num_tiles; tile++) {
+            if (   (num_proc_for_tile[tile] > 1)
+                && (   (num_proc_for_tile[min] < 2)
+                    || (  (float)contrib_counts[min]/num_proc_for_tile[min]
+                        > (float)contrib_counts[tile]/num_proc_for_tile[tile])))
+            {
+                min = tile;
+            }
+        }
+        num_proc_for_tile[min]--;
+        pcount--;
     }
 
   /* Clear out arrays. */
     memset(group_sizes, 0, num_tiles*sizeof(IceTInt));
     for (node = 0; node < num_processes; node++) {
-	node_assignment[node] = -1;
+        node_assignment[node] = -1;
     }
 
-#define ASSIGN_NODE2TILE(node, tile)					\
-node_assignment[(node)] = (tile);					\
-tile_proc_groups[(tile)*num_processes + group_sizes[(tile)]] = (node);	\
+#define ASSIGN_NODE2TILE(node, tile)                                    \
+node_assignment[(node)] = (tile);                                       \
+tile_proc_groups[(tile)*num_processes + group_sizes[(tile)]] = (node);  \
 group_sizes[(tile)]++;
 
   /* Assign each display node to the group processing that tile if there
      are any images in that tile. */
     for (tile = 0; tile < num_tiles; tile++) {
-	if (contrib_counts[tile] > 0) {
-	    ASSIGN_NODE2TILE(tile_display_nodes[tile], tile);
-	}
+        if (contrib_counts[tile] > 0) {
+            ASSIGN_NODE2TILE(tile_display_nodes[tile], tile);
+        }
     }
 
   /* Assign each node to a tile it is rendering, if possible. */
     for (node = 0; node < num_processes; node++) {
-	if (node_assignment[node] < 0) {
-	    IceTBoolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
-	    for (tile = 0; tile < num_tiles; tile++) {
-		if (   (tile_mask[tile])
-		    && (group_sizes[tile] < num_proc_for_tile[tile])) {
-		    ASSIGN_NODE2TILE(node, tile);
-		    break;
-		}
-	    }
-	}
+        if (node_assignment[node] < 0) {
+            IceTBoolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
+            for (tile = 0; tile < num_tiles; tile++) {
+                if (   (tile_mask[tile])
+                    && (group_sizes[tile] < num_proc_for_tile[tile])) {
+                    ASSIGN_NODE2TILE(node, tile);
+                    break;
+                }
+            }
+        }
     }
 
   /* Assign rest of the nodes. */
     node = 0;
     for (tile = 0; tile < num_tiles; tile++) {
-	while (group_sizes[tile] < num_proc_for_tile[tile]) {
-	    while (node_assignment[node] >= 0) node++;
-	    ASSIGN_NODE2TILE(node, tile);
-	}
+        while (group_sizes[tile] < num_proc_for_tile[tile]) {
+            while (node_assignment[node] >= 0) node++;
+            ASSIGN_NODE2TILE(node, tile);
+        }
     }
 
   /* Now figure out who I am sending to and how many I am receiving. */
     for (tile = 0; tile < num_tiles; tile++) {
-	IceTInt *proc_group = tile_proc_groups + tile*num_processes;
+        IceTInt *proc_group = tile_proc_groups + tile*num_processes;
 
-	if (   (node_assignment[rank] != tile)
-	    && !all_contained_tiles_masks[rank*num_tiles + tile]) {
-	  /* Not involved with this tile.  Skip it. */
-	    continue;
-	}
+        if (   (node_assignment[rank] != tile)
+            && !all_contained_tiles_masks[rank*num_tiles + tile]) {
+          /* Not involved with this tile.  Skip it. */
+            continue;
+        }
 
-	if (!icetIsEnabled(ICET_ORDERED_COMPOSITE)) {
-	  /* If we are not doing an ordered composite, then we are free
-	   * to assign processes to images in any way we please.  Here we
-	   * will do everything we can to minimize communication. */
+        if (!icetIsEnabled(ICET_ORDERED_COMPOSITE)) {
+          /* If we are not doing an ordered composite, then we are free
+           * to assign processes to images in any way we please.  Here we
+           * will do everything we can to minimize communication. */
 
-	  /* First, have processes send images to themselves when possible. */
-	    if (   (node_assignment[rank] == tile)
-		&& all_contained_tiles_masks[rank*num_tiles + tile]) {
-		tile_image_dest[tile] = rank;
-	    }
+          /* First, have processes send images to themselves when possible. */
+            if (   (node_assignment[rank] == tile)
+                && all_contained_tiles_masks[rank*num_tiles + tile]) {
+                tile_image_dest[tile] = rank;
+            }
 
-	    snode = -1;
-	    rnode = -1;
-	    first_loop = 1;
-	    while (1) {
-	      /* Find next process that still needs a place to send images. */
-		do {
-		    snode++;
-		} while (   (snode < num_processes)
-			 && !all_contained_tiles_masks[snode*num_tiles + tile]);
-		if (snode >= num_processes) {
-		  /* We must be finished. */
-		    break;
-		}
-		if (node_assignment[snode] == tile) {
-		  /* This node keeps image in itself. */
-		    continue;
-		}
+            snode = -1;
+            rnode = -1;
+            first_loop = 1;
+            while (1) {
+              /* Find next process that still needs a place to send images. */
+                do {
+                    snode++;
+                } while (   (snode < num_processes)
+                         && !all_contained_tiles_masks[snode*num_tiles + tile]);
+                if (snode >= num_processes) {
+                  /* We must be finished. */
+                    break;
+                }
+                if (node_assignment[snode] == tile) {
+                  /* This node keeps image in itself. */
+                    continue;
+                }
 
-	      /* Find the next process that can accept the image. */
-		do {
-		    rnode++;
-		    if (rnode >= group_sizes[tile]) {
-			rnode = 0;
-			first_loop = 0;
-		    }
-		    dest = proc_group[rnode];
-		} while (   first_loop
-			 && all_contained_tiles_masks[dest*num_tiles + tile]
-			 && (node_assignment[dest] == tile));
+              /* Find the next process that can accept the image. */
+                do {
+                    rnode++;
+                    if (rnode >= group_sizes[tile]) {
+                        rnode = 0;
+                        first_loop = 0;
+                    }
+                    dest = proc_group[rnode];
+                } while (   first_loop
+                         && all_contained_tiles_masks[dest*num_tiles + tile]
+                         && (node_assignment[dest] == tile));
 
-	      /* Check to see if this node is sending the image data. */
-		if (snode == rank) {
-		    tile_image_dest[tile] = dest;
-		}
-	    }
-	} else {
-	  /* We are doing an ordered composite.  It is vital that each process
-	   * gets images that are consecutive in the ordering.  Communication
-	   * costs come second. */
+              /* Check to see if this node is sending the image data. */
+                if (snode == rank) {
+                    tile_image_dest[tile] = dest;
+                }
+            }
+        } else {
+          /* We are doing an ordered composite.  It is vital that each process
+           * gets images that are consecutive in the ordering.  Communication
+           * costs come second. */
 
-	    IceTInt num_contributors = 0;
-	    int i;
-	  /* First, we make a list of all processes contributing to this
-	   * tile in the order in which the images need to be composed.
-	   * We will then split this list into contiguous chunks and assign
-	   * each chunk to a process. */
-	    for (i = 0; i < num_processes; i++) {
-		snode = composite_order[i];
-		if (all_contained_tiles_masks[snode*num_tiles + tile]) {
-		  /* The process snode contains an image for this tile.
-		   * Add it to compositors. */
-		    contributors[num_contributors] = snode;
-		    num_contributors++;
-		}
-	    }
+            IceTInt num_contributors = 0;
+            int i;
+          /* First, we make a list of all processes contributing to this
+           * tile in the order in which the images need to be composed.
+           * We will then split this list into contiguous chunks and assign
+           * each chunk to a process. */
+            for (i = 0; i < num_processes; i++) {
+                snode = composite_order[i];
+                if (all_contained_tiles_masks[snode*num_tiles + tile]) {
+                  /* The process snode contains an image for this tile.
+                   * Add it to compositors. */
+                    contributors[num_contributors] = snode;
+                    num_contributors++;
+                }
+            }
 #ifdef DEBUG
-	    if (num_contributors != contrib_counts[tile]) {
-		icetRaiseError("Miscounted number of tile contributions",
-			       ICET_SANITY_CHECK_FAIL);
-	    }
+            if (num_contributors != contrib_counts[tile]) {
+                icetRaiseError("Miscounted number of tile contributions",
+                               ICET_SANITY_CHECK_FAIL);
+            }
 #endif
 
-	  /* contributors is split up as evenly as possible.  We will
-	   * assign nodes in the order they appear in proc_group.  We now
-	   * re-order proc_group to minimize the communications. */
-	    for (i = 0; i < num_contributors; i++) {
-		piece = i*group_sizes[tile]/num_contributors;
-		snode = contributors[i];
-		if (node_assignment[snode] == tile) {
-		  /* snode is part of this group.  Assign it to piece it is
-		   * part of. */
-		    int j;
-		    for (j = group_sizes[tile]-1; j >=0; j--) {
-			if (proc_group[j] == snode) {
-			  /* Found snode in proc_group.  Place it at
-			   * "piece" in proc_group. */
-			    proc_group[j] = proc_group[piece];
-			    proc_group[piece] = snode;
-			    break;
-			}
-		    }
+          /* contributors is split up as evenly as possible.  We will
+           * assign nodes in the order they appear in proc_group.  We now
+           * re-order proc_group to minimize the communications. */
+            for (i = 0; i < num_contributors; i++) {
+                piece = i*group_sizes[tile]/num_contributors;
+                snode = contributors[i];
+                if (node_assignment[snode] == tile) {
+                  /* snode is part of this group.  Assign it to piece it is
+                   * part of. */
+                    int j;
+                    for (j = group_sizes[tile]-1; j >=0; j--) {
+                        if (proc_group[j] == snode) {
+                          /* Found snode in proc_group.  Place it at
+                           * "piece" in proc_group. */
+                            proc_group[j] = proc_group[piece];
+                            proc_group[piece] = snode;
+                            break;
+                        }
+                    }
 #ifdef DEBUG
-		    if (j < 0) {
-			icetRaiseError("node_assignment/proc_group mismatch",
-				       ICET_SANITY_CHECK_FAIL);
-		    }
+                    if (j < 0) {
+                        icetRaiseError("node_assignment/proc_group mismatch",
+                                       ICET_SANITY_CHECK_FAIL);
+                    }
 #endif
-		}
-	    }
+                }
+            }
 
-	  /* We have just shuffled proc_group, so the tile display node is
-	   * no longer necessarily at 0.  Find out where it should be. */
-	    if (node_assignment[rank] == tile) {
-		for (i = 0; i < group_sizes[tile]; i++) {
-		    if (proc_group[i] == tile_display_nodes[tile]) {
-			group_image_dest = i;
-			break;
-		    }
-		}
+          /* We have just shuffled proc_group, so the tile display node is
+           * no longer necessarily at 0.  Find out where it should be. */
+            if (node_assignment[rank] == tile) {
+                for (i = 0; i < group_sizes[tile]; i++) {
+                    if (proc_group[i] == tile_display_nodes[tile]) {
+                        group_image_dest = i;
+                        break;
+                    }
+                }
 #ifdef DEBUG
-		if (i == group_sizes[tile]) {
-		    icetRaiseError("Display process not participating in tile?",
-				   ICET_SANITY_CHECK_FAIL);
-		}
+                if (i == group_sizes[tile]) {
+                    icetRaiseError("Display process not participating in tile?",
+                                   ICET_SANITY_CHECK_FAIL);
+                }
 #endif
-	    }
+            }
 
-	  /* Assign nodes in the order they appear in proc_group. */
-	    for (i = 0; i < num_contributors; i++) {
-		piece = i*group_sizes[tile]/num_contributors;
-		snode = contributors[i];
-		rnode = proc_group[piece];
-		
-	      /* Check to see if this node is sending the image data. */
-		if (snode == rank) {
-		    tile_image_dest[tile] = rnode;
-		}
-	    }
-	}
+          /* Assign nodes in the order they appear in proc_group. */
+            for (i = 0; i < num_contributors; i++) {
+                piece = i*group_sizes[tile]/num_contributors;
+                snode = contributors[i];
+                rnode = proc_group[piece];
+                
+              /* Check to see if this node is sending the image data. */
+                if (snode == rank) {
+                    tile_image_dest[tile] = rnode;
+                }
+            }
+        }
     }
 
     *tile_image_destp = tile_image_dest;
     if (node_assignment[rank] < 0) {
-	*compose_groupp = NULL;
-	*group_sizep = 0;
-	*group_image_destp = 0;
+        *compose_groupp = NULL;
+        *group_sizep = 0;
+        *group_image_destp = 0;
     } else {
-	*compose_groupp = tile_proc_groups+node_assignment[rank]*num_processes;
-	*group_sizep = group_sizes[node_assignment[rank]];
-	*group_image_destp = group_image_dest;
+        *compose_groupp = tile_proc_groups+node_assignment[rank]*num_processes;
+        *group_sizep = group_sizes[node_assignment[rank]];
+        *group_image_destp = group_image_dest;
     }
     return node_assignment[rank];
 }
