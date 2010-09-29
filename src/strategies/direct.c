@@ -54,15 +54,15 @@ IceTImage icetDirectCompose(void)
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
-	contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
-	num_contributors = contrib_counts[display_tile];
+        contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
+        num_contributors = contrib_counts[display_tile];
     } else {
-	num_contributors = 0;
+        num_contributors = 0;
     }
 
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     for (tile = 0; tile < num_tiles; tile++) {
-	tile_image_dest[tile] = display_nodes[tile];
+        tile_image_dest[tile] = display_nodes[tile];
     }
 
     icetRaiseDebug("Rendering and transferring images.");
@@ -73,7 +73,13 @@ IceTImage icetDirectCompose(void)
 
     if ((display_tile >= 0) && (num_contributors < 1)) {
       /* Must be displaying a blank tile. */
-	icetRaiseDebug("Returning blank tile.");
+        IceTInt *tile_viewports =icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+        IceTInt *display_tile_viewport = tile_viewports + 4*display_tile;
+        IceTInt display_tile_width = display_tile_viewport[2];
+        IceTInt display_tile_height = display_tile_viewport[3];
+
+        icetRaiseDebug("Returning blank tile.");
+        icetImageSetDimensions(image, display_tile_width, display_tile_height);
         icetClearImage(image);
     }
 

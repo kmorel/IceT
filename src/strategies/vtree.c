@@ -235,7 +235,13 @@ IceTImage icetVtreeCompose(void)
             icetGetTileImage(tile_displayed, image);
         } else {
           /* "This" tile is blank. */
+            IceTInt *display_tile_viewport = tile_viewports + 4*tile_displayed;
+            IceTInt display_tile_width = display_tile_viewport[2];
+            IceTInt display_tile_height = display_tile_viewport[3];
+
             icetRaiseDebug("Returning blank image.");
+            icetImageSetDimensions(
+                                image, display_tile_width, display_tile_height);
             icetClearImage(image);
         }
     }

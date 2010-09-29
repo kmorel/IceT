@@ -84,7 +84,13 @@ IceTImage icetReduceCompose(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
       /* Return empty image if nothing in this tile. */
+        IceTInt *tile_viewports =icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+        IceTInt *display_tile_viewport = tile_viewports + 4*tile_displayed;
+        IceTInt display_tile_width = display_tile_viewport[2];
+        IceTInt display_tile_height = display_tile_viewport[3];
+
         icetRaiseDebug("Clearing pixels");
+        icetImageSetDimensions(image, display_tile_width, display_tile_height);
         icetClearImage(image);
     }
 

@@ -663,6 +663,19 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetGetEnumv(ICET_STRATEGY, &strategy);
     image = icetInvokeStrategy(strategy);
 
+  /* Ensure that the returned image is the expected size. */
+    if (display_tile >= 0) {
+        IceTInt *display_tile_viewport = tile_viewports + 4*display_tile;
+        if (   (display_tile_viewport[2] != icetImageGetWidth(image))
+            || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {
+            icetRaiseDebug4("Expected size: %d %d.  Returned size: %d %d",
+                            display_tile_viewport[2], display_tile_viewport[3],
+                            icetImageGetWidth(image),icetImageGetHeight(image));
+            icetRaiseError("Got unexpected image size from strategy.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+    }
+
   /* Correct background color where applicable. */
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {

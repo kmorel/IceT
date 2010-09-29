@@ -40,13 +40,23 @@ static int BlankTilesDoTest(void)
 
     for (tile_dim = 1; tile_dim*tile_dim <= num_proc; tile_dim++) {
         int x, y;
+        IceTSizeType my_width = -1;
+        IceTSizeType my_height = -1;
         IceTImage image;
         printf("\nRunning on a %d x %d display.\n", tile_dim, tile_dim);
         icetResetTiles();
         for (y = 0; y < tile_dim; y++) {
             for (x = 0; x < tile_dim; x++) {
+                int tile_rank = y*tile_dim + x;
+              /* Modify the width and height a bit to detect bad image sizes. */
+                IceTSizeType tile_width = SCREEN_WIDTH - x;
+                IceTSizeType tile_height = SCREEN_HEIGHT - y;
                 icetAddTile(x*SCREEN_WIDTH, y*SCREEN_HEIGHT,
-                            SCREEN_WIDTH, SCREEN_HEIGHT, y*tile_dim + x);
+                            tile_width, tile_height, tile_rank);
+                if (tile_rank == rank) {
+                    my_width = tile_width;
+                    my_height = tile_height;
+                }
             }
         }
 
@@ -64,7 +74,14 @@ static int BlankTilesDoTest(void)
         } else if (rank < tile_dim*tile_dim) {
             IceTUByte *cb;
             int pixel;
-            printf("Checking returned image.\n");
+
+            if (   (my_width != icetImageGetWidth(image))
+                || (my_height != icetImageGetHeight(image)) ) {
+                printf("Image size is wrong!!!!!!!!!\n");
+                result = TEST_FAILED;
+            }
+
+            printf("Checking returned image data.\n");
             cb = icetImageGetColorub(image);
             for (pixel = 0; pixel < SCREEN_WIDTH*SCREEN_HEIGHT*4; pixel++) {
                 if (cb[pixel] != 0) {
