@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 19 09:25:30 MDT 2008
+.\" Manual page created with latex2man on Thu Sep 23 08:15:12 MDT 2010
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetBoundingVertices" "3" "April 12, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetBoundingVertices" "3" "September 20, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetBoundingVertices \-\- set bounds of geometry.\fP
@@ -18,29 +18,30 @@
 .SH Synopsis
 
 .PP
-#include <GL/ice\-t.h>
+#include <IceT.h>
 .PP
 .TS H
 l l l .
-void \fBicetBoundingVertices\fP(	GLint	\fIsize\fP,
-	GLenum	\fItype\fP,
-	GLsizei	\fIstride\fP,
-	GLsizei	\fIcount\fP,
-	const GLvoid *	\fIpointer\fP  );
+void \fBicetBoundingVertices\fP(	IceTInt	\fIsize\fP,
+	IceTEnum	\fItype\fP,
+	IceTSizeType	\fIstride\fP,
+	IceTSizeType	\fIcount\fP,
+	const IceTVoid *	\fIpointer\fP  );
 .TE
 .PP
 .SH Description
 
 .PP
 \fBicetBoundingVertices\fP
-is used to tell \fBIceT \fPwhat the bounds of 
-the geometry drawn by the callback registered with \fBicetDrawFunc\fP
-are. The bounds are assumed to be the convex hull of the vertices given. 
-The user should take care to make sure that the drawn geometry actually 
-does fit within the convex hull, or the data may be culled in unexpected 
-ways. \fBIceT \fPruns most efficiently when the bounds given are tight 
-(match the actual volume of the data well) and when the number of 
-vertices given is minimal. 
+is used to tell \fBIceT \fPwhat the bounds of the 
+geometry drawn by the callback registered with \fBicetDrawCallback\fP
+or \fBicetGLDrawCallback\fP
+are. The bounds are assumed to be the 
+convex hull of the vertices given. The user should take care to make 
+sure that the drawn geometry actually does fit within the convex hull, or 
+the data may be culled in unexpected ways. \fBIceT \fPruns most efficiently 
+when the bounds given are tight (match the actual volume of the data 
+well) and when the number of vertices given is minimal. 
 .PP
 The \fIsize\fP
 parameter specifies the number of coordinates given for 
@@ -59,10 +60,11 @@ are \fBICET_SHORT\fP,
 \fBICET_FLOAT\fP,
 and \fBICET_DOUBLE\fP,
 which correspond to types 
-GLshort,
-GLint,
-GLfloat,
-and GLdouble,
+IceTShort,
+IceTInt,
+IceTFloat,
+and 
+IceTDouble,
 respectively. 
 .PP
 The \fIstride\fP
@@ -89,7 +91,7 @@ bounds.
 
 .PP
 .TP
-\fBICET_INVALID_VALUE\fP
+\fBICET_INVALID_ENUM\fP
  Raised if \fItype\fP
 is not one of \fBICET_SHORT\fP,
 \fBICET_INT\fP,
@@ -110,17 +112,17 @@ None known.
 
 Copyright (C)2003 Sandia Corporation 
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
-license for use of this work by or on behalf of the U.S. Government. 
-Redistribution and use in source and binary forms, with or without 
-modification, are permitted provided that this Notice and any statement 
-of authorship are reproduced on all copies. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
+U.S. Government retains certain rights in this software. 
+.PP
+This source code is released under the New BSD License. 
 .PP
 .SH See Also
 
 .PP
-\fIicetDrawFunc\fP(3),
 \fIicetBoundingBox\fP(3),
-\fIicetDataReplicationGroup\fP(3)
+\fIicetDataReplicationGroup\fP(3),
+\fIicetDrawCallback\fP(3),
+\fIicetGLDrawCallback\fP(3)
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.

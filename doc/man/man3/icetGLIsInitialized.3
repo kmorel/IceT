@@ -10,35 +10,37 @@
 
 .fi
 ..
-.TH "icetGetContext" "3" "August  9, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetGLIsInitialized" "3" "August  9, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
-\fBicetGetContext \-\- retrieves the current context\fP
+\fBicetGLIsInitialized \-\- determine if the \fBIceT \fP\fbOpenGL \fPlayer is initialized\fP
 .PP
 .SH Synopsis
 
 .PP
-#include <IceT.h>
+#include <IceTGL.h>
 .PP
 .TS H
 l l l .
-\fBIceTContext\fP \fBicetGetContext\fP(	void	);
+IceTBoolean \fBicetGLIsInitialized\fP(	void	);
 .TE
 .PP
 .SH Description
 
 .PP
-The \fBicetGetContext\fP
-function retrieves the handle for the current 
-context. This handle may be stored and set for later use with 
-\fBicetSetContext\fP
-(assuming the context has not been since 
-destroyed). 
+Used to determine whether \fBicetGLInitialize\fP
+was called for the 
+current \fBIceT \fPcontext. If \fBicetGLIsInitialized\fP
+returns false, 
+then rendering with the \fbOpenGL \fPlayer will not work. 
 .PP
 .SH Return Value
 
 .PP
-A handle for the current context. 
+Returns \fBICET_TRUE\fP
+if the \fbOpenGL \fPlayer has been initialized for 
+the current context, \fBICET_FALSE\fP
+otherwise. 
 .PP
 .SH Errors
 
@@ -57,7 +59,7 @@ None known.
 .PP
 .SH Copyright
 
-Copyright (C)2003 Sandia Corporation 
+Copyright (C)2010 Sandia Corporation 
 .PP
 Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
 U.S. Government retains certain rights in this software. 
@@ -67,9 +69,6 @@ This source code is released under the New BSD License.
 .SH See Also
 
 .PP
-\fIicetSetContext\fP(3),
-\fIicetCreateContext\fP(3),
-\fIicetDestroyContext\fP(3),
-\fIicetCopyState\fP(3)
+\fIicetGLInitialize\fP(3)
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.
