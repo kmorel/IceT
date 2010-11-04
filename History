@@ -2,7 +2,7 @@
 **
 ** Revision history of IceT.
 **
-** Copyright 2003 Sandia Coporation
+** Copyright 2003 Sandia Corporation
 ** Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 ** the U.S. Government retains certain rights in this software.
 **
@@ -16,10 +16,28 @@ Revision 2.0: A major restructuring of the IceT code comprising the
 	* Remove the dependence of OpenGL from the core library.  Segregate
 	  all OpenGL references and linkages to its own library.
 
+	* Formalize an IceTImage object that stores pixel data.  This
+          object is capable of storing pixel data with various formats
+          rather than being fixed at 32-bit integers.
+
+	* Provide the concept of a "single-image strategy."  The
+          single-image strategy performs a traditional composition of a
+          single image, and is used as a subroutine in some of the
+          multi-tile strategies.  Since IceT is commonly used for
+          compositing single tiles anyway, the development and selection of
+          single-image strategies is significant.
+
+	* Several identifiers and functions were changed in the IceT
+          interface.  Many were to implement the previous features, and
+          others were simply to clarify the interface.
+
 	* Use the Glut library for OpenGL window creation in the tests.
 
+	* Changed exposed files to conform to the current version of the
+	  IceT acronym.  (It used to be ICE-T.)
+
 Revision 1.0: Basically the same as 0.5.4, which has been stable for years
-	now, with the addition of offical documentation.
+	now, with the addition of official documentation.
 
 Revision 0.5: Introduced the concept of ordered composition, especially
 	with respect to color blending.  Once the image layer order is
@@ -65,7 +83,7 @@ Revision 0.4: Abstracted the image formats a bit.  IceT can now perform
 	can potentially make his own).
 
 	Removed icetInit, which only called icetCreateContext to make a
-	"default" context.  The only real consiquence of this change is
+	"default" context.  The only real consequence of this change is
 	that IceT can now be placed in a state where it has no current
 	context.  This could lead to seg-faults if the user does not set
 	another context as current and then tries to use IceT, but this is
