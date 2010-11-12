@@ -1,11 +1,8 @@
-# Id
-#
 ## Copyright 2003 Sandia Coporation
-## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-## license for use of this work by or on behalf of the U.S. Government.
-## Redistribution and use in source and binary forms, with or without
-## modification, are permitted provided that this Notice and any statement
-## of authorship are reproduced on all copies.
+## Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+## the U.S. Government retains certain rights in this software.
+##
+## This source code is released under the New BSD License.
 #
 
 SET(MyTests
@@ -19,12 +16,6 @@ SET(MyTests
 
 SET(UTIL_SRCS init.c ppm.c)
 
-IF (WIN32)
-  SET(UTIL_SRCS ${UTIL_SRCS} glwin_wgl.c)
-ELSE (WIN32)
-  SET(UTIL_SRCS ${UTIL_SRCS} glwin_glx.c)
-ENDIF (WIN32)
-
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
@@ -33,18 +24,19 @@ CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
 
 ADD_EXECUTABLE(icetTests_mpi ${Tests} ${UTIL_SRCS})
 TARGET_LINK_LIBRARIES(icetTests_mpi
-  icet
-  icet_strategies
-  icet_mpi
+  IceTCore
+  IceTGL
+  IceTMPI
   ${OPENGL_glu_LIBRARY}
+  ${GLUT_LIBRARIES}
   )
 
 IF (ICET_MPIRUN_EXE)
-  SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_PREFLAGS})
+  SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_NUMPROC_FLAG} ${ICET_MPI_MAX_NUMPROCS} ${ICET_MPI_PREFLAGS})
   SET(POST_TEST_FLAGS ${ICET_MPI_POSTFLAGS})
 ENDIF (ICET_MPIRUN_EXE)
 
-SET(ICET_TEST_FLAGS "" CACHE STRING "Arguments given to the test program.")
+SET(ICET_TEST_FLAGS "" CACHE STRING "Arguments given to the test program.  These are given between the test executable and the name of the test.  Run the test executable with the -h flag to see what is available.")
 MARK_AS_ADVANCED(ICET_TEST_FLAGS)
 SEPARATE_ARGUMENTS(ICET_TEST_FLAGS)
 

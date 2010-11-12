@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 19 09:25:30 MDT 2008
+.\" Manual page created with latex2man on Thu Sep 23 08:15:12 MDT 2010
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetAddTile" "3" "December  1, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetAddTile" "3" "August 10, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetAddTile \-\- add a tile to the logical display.\fP
@@ -18,14 +18,14 @@
 .SH Synopsis
 
 .PP
-#include <GL/ice\-t.h>
+#include <IceT.h>
 .PP
 .TS H
 l l l .
-int \fBicetAddTile\fP(	GLint	\fIx\fP,
-	GLint	\fIy\fP,
-	GLsizei	\fIwidth\fP,
-	GLsizei	\fIheight\fP,
+int \fBicetAddTile\fP(	IceTInt	\fIx\fP,
+	IceTInt	\fIy\fP,
+	IceTSizeType	\fIwidth\fP,
+	IceTSizeType	\fIheight\fP,
 	int	\fIdisplay_rank\fP  );
 .TE
 .PP
@@ -45,14 +45,15 @@ The parameters \fIx\fP,
 \fIwidth\fP,
 and \fIheight\fP
 define 
-the tiles viewport in the logical global display much in the same way 
+the tile\&'s viewport in the logical global display much in the same way 
 \fBglViewport\fP
-declares a region in a physical display. 
-\fBIceT \fPplaces no limits on the extents of the logical global display. 
-That is, there are no limits on the values of \fIx\fP
-and \fIy\fP\&.
-They can extend as far as they want in both the positive and negative 
-directions. 
+declares a region in a physical display in 
+\fbOpenGL \fP\&.\fBIceT \fPplaces no limits on the extents of the logical global 
+display. That is, there are no limits on the values of \fIx\fP
+and 
+\fIy\fP\&.
+They can extend as far as they want in both the positive and 
+negative directions. 
 .PP
 \fBIceT \fPwill project its images onto the region of the logical global 
 display that just covers all of the tiles. Therefore, shifting all the 
@@ -76,7 +77,8 @@ displaying more than one tile.
 .SH Return Value
 
 .PP
-Returns the index of the tile created. 
+Returns the index of the tile created or \-1 if the tile could not be 
+created. 
 .PP
 .SH Errors
 
@@ -97,11 +99,6 @@ None.
 .SH Bugs
 
 .PP
-\fBicetAddTile\fP
-will let you add tiles of different sizes, but the 
-use of different sized tiles is not yet supported. The user should try 
-to make sure that all tiles are of the same size. 
-.PP
 All processes must specify the same tiles in the same order. \fBIceT \fP
 will assume this even though it is not explicitly detected or enforced. 
 .PP
@@ -109,15 +106,15 @@ will assume this even though it is not explicitly detected or enforced.
 
 Copyright (C)2003 Sandia Corporation 
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
-license for use of this work by or on behalf of the U.S. Government. 
-Redistribution and use in source and binary forms, with or without 
-modification, are permitted provided that this Notice and any statement 
-of authorship are reproduced on all copies. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
+U.S. Government retains certain rights in this software. 
+.PP
+This source code is released under the New BSD License. 
 .PP
 .SH See Also
 
 .PP
-\fIicetResetTiles\fP(3)
+\fIicetResetTiles\fP(3),
+\fIicetPhysicalRenderSize\fP(3)
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.

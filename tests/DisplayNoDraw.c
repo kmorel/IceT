@@ -1,12 +1,9 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
-** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-** license for use of this work by or on behalf of the U.S. Government.
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that this Notice and any statement
-** of authorship are reproduced on all copies.
+** Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+** the U.S. Government retains certain rights in this software.
+**
+** This source code is released under the New BSD License.
 **
 ** This test has the display node not draw anything while everyone else
 ** does.  This should test some boundry conditions where the display node
@@ -17,22 +14,27 @@
 ** processors.  This should flag some problems with assumed far depths.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
-static int iteration;
+static int global_iteration;
 static int global_rank;
+static int global_num_proc;
+static int global_result;
 
 static void draw(void)
 {
     printf("In draw\n");
+    if (global_rank == 0) {
+        printf("ERROR: Draw called on rank 0!\n");
+        global_result = TEST_FAILED;
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (global_rank != iteration) {
+    if (global_rank != global_iteration) {
         glBegin(GL_QUADS);
           glVertex3f(-1.0, -1.0, 0.0);
           glVertex3f(1.0, -1.0, 0.0);
@@ -43,30 +45,18 @@ static void draw(void)
     printf("Leaving draw\n");
 }
 
-int DisplayNoDraw(int argc, char *argv[])
+static void DisplayNoDrawInit(void)
 {
-    int result = TEST_PASSED;
-    int i;
-    GLint rank, num_proc;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
-
-    icetGetIntegerv(ICET_RANK, &rank);
-    icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-
-    printf("Starting DisplayNoDraw.\n");
-
-    global_rank = rank;
-
     printf("Setting tile.");
     icetResetTiles();
     icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
 
-    if (rank == 0) {
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+
+    if (global_rank == 0) {
         icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
     } else {
         icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
@@ -81,49 +71,104 @@ int DisplayNoDraw(int argc, char *argv[])
 
     glDisable(GL_LIGHTING);
     glColor4f(1.0, 1.0, 1.0, 1.0);
+}
 
-    for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        GLubyte *color_buffer;
+static void DisplayNoDrawDoTest(void)
+{
 
-        icetStrategy(strategy_list[i]);
-        printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
+    for (global_iteration = 0; global_iteration < global_num_proc;
+         global_iteration++) {
+        IceTImage image;
+        IceTUByte *color_buffer;
 
-        for (iteration = 0; iteration < num_proc; iteration++) {
-            printf("Blank tile is rank %d\n", iteration);
+        printf("Blank image is rank %d\n", global_iteration);
 
-            icetDrawFrame();
-            swap_buffers();
+        image = icetGLDrawFrame();
+        swap_buffers();
 
-            if (   (rank == 0)
-                && (num_proc > 1)
-               /* This last case covers when there is only 2 processes,
-                * the root, as always, is not drawing anything and the
-                * other process is drawing the clear screen. */
-                && ((num_proc > 2) || (iteration != 1)) ) {
-                int p;
-                int bad_count = 0;
-                printf("Checking pixels.\n");
-                color_buffer = icetGetColorBuffer();
-                for (p = 0; p < SCREEN_WIDTH*SCREEN_HEIGHT*4; p++) {
-                    if (color_buffer[p] != 255) {
-                        char filename[256];
-                        printf("BAD PIXEL %d.%d\n", p/4, p%4);
-                        printf("    Expected 255, got %d\n", color_buffer[p]);
-                        bad_count++;
-                        if (bad_count >= 10) {
-                            result = TEST_FAILED;
-                            sprintf(filename, "DisplayNoDraw_%s_%d.ppm",
-                                    icetGetStrategyName(), iteration);
-                            write_ppm(filename, color_buffer,
-                                      SCREEN_WIDTH, SCREEN_HEIGHT);
-                            break;
-                        }
-                    }
+        if (   (global_rank == 0)
+            && (global_num_proc > 1)
+          /* This last case covers when there is only 2 processes,
+           * the root, as always, is not drawing anything and the
+           * other process is drawing the clear screen. */
+            && ((global_num_proc > 2) || (global_iteration != 1)) ) {
+            int p;
+            int bad_count = 0;
+            printf("Checking pixels.\n");
+            color_buffer = icetImageGetColorub(image);
+            for (p = 0;
+                 (p < SCREEN_WIDTH*SCREEN_HEIGHT*4) && (bad_count < 10); p++) {
+                if (color_buffer[p] != 255) {
+                    printf("BAD PIXEL %d.%d\n", p/4, p%4);
+                    printf("    Expected 255, got %d\n", color_buffer[p]);
+                    bad_count++;
                 }
+            }
+            if (bad_count >= 10) {
+                char filename[256];
+                global_result = TEST_FAILED;
+                sprintf(filename, "DisplayNoDraw_%s_%s_%d.ppm",
+                        icetGetStrategyName(), icetGetSingleImageStrategyName(),
+                        global_iteration);
+                write_ppm(filename, color_buffer,
+                          SCREEN_WIDTH, SCREEN_HEIGHT);
+                break;
             }
         }
     }
+}
 
-    finalize_test(result);
-    return result;
+static int DisplayNoDrawRun(void)
+{
+    int strategy_index;
+
+    icetGetIntegerv(ICET_RANK, &global_rank);
+    icetGetIntegerv(ICET_NUM_PROCESSES, &global_num_proc);
+
+    printf("Starting DisplayNoDraw.\n");
+
+    global_result = TEST_PASSED;
+
+    DisplayNoDrawInit();
+
+    for (strategy_index = 0;
+         strategy_index < STRATEGY_LIST_SIZE; strategy_index++) {
+        IceTEnum strategy = strategy_list[strategy_index];
+        int single_image_strategy_index;
+        int num_single_image_strategy;
+
+        icetStrategy(strategy);
+        printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
+
+        if (strategy_uses_single_image_strategy(strategy)) {
+            num_single_image_strategy = SINGLE_IMAGE_STRATEGY_LIST_SIZE;
+        } else {
+          /* Set to one since single image strategy does not matter. */
+            num_single_image_strategy = 1;
+        }
+
+        for (single_image_strategy_index = 0;
+             single_image_strategy_index < num_single_image_strategy;
+             single_image_strategy_index++) {
+            IceTEnum single_image_strategy
+                = single_image_strategy_list[single_image_strategy_index];
+
+            icetSingleImageStrategy(single_image_strategy);
+            printf("Using %s single image sub-strategy.\n",
+                   icetGetSingleImageStrategyName());
+
+            DisplayNoDrawDoTest();
+        }
+    }
+
+    return global_result;
+}
+
+int DisplayNoDraw(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(DisplayNoDrawRun);
 }

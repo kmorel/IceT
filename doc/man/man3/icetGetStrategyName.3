@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" Manual page created with latex2man on Thu Sep 23 08:15:13 MDT 2010
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetGetStrategyName" "3" "November 15, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetGetStrategyName" "3" "August 23, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetGetStrategyName \-\- retrieve strategy name.\fP
@@ -18,18 +18,18 @@
 .SH Synopsis
 
 .PP
-#include <GL/ice\-t.h>
+#include <IceT.h>
 .PP
 .TS H
 l l l .
-const GLubyte \fBicetGetStrategyName\fP(	void	);
+const char *\fBicetGetStrategyName\fP(	void	);
 .TE
 .PP
 .SH Description
 
 .PP
 \fBicetGetStrategyName\fP
-retrieves a human readable name for the 
+retrieves a human\-readable name for the 
 current strategy. 
 .PP
 .SH Return Value
@@ -43,7 +43,9 @@ is returned.
 .SH Errors
 
 .PP
-None. 
+.TP
+\fBICET_INVALID_ENUM\fP
+ A strategy was never set with \fBicetStrategy\fP\&.
 .PP
 .SH Warnings
 
@@ -58,27 +60,27 @@ None known.
 .SH Notes
 
 .PP
-The string returned does 
-\fInot\fP
-contain the identifier used in a C program. For example, if the current 
-strategy is 
+The string returned does \fInot\fP
+contain the identifier used in a C 
+program. For example, if the current strategy is 
 \fBICET_STRATEGY_REDUCE\fP,
 \fBicetGetStrategyName\fP
-returns ``Reduce,\&'' not ``ICET_STRATEGY_REDUCE.\&'' 
+returns 
+``Reduce,\&'' not ``ICET_STRATEGY_REDUCE.\&'' 
 .PP
 .SH Copyright
 
 Copyright (C)2003 Sandia Corporation 
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
-license for use of this work by or on behalf of the U.S. Government. 
-Redistribution and use in source and binary forms, with or without 
-modification, are permitted provided that this Notice and any statement 
-of authorship are reproduced on all copies. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
+U.S. Government retains certain rights in this software. 
+.PP
+This source code is released under the New BSD License. 
 .PP
 .SH See Also
 
 .PP
+\fIicetGetSingleImageStrategyName\fP(3),
 \fIicetStrategy\fP(3)
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.

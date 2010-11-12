@@ -1,18 +1,43 @@
 ** -*- text -*- *************************************************************
 **
-** Revision history of ICE-T.
+** Revision history of IceT.
 **
-** Copyright 2003 Sandia Coporation
-** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-** license for use of this work by or on behalf of the U.S. Government.
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that this Notice and any statement
-** of authorship are reproduced on all copies.
+** Copyright 2003 Sandia Corporation
+** Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+** the U.S. Government retains certain rights in this software.
+**
+** This source code is released under the New BSD License.
 **
 *****************************************************************************
 
+Revision 2.0: A major restructuring of the IceT code comprising the
+	following changes:
+
+	* Remove the dependence of OpenGL from the core library.  Segregate
+	  all OpenGL references and linkages to its own library.
+
+	* Formalize an IceTImage object that stores pixel data.  This
+          object is capable of storing pixel data with various formats
+          rather than being fixed at 32-bit integers.
+
+	* Provide the concept of a "single-image strategy."  The
+          single-image strategy performs a traditional composition of a
+          single image, and is used as a subroutine in some of the
+          multi-tile strategies.  Since IceT is commonly used for
+          compositing single tiles anyway, the development and selection of
+          single-image strategies is significant.
+
+	* Several identifiers and functions were changed in the IceT
+          interface.  Many were to implement the previous features, and
+          others were simply to clarify the interface.
+
+	* Use the Glut library for OpenGL window creation in the tests.
+
+	* Changed exposed files to conform to the current version of the
+	  IceT acronym.  (It used to be ICE-T.)
+
 Revision 1.0: Basically the same as 0.5.4, which has been stable for years
-	now, with the addition of offical documentation.
+	now, with the addition of official documentation.
 
 Revision 0.5: Introduced the concept of ordered composition, especially
 	with respect to color blending.  Once the image layer order is
@@ -22,7 +47,7 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 	enabled.
 
 	Added ability to handle replicated data.  If geometry is replicated
-	over several processors, ICE-T will break the amount of screen the
+	over several processors, IceT will break the amount of screen the
 	data is replicated over and divide it amongst the processors that
 	all contain the same data.
 
@@ -47,7 +72,7 @@ Revision 0.5: Introduced the concept of ordered composition, especially
 	Fixed a problem when rendering objects behind the viewer with a
 	perspective projection matrix.
 
-Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
+Revision 0.4: Abstracted the image formats a bit.  IceT can now perform
 	a composite on just the depth buffer.  This is useful when creating
 	shadow buffers.  This should also make it easier to implement
 	image-only compositing for parallel volume rendering.
@@ -58,11 +83,11 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	can potentially make his own).
 
 	Removed icetInit, which only called icetCreateContext to make a
-	"default" context.  The only real consiquence of this change is
-	that ICE-T can now be placed in a state where it has no current
+	"default" context.  The only real consequence of this change is
+	that IceT can now be placed in a state where it has no current
 	context.  This could lead to seg-faults if the user does not set
-	another context as current and then tries to use ICE-T, but this is
-	an erroneous use of ICE-T anyway.
+	another context as current and then tries to use IceT, but this is
+	an erroneous use of IceT anyway.
 
 	Changed build system to use CMake instead of autoconf.
 
@@ -72,7 +97,7 @@ Revision 0.4: Abstracted the image formats a bit.  ICE-T can now perform
 	is that a default strategy is no longer set.
 
 	patch 1: More updates to the build system to actually allow other
-	CMake-built programs use ICE-T.
+	CMake-built programs use IceT.
 
 	patch 2: Fixed a bug with the background color.
 
@@ -97,7 +122,7 @@ Revision 0.2: A whole host of fixes.  Added a regression testing suite.
 	with split strategy under Myrinet.  Probably either race condition
 	or Myrinet/MPI bug.
 
-Revision 0.1: Semi-stable after movement from MTIC to ICE-T and building
+Revision 0.1: Semi-stable after movement from MTIC to IceT and building
 	autoconf scripts for use on Win32 rather than MSVC project files.
 	Found some issues with split and reduce strategies after moving to
 	Myrinet.

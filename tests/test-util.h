@@ -1,14 +1,11 @@
 /* -*- c -*- *******************************************************/
 /*
  * Copyright (C) 2003 Sandia Corporation
- * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
- * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
  */
-
-/* Id */
 
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
@@ -20,21 +17,30 @@ extern "C" {
 }
 #endif
 
-#include <GL/ice-t.h>
+#include <IceT.h>
 
-extern IceTStrategy strategy_list[];
+extern IceTEnum strategy_list[];
 extern int STRATEGY_LIST_SIZE;
 
-extern int SCREEN_WIDTH;
-extern int SCREEN_HEIGHT;
+extern IceTEnum single_image_strategy_list[];
+extern int SINGLE_IMAGE_STRATEGY_LIST_SIZE;
+
+extern IceTSizeType SCREEN_WIDTH;
+extern IceTSizeType SCREEN_HEIGHT;
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
+
+int run_test(int (*test_function)(void));
+
+void swap_buffers(void);
 
 void finalize_test(int result);
 
 void write_ppm(const char *filename,
-               const GLubyte *image,
+               const IceTUByte *image,
                int width, int height);
+
+IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy);
 
 #ifdef __cplusplus
 }

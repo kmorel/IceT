@@ -1,21 +1,17 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2005 Sandia Corporation
-** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-** license for use of this work by or on behalf of the U.S. Government.
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that this Notice and any statement
-** of authorship are reproduced on all copies.
+** Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+** the U.S. Government retains certain rights in this software.
+**
+** This source code is released under the New BSD License.
 **
 ** This tests a corner case in which the bounds of an object extens from
 ** the viewing frustum to behind the viewpoint in perspective mode.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+#include <IceTGL.h>
 #include "test-util.h"
 #include "test_codes.h"
-#include "glwin.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,23 +39,23 @@ static void PrintMatrix(float *mat)
     }
 }
 
-int BoundsBehindViewer(int argc, char *argv[])
+static int BoundsBehindViewerRun()
 {
     float mat[16];
+    IceTImage image;
 
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
-
-    GLint rank;
+    IceTInt rank;
     icetGetIntegerv(ICET_RANK, &rank);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    icetDrawFunc(draw);
+    icetGLDrawCallback(draw);
     icetStrategy(ICET_STRATEGY_REDUCE);
 
     icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);
+
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
   /* We're just going to use one tile. */
     icetResetTiles();
@@ -94,18 +90,25 @@ int BoundsBehindViewer(int argc, char *argv[])
   /* All the processes have the same data.  Go ahead and tell IceT. */
     icetDataReplicationGroupColor(0);
 
-    icetDrawFrame();
+    image = icetGLDrawFrame();
 
   /* Test the resulting image to make sure the polygon was drawn over it. */
     if (rank == 0) {
-        GLuint *cb = (GLuint *)icetGetColorBuffer();
+        IceTUInt *cb = icetImageGetColorui(image);
         if (cb[0] != 0xFFFFFFFF) {
             printf("First pixel in color buffer wrong: 0x%x\n", cb[0]);
-            finalize_test(TEST_FAILED);
             return TEST_FAILED;
         }
     }
 
-    finalize_test(TEST_PASSED);
     return TEST_PASSED;
+}
+
+int BoundsBehindViewer(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(BoundsBehindViewerRun);
 }

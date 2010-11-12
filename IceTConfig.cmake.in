@@ -1,0 +1,55 @@
+#-----------------------------------------------------------------------------
+#
+# ICETConfig.cmake - IceT CMake configuration file for external projects.
+#
+# This file is configured by IceT and used by other CMake projects to load
+# IceT's settings.
+#
+# Copyright 2003 Sandia Coporation
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+#
+# This source code is released under the New BSD License.
+#
+
+# The IceT include file directories.
+SET(ICET_INCLUDE_DIRS "@ICET_INCLUDE_DIRS_CONFIG@")
+
+# The IceT library directories.
+SET(ICET_LIBRARY_DIRS "@ICET_LIBRARY_DIRS_CONFIG@")
+
+# The C and C++ flags added by IceT to the cmake-configured flags.
+SET(ICET_REQUIRED_C_FLAGS "@ICET_REQUIRED_C_FLAGS@")
+SET(ICET_REQUIRED_CXX_FLAGS "@ICET_REQUIRED_CXX_FLAGS@")
+
+# The IceT version number
+SET(ICET_MAJOR_VERSION "@ICET_MAJOR_VERSION@")
+SET(ICET_MINOR_VERSION "@ICET_MINOR_VERSION@")
+SET(ICET_PATCH_VERSION "@ICET_PATCH_VERSION@")
+
+# The build settings file.
+SET(ICET_BUILD_SETTINGS_FILE "@ICET_BUILD_SETTINGS_FILE_CONFIG@")
+
+# The IceT libraries
+SET(ICET_CORE_LIBS "@ICET_LIBRARY_FILE@")
+SET(ICET_GL_LIBS "@ICET_GL_LIBRARY_FILE@")
+SET(ICET_MPI_LIBS "@ICET_MPI_LIBRARY_FILE@")
+
+# MPI configuration used to build IceT.
+SET(ICET_MPI_INCLUDE_PATH "@MPI_INCLUDE_PATH@")
+SET(ICET_MPI_LIBRARY "@MPI_LIBRARY@")
+SET(ICET_MPI_EXTRA_LIBRARY "@MPI_EXTRA_LIBRARY@")
+SET(ICET_MPIRUN_EXE "@ICET_MPIRUN_EXE@")
+SET(ICET_MPI_MAX_NUMPROCS "@ICET_MPI_MAX_NUMPROCS@")
+SET(ICET_MPI_PREFLAGS "@ICET_MPI_PREFLAGS@")
+SET(ICET_MPI_POSTFLAGS "@ICET_MPI_POSTFLAGS@")
+
+# Other IceT configuration options.
+SET(ICET_BUILD_SHARED_LIBS "@BUILD_SHARED_LIBS@")
+SET(ICET_BUILD_TESTING "@BUILD_TESTING@")
+
+# The ICET library dependencies.
+IF(NOT ICET_NO_LIBRARY_DEPENDS)
+  INCLUDE("@ICET_LIBRARY_DEPENDS_FILE@")
+ENDIF(NOT ICET_NO_LIBRARY_DEPENDS)
+

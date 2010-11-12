@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 19 09:25:30 MDT 2008
+.\" Manual page created with latex2man on Thu Sep 23 08:15:12 MDT 2010
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetCompositeOrder" "3" "April 12, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetCompositeOrder" "3" "August  9, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetCompositeOrder \-\- specify the order in which images are composited\fP
@@ -18,10 +18,10 @@
 .SH Synopsis
 
 .PP
-#include <GL/ice\-t.h>
+#include <IceT.h>
 .PP
 void \fBicetCompositeOrder\fP(
-const GLint *
+const IceTInt *
 \fIprocess_ranks\fP
 );
 .PP
@@ -30,20 +30,23 @@ const GLint *
 .PP
 If \fBICET_ORDERED_COMPOSITE\fP
 is enabled and the current strategy 
-supports ordered composition, then the order which images are composited 
-are specified with \fBicetCompositeOrder\fP\&.
-If compositing is done 
-with z\-buffer comparisons (i.e. the depth buffer is selected as an input 
-with \fBicetInputOutputBuffers\fP),
-then the ordering does not matter, 
-and \fBICET_ORDERED_COMPOSITE\fP
+supports ordered composition (verified with the 
+\fBICET_STRATEGY_SUPPORTS_ORDERING\fP
+state variable, then the order 
+which images are composited is specified with \fBicetCompositeOrder\fP\&.
+If compositing is done with z\-buffer comparisons 
+(e.g. \fBicetCompositeMode\fP
+is called with 
+\fBICET_COMPOSITE_MODE_Z_BUFFER\fP),
+then the ordering does not 
+matter, and \fBICET_ORDERED_COMPOSITE\fP
 should probably be disabled. 
-However, if compositing is done with color blending (i.e. the depth 
-buffer is \fInot\fP
-selected as in input with 
-\fBicetInputOutputBuffers\fP),
-then the order in which the images are 
-composed can drastically change the output. 
+However, if compositing is done with color blending 
+(e.g. \fBicetCompositeMode\fP
+is called with 
+\fBICET_COMPOSITE_MODE_BLEND\fP),
+then the order in which the images 
+are composed can drastically change the output. 
 .PP
 For ordered image compositing to work, the geometric objects rendered by 
 processes must be arranged such that if the geometry of one process is 
@@ -51,7 +54,7 @@ processes must be arranged such that if the geometry of one process is
 ordering holds for all camera rays. It is the application\&'s 
 responsibility to ensure that such an ordering exists and to find that 
 ordering. The easiest way to do this is to ensure that the geometry of 
-each process falls cleanly into regions of an octree, k\-d tree, or 
+each process falls cleanly into regions of a grid, octree, k\-d tree, or 
 similar structure. 
 .PP
 Once the geometry order is determined for a particular rendering 
@@ -63,7 +66,7 @@ entries, each with a unique, valid process
 rank. The first process should have the geometry that is ``in front\&'' of 
 all others, the next directly behind that, and so on. It should be noted 
 that the application may actually impose only a partial order on the 
-geometry, but that can easily be converted to the linear ordering requird 
+geometry, but that can easily be converted to the linear ordering required 
 by \fBIceT \fP\&.
 .PP
 When ordering is on, it is accepted that \fBicetCompositeOrder\fP
@@ -103,16 +106,15 @@ ordering before preceding. Unpredictable results may occur otherwise.
 
 Copyright (C)2003 Sandia Corporation 
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
-license for use of this work by or on behalf of the U.S. Government. 
-Redistribution and use in source and binary forms, with or without 
-modification, are permitted provided that this Notice and any statement 
-of authorship are reproduced on all copies. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
+U.S. Government retains certain rights in this software. 
+.PP
+This source code is released under the New BSD License. 
 .PP
 .SH See Also
 
 .PP
-\fIicetInputOutputBuffers\fP(3),
+\fIicetCompositeMode\fP(3)
 \fIicetStrategy\fP(3)
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.

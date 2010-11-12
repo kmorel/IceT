@@ -1,18 +1,18 @@
 /* -*- c -*- *******************************************************/
 /*
  * Copyright (C) 2003 Sandia Corporation
- * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
- * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
  */
 
-/* Id */
+#include <IceTDevDiagnostics.h>
 
-#include <diagnostics.h>
-#include <GL/ice-t.h>
-#include <context.h>
+#include <IceT.h>
+
+#include <IceTDevCommunication.h>
+#include <IceTDevContext.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,14 +20,15 @@
 
 #include <signal.h>
 
-static GLenum currentError = ICET_NO_ERROR;
-static GLenum currentLevel;
+static IceTEnum currentError = ICET_NO_ERROR;
+static IceTEnum currentLevel;
 
-void icetRaiseDiagnostic(const char *msg, GLenum type,
-                         GLbitfield level, const char *file, int line)
+void icetRaiseDiagnostic(const char *msg, IceTEnum type,
+                         IceTBitField level, const char *file, int line)
 {
     static int raisingDiagnostic = 0;
-    GLbitfield diagLevel;
+    IceTBitField diagLevel;
+    IceTInt tmpInt;
     static char full_message[1024];
     char *m;
     int rank;
@@ -56,13 +57,14 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
         currentError = type;
         currentLevel = level;
     }
-    icetGetIntegerv(ICET_DIAGNOSTIC_LEVEL, (GLint *)(&diagLevel));
+    icetGetIntegerv(ICET_DIAGNOSTIC_LEVEL, &tmpInt);
+    diagLevel = tmpInt;
     if ((diagLevel & level) != level) {
       /* Don't do anything if we are not reporting the raised diagnostic. */
         FINISH;
     }
 
-    rank = ICET_COMM_RANK();
+    rank = icetCommRank();
     if ((diagLevel & ICET_DIAG_ALL_NODES) != 0) {
       /* Reporting on all nodes. */
         sprintf(m, "ICET,%d:", rank);
@@ -109,14 +111,14 @@ void icetRaiseDiagnostic(const char *msg, GLenum type,
     FINISH;
 }
 
-GLenum icetGetError(void)
+IceTEnum icetGetError(void)
 {
-    GLenum error = currentError;
+    IceTEnum error = currentError;
     currentError = ICET_NO_ERROR;
     return error;
 }
 
-void icetDiagnostics(GLbitfield mask)
+void icetDiagnostics(IceTBitField mask)
 {
     icetStateSetInteger(ICET_DIAGNOSTIC_LEVEL, mask);
 }

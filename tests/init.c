@@ -1,17 +1,18 @@
 /* -*- c -*- *******************************************************/
 /*
  * Copyright (C) 2003 Sandia Corporation
- * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
- * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
  */
-
-/* Id */
 
 #include "test-util.h"
 #include "test_codes.h"
+
+#include <IceTGL.h>
+
+#define __USE_POSIX
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,7 +23,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "glwin.h"
+#ifndef __APPLE__
+#include <GL/glut.h>
+#include <GL/gl.h>
+#else
+#include <GLUT/glut.h>
+#include <OpenGL/gl.h>
+#endif
 
 #ifndef WIN32
 #include <unistd.h>
@@ -32,12 +39,20 @@
 #define dup2(fildes, fildes2)   _dup2(fildes, fildes2)
 #endif
 
-IceTStrategy strategy_list[5];
+IceTEnum strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
-int SCREEN_WIDTH;
-int SCREEN_HEIGHT;
+IceTEnum single_image_strategy_list[3];
+int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 3;
+/* int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 1; */
+
+IceTSizeType SCREEN_WIDTH;
+IceTSizeType SCREEN_HEIGHT;
+
+static int windowId;
+
+static int (*test_function)(void);
 
 static void checkOglError(void)
 {
@@ -64,10 +79,10 @@ static void checkOglError(void)
 
 static void checkIceTError(void)
 {
-    GLenum error = icetGetError();
+    IceTEnum error = icetGetError();
 #define TRY_ERROR(ename)                                                \
     if (error == ename) {                                               \
-        printf("## Current Ice-T error = " #ename "\n");                \
+        printf("## Current IceT error = " #ename "\n");                \
         return;                                                         \
     }
     TRY_ERROR(ICET_NO_ERROR);
@@ -77,7 +92,7 @@ static void checkIceTError(void)
     TRY_ERROR(ICET_OUT_OF_MEMORY);
     TRY_ERROR(ICET_INVALID_OPERATION);
     TRY_ERROR(ICET_INVALID_VALUE);
-    printf("## UNKNOWN ICE-T ERROR CODE!!!!!\n");
+    printf("## UNKNOWN ICET ERROR CODE!!!!!\n");
 #undef TRY_ERROR
 }
 
@@ -122,15 +137,23 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     char **argv = *argvp;
     int width = 1024;
     int height = 768;
-    char display[1024];
-    GLbitfield diag_level = ICET_DIAG_FULL;
+    IceTBitField diag_level = ICET_DIAG_FULL;
     int redirect = 0;
     int rank, num_proc;
 
     rank = (*comm->Comm_rank)(comm);
     num_proc = (*comm->Comm_size)(comm);
 
-    display[0] = '\0';
+  /* This is convenient code to attach a debugger to a particular process at the
+     start of a test. */
+    /* if (rank == 0) { */
+    /*     int i = 0; */
+    /*     printf("Waiting in process %d\n", getpid()); */
+    /*     while (i == 0) sleep(1); */
+    /* } */
+
+  /* Let Glut have first pass at the arguments to grab any that it can use. */
+    glutInit(argcp, *argvp);
 
   /* Parse my arguments. */
     for (arg = 1; arg < argc; arg++) {
@@ -138,8 +161,6 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
             width = atoi(argv[++arg]);
         } else if (strcmp(argv[arg], "-height") == 0) {
             height = atoi(argv[++arg]);
-        } else if (strcmp(argv[arg], "-display") == 0) {
-            sprintf(display, "DISPLAY=%s", argv[++arg]);
         } else if (strcmp(argv[arg], "-nologdebug") == 0) {
             diag_level &= ICET_DIAG_WARNINGS | ICET_DIAG_ALL_NODES;
         } else if (strcmp(argv[arg], "-redirect") == 0) {
@@ -179,21 +200,21 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     }
 
   /* Create a renderable window. */
-    if (display[0] != '\0') {
-        putenv(strdup(display));
-    }
-    wincreat(0, 0, width, height, (char *)"ICE-T test");
-    glEnable(GL_DEPTH_TEST);
-    glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
-    swap_buffers();
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ALPHA);
+    glutInitWindowPosition(0, 0);
+    glutInitWindowSize(width, height);
+
+    char title[256];
+    sprintf(title, "IceT Test %d of %d", rank, num_proc);
+    windowId = glutCreateWindow(title);
 
     SCREEN_WIDTH = width;
     SCREEN_HEIGHT = height;
 
-  /* Create an ICE-T context. */
+  /* Create an IceT context. */
     context = icetCreateContext(comm);
     icetDiagnostics(diag_level);
+    icetGLInitialize();
 
   /* Redirect standard output on demand. */
     if (redirect) {
@@ -216,16 +237,76 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     }
 
     strategy_list[0] = ICET_STRATEGY_DIRECT;
-    strategy_list[1] = ICET_STRATEGY_SERIAL;
+    strategy_list[1] = ICET_STRATEGY_SEQUENTIAL;
     strategy_list[2] = ICET_STRATEGY_SPLIT;
     strategy_list[3] = ICET_STRATEGY_REDUCE;
     strategy_list[4] = ICET_STRATEGY_VTREE;
+
+    single_image_strategy_list[0] = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
+    single_image_strategy_list[1] = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+    single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+}
+
+IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy)
+{
+    switch (strategy) {
+      case ICET_STRATEGY_DIRECT:        return ICET_FALSE;
+      case ICET_STRATEGY_SEQUENTIAL:    return ICET_TRUE;
+      case ICET_STRATEGY_SPLIT:         return ICET_FALSE;
+      case ICET_STRATEGY_REDUCE:        return ICET_TRUE;
+      case ICET_STRATEGY_VTREE:         return ICET_FALSE;
+      default:
+          printf("ERROR: unknown strategy type.");
+          return ICET_TRUE;
+    }
+}
+
+static void no_op()
+{
+}
+
+static void glut_draw()
+{
+    glEnable(GL_DEPTH_TEST);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glClear(GL_COLOR_BUFFER_BIT);
+    swap_buffers();
+
+    int result = test_function();
+
+    finalize_test(result);
+
+    exit(result);
+}
+
+int run_test(int (*tf)(void))
+{
+  /* Record the test function so we can run it in the Glut draw callback. */
+    test_function = tf;
+
+    glutDisplayFunc(no_op);
+    glutIdleFunc(glut_draw);
+
+  /* Glut will reliably create the OpenGL context only after the main loop is
+   * started.  This will create the window and then call our glut_draw function
+   * to populate it.  It will never return, which is why we call exit in
+   * glut_draw. */
+    glutMainLoop();
+
+  /* We do not expect to be here.  Raise an alert to signal that the tests are
+   * not running as expected. */
+    return TEST_NOT_PASSED;
+}
+
+void swap_buffers(void)
+{
+    glutSwapBuffers();
 }
 
 extern void finalize_communication(void);
 void finalize_test(int result)
 {
-    GLint rank;
+    IceTInt rank;
 
     checkOglError();
     checkIceTError();
@@ -250,4 +331,5 @@ void finalize_test(int result)
 
     icetDestroyContext(context);
     finalize_communication();
+    glutDestroyWindow(windowId);
 }

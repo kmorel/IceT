@@ -1,134 +1,227 @@
 /* -*- c -*- *****************************************************************
-** Id
-**
 ** Copyright (C) 2003 Sandia Corporation
-** Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-** license for use of this work by or on behalf of the U.S. Government.
-** Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that this Notice and any statement
-** of authorship are reproduced on all copies.
+** Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+** the U.S. Government retains certain rights in this software.
+**
+** This source code is released under the New BSD License.
 **
 ** This test checks to make sure the size of compressed images never
 ** exceeds the advertised maximum buffer size.
 *****************************************************************************/
 
-#include <GL/ice-t.h>
+/*TODO: Eventually we should probably remove OpenGL dependence in this test.*/
+#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
 
-#include <image.h>
-#include <state.h>
+#include <IceTDevImage.h>
+#include <IceTDevState.h>
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
-static void draw(void)
+static IceTDouble IdentityMatrix[16] = {
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+};
+static IceTFloat Black[4] = { 0.0, 0.0, 0.0, 1.0 };
+
+static void InitPathologicalImage(IceTImage image)
 {
-    printf("In draw\n");
-  /*I really don't care what Ice-T set the projection to.*/
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_CULL_FACE);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glColor4f(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glBegin(GL_QUADS);
-    glVertex3f(-1.0, -1.0, 0.0);
-    glVertex3f(1.0, -1.0, 0.0);
-    glVertex3f(1.0, 1.0, 0.0);
-    glVertex3f(-1.0, 1.0, 0.0);
-    glEnd();
+  /* Create a worst case possible for image with respect to compression.
+     Every other pixel is active so the run lengths are all 1. */
+    IceTEnum format;
+    IceTSizeType num_pixels;
+
+    num_pixels = icetImageGetNumPixels(image);
+
+    format = icetImageGetColorFormat(image);
+    if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        IceTUByte *buffer = icetImageGetColorub(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[4*i + 0] = 255*(IceTUByte)(i%2);
+            buffer[4*i + 1] = 255*(IceTUByte)(i%2);
+            buffer[4*i + 2] = 255*(IceTUByte)(i%2);
+            buffer[4*i + 3] = 255*(IceTUByte)(i%2);
+        }
+    } else if (format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        IceTFloat *buffer = icetImageGetColorf(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[4*i + 0] = (IceTFloat)(i%2);
+            buffer[4*i + 1] = (IceTFloat)(i%2);
+            buffer[4*i + 2] = (IceTFloat)(i%2);
+            buffer[4*i + 3] = (IceTFloat)(i%2);
+        }
+    } else if (format != ICET_IMAGE_COLOR_NONE) {
+        printf("*** Unknown color format? ***\n");
+    }
+
+    format = icetImageGetDepthFormat(image);
+    if (format == ICET_IMAGE_DEPTH_FLOAT) {
+        IceTFloat *buffer = icetImageGetDepthf(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[i] = (IceTFloat)(i%2);
+        }
+    } else if (format != ICET_IMAGE_DEPTH_NONE) {
+        printf("*** Unknown depth format? ***\n");
+    }
 }
 
-static int DoCompressionTest(int num_buffers)
+static void InitActiveImage(IceTImage image)
+{
+  /* Create a worst case possible for image with respect to compression.
+     All the pixels are active, so no data can be removed. */
+    IceTEnum format;
+    IceTSizeType num_pixels;
+    int seed;
+
+    seed = time(NULL);
+    srand(seed);
+
+    num_pixels = icetImageGetNumPixels(image);
+
+    format = icetImageGetColorFormat(image);
+    if (format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+        IceTUByte *buffer = icetImageGetColorub(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[4*i + 0] = (IceTUByte)(rand()%255 + 1);
+            buffer[4*i + 1] = (IceTUByte)(rand()%255 + 1);
+            buffer[4*i + 2] = (IceTUByte)(rand()%255 + 1);
+            buffer[4*i + 3] = (IceTUByte)(rand()%255 + 1);
+        }
+    } else if (format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+        IceTFloat *buffer = icetImageGetColorf(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[4*i + 0] = ((IceTFloat)(rand()%255 + 1))/255;
+            buffer[4*i + 1] = ((IceTFloat)(rand()%255 + 1))/255;
+            buffer[4*i + 2] = ((IceTFloat)(rand()%255 + 1))/255;
+            buffer[4*i + 3] = ((IceTFloat)(rand()%255 + 1))/255;
+        }
+    } else if (format != ICET_IMAGE_COLOR_NONE) {
+        printf("*** Unknown color format? ***\n");
+    }
+
+    format = icetImageGetDepthFormat(image);
+    if (format == ICET_IMAGE_DEPTH_FLOAT) {
+        IceTFloat *buffer = icetImageGetDepthf(image);
+        IceTSizeType i;
+        for (i = 0; i < num_pixels; i++) {
+            buffer[i] = ((IceTFloat)(rand()%255))/255;
+        }
+    } else if (format != ICET_IMAGE_DEPTH_NONE) {
+        printf("*** Unknown depth format? ***\n");
+    }
+}
+
+static void drawCallback(const IceTDouble *projection_matrix,
+                         const IceTDouble *modelview_matrix,
+                         const IceTFloat *background_color,
+                         const IceTInt *readback_viewport,
+                         IceTImage result)
+{
+  /* Don't care about this information. */
+    (void)projection_matrix;
+    (void)modelview_matrix;
+    (void)background_color;
+    (void)readback_viewport;
+
+    InitActiveImage(result);
+}
+
+static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
+                             IceTEnum composite_mode)
 {
     GLint viewport[4];
-    int pixels;
-    IceTImage imagebuffer;
-    GLubyte *colorbuffer;
-    GLuint *depthbuffer;
-    IceTSparseImage compressedbuffer;
-    GLint fardepth;
-    int i;
-    GLuint size;
+    int width, height;
+    IceTSizeType pixels;
+    IceTImage image;
+    IceTVoid *imagebuffer;
+    IceTSizeType imagesize;
+    IceTSparseImage compressedimage;
+    IceTVoid *compressedbuffer;
+    IceTSizeType compressedsize;
+    IceTSizeType color_pixel_size;
+    IceTSizeType depth_pixel_size;
+    IceTSizeType pixel_size;
+    IceTSizeType size;
     int result;
-    GLint tmp;
 
     result = TEST_PASSED;
 
-    icetGetIntegerv(ICET_INPUT_BUFFERS, &tmp);
-    printf("Using input buffers of 0x%x\n", (int)tmp);
+    printf("Using color format of 0x%x\n", (int)color_format);
+    printf("Using depth format of 0x%x\n", (int)depth_format);
+    printf("Using composite mode of 0x%x\n", (int)composite_mode);
+
+    icetSetColorFormat(color_format);
+    icetSetDepthFormat(depth_format);
+    icetCompositeMode(composite_mode);
 
     glGetIntegerv(GL_VIEWPORT, viewport);
-    pixels = viewport[2]*viewport[3];
-    icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, &fardepth);
+    width = viewport[2];
+    height = viewport[3];
+    pixels = width*height;
 
-    printf("Allocating memory for %d pixel image.\n", pixels);
-    imagebuffer = malloc(icetFullImageSize(pixels));
-    compressedbuffer = malloc(icetSparseImageSize(pixels));
-    icetInitializeImage(imagebuffer, pixels);
-    colorbuffer = icetGetImageColorBuffer(imagebuffer);
-    depthbuffer = icetGetImageDepthBuffer(imagebuffer);
+    printf("Allocating memory for %dx%x pixel image.\n", width, height);
+    imagesize = icetImageBufferSize(width, height);
+    imagebuffer = malloc(imagesize);
+    image = icetImageAssignBuffer(imagebuffer, width, height);
 
-    printf("\nCreating worst possible image.\n");
-    for (i = 0; i < pixels; i += 2) {
-        if (colorbuffer) {
-            colorbuffer[4*i + 0] = 0xFF;
-            colorbuffer[4*i + 1] = 0xFF;
-            colorbuffer[4*i + 2] = 0xFF;
-            colorbuffer[4*i + 3] = 0xFF;
+    compressedsize = icetSparseImageBufferSize(width, height);
+    compressedbuffer = malloc(compressedsize);
+    compressedimage = icetSparseImageAssignBuffer(compressedbuffer,
+                                                  width, height);
 
-            colorbuffer[4*(i+1) + 0] = 0x00;
-            colorbuffer[4*(i+1) + 1] = 0x00;
-            colorbuffer[4*(i+1) + 2] = 0x00;
-            colorbuffer[4*(i+1) + 3] = 0x00;
-        }
-        if (depthbuffer) {
-            depthbuffer[i] = 0x00000000;
-            depthbuffer[i+1] = fardepth;
-        }
-    }
+  /* Get the number of bytes per pixel.  This is used in checking the
+     size of compressed images. */
+    icetImageGetColorVoid(image, &color_pixel_size);
+    icetImageGetDepthVoid(image, &depth_pixel_size);
+    pixel_size = color_pixel_size + depth_pixel_size;
+    printf("Pixel size: color=%d, depth=%d, total=%d\n",
+           (int)color_pixel_size, (int)depth_pixel_size, (int)pixel_size);
+
+    printf("\nCreating worst possible image (with respect to compression).\n");
+    InitPathologicalImage(image);
+
     printf("Compressing image.\n");
-    size = icetCompressImage(imagebuffer, compressedbuffer);
+    icetCompressImage(image, compressedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageSize(pixels), (int)size);
-    if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)(2+2*num_buffers)*pixels) ) {
-        printf("Size differs from expected size!\n");
+           (int)(pixel_size*(pixels/2) + 2*sizeof(IceTUShort)*(pixels/2)),
+           (int)size);
+    if (   (size > compressedsize)
+        || (size < pixel_size*(pixels/2)) ) {
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
     printf("\nCreating a different worst possible image.\n");
-    for (i = 0; i < pixels; i++) {
-        if (colorbuffer) {
-            colorbuffer[4*i + 0] = 0xAA;
-            colorbuffer[4*i + 1] = i%256;
-            colorbuffer[4*i + 2] = 255 - i%256;
-            colorbuffer[4*i + 3] = 0xAA;
-        }
-        if (depthbuffer) {
-            depthbuffer[i] = 0x00000000;
-        }
-    }
+    InitActiveImage(image);
     printf("Compressing image.\n");
-    size = icetCompressImage(imagebuffer, compressedbuffer);
+    icetCompressImage(image, compressedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageSize(pixels), (int)size);
-    if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)4*num_buffers*pixels) ) {
-        printf("Size differs from expected size!\n");
+           (int)compressedsize, (int)size);
+    if ((size > compressedsize) || (size < pixel_size*pixels)) {
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
     printf("\nCompressing zero size image.\n");
-    icetInitializeImage(imagebuffer, 0);
-    size = icetCompressImage(imagebuffer, compressedbuffer);
+    icetImageSetDimensions(image, 0, 0);
+    icetCompressImage(image, compressedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageSize(0), (int)size);
-    if (size > icetSparseImageSize(0)) {
-        printf("Size differs from expected size!\n");
+           (int)icetSparseImageBufferSize(0, 0), (int)size);
+    if (size > icetSparseImageBufferSize(0, 0)) {
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
@@ -141,17 +234,17 @@ static int DoCompressionTest(int num_buffers)
     printf("\nSetup for actual render.\n");
     icetResetTiles();
     icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
-    icetDrawFunc(draw);
+    icetDrawCallback(drawCallback);
   /* Do a perfunctory draw to set other state variables. */
-    icetDrawFrame();
+    icetDrawFrame(IdentityMatrix, IdentityMatrix, Black);
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
-    size = icetGetCompressedTileImage(0, compressedbuffer);
+    icetGetCompressedTileImage(0, compressedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
     printf("Expected size: %d.  Actual size: %d\n",
-           (int)icetSparseImageSize(pixels), (int)size);
-    if (   (size > icetSparseImageSize(pixels))
-        || (size < (GLuint)4*num_buffers*pixels) ) {
-        printf("Size differs from expected size!\n");
+           (int)compressedsize, (int)size);
+    if ((size > compressedsize) || (size < pixel_size*pixels)) {
+        printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
 
@@ -161,35 +254,68 @@ static int DoCompressionTest(int num_buffers)
     return result;
 }
 
-int CompressionSize(int argc, char *argv[])
+static int CompressionSizeRun()
 {
     int result;
-
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
 
     icetStrategy(ICET_STRATEGY_REDUCE);
 
     printf("Compress depth only.\n");
-    icetInputOutputBuffers(ICET_DEPTH_BUFFER_BIT, ICET_DEPTH_BUFFER_BIT);
-    result = DoCompressionTest(1);
-    printf("\n\nCompress color only.\n");
-    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT, ICET_COLOR_BUFFER_BIT);
+    result = DoCompressionTest(ICET_IMAGE_COLOR_NONE, ICET_IMAGE_DEPTH_FLOAT,
+                               ICET_COMPOSITE_MODE_Z_BUFFER);
+
+    printf("\n\nCompress 8-bit color only.\n");
     if (result == TEST_PASSED) {
-        result = DoCompressionTest(1);
+        result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
+                                   ICET_IMAGE_DEPTH_NONE,
+                                   ICET_COMPOSITE_MODE_BLEND);
     } else {
-        DoCompressionTest(1);
-    }
-    icetInputOutputBuffers(ICET_COLOR_BUFFER_BIT | ICET_DEPTH_BUFFER_BIT,
-                           ICET_COLOR_BUFFER_BIT);
-    printf("\n\nCompress color and depth.\n");
-    if (result == TEST_PASSED) {
-        result = DoCompressionTest(2);
-    } else {
-        DoCompressionTest(2);
+        DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
+                          ICET_IMAGE_DEPTH_NONE,
+                          ICET_COMPOSITE_MODE_BLEND);
     }
 
-    finalize_test(result);
+    printf("\n\nCompress 32-bit color only.\n");
+    if (result == TEST_PASSED) {
+        result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
+                                   ICET_IMAGE_DEPTH_NONE,
+                                   ICET_COMPOSITE_MODE_BLEND);
+    } else {
+        DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
+                          ICET_IMAGE_DEPTH_NONE,
+                          ICET_COMPOSITE_MODE_BLEND);
+    }
+
+    printf("\n\nCompress depth and 8-bit color.\n");
+    if (result == TEST_PASSED) {
+        result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
+                                   ICET_IMAGE_DEPTH_FLOAT,
+                                   ICET_COMPOSITE_MODE_Z_BUFFER);
+    } else {
+        DoCompressionTest(ICET_IMAGE_COLOR_RGBA_UBYTE,
+                          ICET_IMAGE_DEPTH_FLOAT,
+                          ICET_COMPOSITE_MODE_Z_BUFFER);
+    }
+
+    printf("\n\nCompress depth and 32-bit color.\n");
+    if (result == TEST_PASSED) {
+        result = DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
+                                   ICET_IMAGE_DEPTH_FLOAT,
+                                   ICET_COMPOSITE_MODE_Z_BUFFER);
+    } else {
+        DoCompressionTest(ICET_IMAGE_COLOR_RGBA_FLOAT,
+                          ICET_IMAGE_DEPTH_FLOAT,
+                          ICET_COMPOSITE_MODE_Z_BUFFER);
+    }
+
     return result;
+}
+
+int CompressionSize(int argc, char *argv[])
+{
+    /* To remove warning */
+    (void)argc;
+    (void)argv;
+
+    return run_test(CompressionSizeRun);
 }

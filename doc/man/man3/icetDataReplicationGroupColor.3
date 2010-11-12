@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 19 09:25:31 MDT 2008
+.\" Manual page created with latex2man on Thu Sep 23 08:15:12 MDT 2010
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetDataReplicationGroupColor" "3" "April 20, 2006" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetDataReplicationGroupColor" "3" "September 20, 2010" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetDataReplicationGroupColor \-\- define data replication.\fP
@@ -18,11 +18,11 @@
 .SH Synopsis
 
 .PP
-#include <GL/ice\-t.h>
+#include <IceT.h>
 .PP
 .TS H
 l l l .
-void \fBicetDataReplicationGroupColor\fP(	GLint	\fIcolor\fP  );
+void \fBicetDataReplicationGroupColor\fP(	IceTInt	\fIcolor\fP  );
 .TE
 .PP
 .SH Description
@@ -71,27 +71,19 @@ same parameters on all processes belonging to a given group. These
 requirements are not strictly enforced, but failing to do so may cause 
 some of the geometry to not be rendered. 
 .PP
-.SH Notes
-
-.PP
-This man page should never be installed. It should just be used to help 
-make other man pages. 
-.PP
 .SH Copyright
 
 Copyright (C)2003 Sandia Corporation 
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000, there is a non\-exclusive 
-license for use of this work by or on behalf of the U.S. Government. 
-Redistribution and use in source and binary forms, with or without 
-modification, are permitted provided that this Notice and any statement 
-of authorship are reproduced on all copies. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
+U.S. Government retains certain rights in this software. 
+.PP
+This source code is released under the New BSD License. 
 .PP
 .SH See Also
 
 .PP
 \fIicetDataReplicationGroup\fP(3),
-\fIicetDrawFunc\fP(3),
 \fIicetBoundingVertices\fP(3),
 \fIicetBoundingBox\fP(3)
 .PP

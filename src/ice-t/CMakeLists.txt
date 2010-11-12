@@ -1,11 +1,8 @@
-# Id
-#
 ## Copyright 2003 Sandia Coporation
-## Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-## license for use of this work by or on behalf of the U.S. Government.
-## Redistribution and use in source and binary forms, with or without
-## modification, are permitted provided that this Notice and any statement
-## of authorship are reproduced on all copies.
+## Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+## the U.S. Government retains certain rights in this software.
+##
+## This source code is released under the New BSD License.
 #
 
 SET(ICET_SRCS
@@ -13,24 +10,39 @@ SET(ICET_SRCS
         context.c
         state.c
         diagnostics.c
+	communication.c
         tiles.c
         projections.c
         draw.c
         image.c
-        buckets.c
+
+        ../strategies/common.c
+	../strategies/select.c
+        ../strategies/direct.c
+        ../strategies/sequential.c
+        ../strategies/split.c
+        ../strategies/reduce.c
+        ../strategies/vtree.c
+	../strategies/bswap.c
+	../strategies/tree.c
+	../strategies/automatic.c
 )
 
-ADD_LIBRARY(icet ${ICET_SRCS})
+ADD_LIBRARY(IceTCore ${ICET_SRCS})
+
+IF (UNIX)
+  # Depend on the math library under Unix.
+  TARGET_LINK_LIBRARIES(IceTCore m)
+ENDIF (UNIX)
 
 IF(NOT ICET_INSTALL_NO_LIBRARIES)
-  INSTALL(TARGETS icet 
+  INSTALL(TARGETS IceTCore
         RUNTIME DESTINATION ${ICET_INSTALL_BIN_DIR} COMPONENT RuntimeLibraries
         LIBRARY DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
 	ARCHIVE DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries)
 ENDIF(NOT ICET_INSTALL_NO_LIBRARIES)
 IF(NOT ICET_INSTALL_NO_DEVELOPMENT)
-  INSTALL(FILES ${ICET_SOURCE_DIR}/src/include/GL/ice-t.h
-    ${ICET_SOURCE_DIR}/src/include/GL/ice-t_buckets.h
-    ${ICET_BINARY_DIR}/src/include/GL/ice-t_config.h
-    DESTINATION ${ICET_INSTALL_INCLUDE_DIR}/GL)
+  INSTALL(FILES ${ICET_SOURCE_DIR}/src/include/IceT.h
+    ${ICET_BINARY_DIR}/src/include/IceTConfig.h
+    DESTINATION ${ICET_INSTALL_INCLUDE_DIR})
 ENDIF(NOT ICET_INSTALL_NO_DEVELOPMENT)

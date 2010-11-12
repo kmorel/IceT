@@ -1,20 +1,19 @@
 /* -*- c -*- *******************************************************/
 /*
  * Copyright (C) 2003 Sandia Corporation
- * Under the terms of Contract DE-AC04-94AL85000, there is a non-exclusive
- * license for use of this work by or on behalf of the U.S. Government.
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that this Notice and any statement
- * of authorship are reproduced on all copies.
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
  */
 
-/* Id */
+#include <IceT.h>
 
-#include <GL/ice-t.h>
-#include <state.h>
-#include <context.h>
-#include <diagnostics.h>
-#include <image.h>
+#include <IceTDevCommunication.h>
+#include <IceTDevDiagnostics.h>
+#include <IceTDevImage.h>
+#include <IceTDevState.h>
+#include <IceTDevStrategySelect.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -27,51 +26,80 @@
 #pragma warning(disable:4055)
 #endif
 
-static void inflateBuffer(GLubyte *buffer, GLsizei width, GLsizei height);
+static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B);
 
-static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B);
-
-static GLubyte *display_buffer = NULL;
-static GLsizei display_buffer_size = 0;
-
-void icetDrawFunc(IceTCallback func)
+void icetDrawCallback(IceTDrawCallbackType func)
 {
-    icetStateSetPointer(ICET_DRAW_FUNCTION, (GLvoid *)func);
+    icetStateSetPointer(ICET_DRAW_FUNCTION, (IceTVoid *)func);
 }
 
-void icetStrategy(IceTStrategy strategy)
+void icetStrategy(IceTEnum strategy)
 {
-    icetStateSetPointer(ICET_STRATEGY_NAME, strategy.name);
-    icetStateSetBoolean(ICET_STRATEGY_SUPPORTS_ORDERING,
-                        strategy.supports_ordering);
-    icetStateSetPointer(ICET_STRATEGY_COMPOSE, (GLvoid *)strategy.compose);
-}
-
-const GLubyte *icetGetStrategyName(void)
-{
-    GLvoid *name;
-    if (icetStateType(ICET_STRATEGY_NAME) == ICET_NULL) {
-        return NULL;
+    if (icetStrategyValid(strategy)) {
+        icetStateSetInteger(ICET_STRATEGY, strategy);
+        icetStateSetBoolean(ICET_STRATEGY_SUPPORTS_ORDERING,
+                            icetStrategySupportsOrdering(strategy));
     } else {
-        icetGetPointerv(ICET_STRATEGY_NAME, &name);
+        icetRaiseError("Invalid strategy.", ICET_INVALID_ENUM);
     }
-    return name;
 }
 
-void icetCompositeOrder(const GLint *process_ranks)
+const char *icetGetStrategyName(void)
 {
-    GLint num_proc;
-    GLint i;
-    GLint *process_orders;
-    GLboolean new_process_orders;
+    IceTEnum strategy;
+
+    icetGetEnumv(ICET_STRATEGY, &strategy);
+    if (strategy != ICET_STRATEGY_UNDEFINED) {
+        return icetStrategyNameFromEnum(strategy);
+    } else {
+        icetRaiseError("No strategy set. Use icetStrategy to set the strategy.",
+                       ICET_INVALID_ENUM);
+        return NULL;
+    }
+}
+
+void icetSingleImageStrategy(IceTEnum strategy)
+{
+    if (icetSingleImageStrategyValid(strategy)) {
+        icetStateSetInteger(ICET_SINGLE_IMAGE_STRATEGY, strategy);
+    } else {
+        icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);
+    }
+}
+
+const char *icetGetSingleImageStrategyName(void)
+{
+    IceTEnum strategy;
+
+    icetGetEnumv(ICET_SINGLE_IMAGE_STRATEGY, &strategy);
+    return icetSingleImageStrategyNameFromEnum(strategy);
+}
+
+void icetCompositeMode(IceTEnum mode)
+{
+    if (    (mode != ICET_COMPOSITE_MODE_Z_BUFFER)
+         && (mode != ICET_COMPOSITE_MODE_BLEND) ) {
+        icetRaiseError("Invalid composite mode.", ICET_INVALID_ENUM);
+        return;
+    }
+
+    icetStateSetInteger(ICET_COMPOSITE_MODE, mode);
+}
+
+void icetCompositeOrder(const IceTInt *process_ranks)
+{
+    IceTInt num_proc;
+    IceTInt i;
+    IceTInt *process_orders;
+    IceTBoolean new_process_orders;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
-        && (icetStateGetSize(ICET_PROCESS_ORDERS) >= num_proc) ) {
-        process_orders = icetUnsafeStateGet(ICET_PROCESS_ORDERS);
+        && (icetStateGetNumEntries(ICET_PROCESS_ORDERS) >= num_proc) ) {
+        process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
         new_process_orders = 0;
     } else {
-        process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(GLint));
+        process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(IceTInt));
         new_process_orders = 1;
     }
     for (i = 0; i < num_proc; i++) {
@@ -89,15 +117,15 @@ void icetCompositeOrder(const GLint *process_ranks)
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, num_proc, process_ranks);
     if (new_process_orders) {
         icetUnsafeStateSet(ICET_PROCESS_ORDERS, num_proc,
-                           GL_INT, process_orders);
+                           ICET_INT, process_orders);
     }
 }
 
-void icetDataReplicationGroup(GLint size, const GLint *processes)
+void icetDataReplicationGroup(IceTInt size, const IceTInt *processes)
 {
-    GLint rank;
-    GLboolean found_myself = ICET_FALSE;
-    GLint i;
+    IceTInt rank;
+    IceTBoolean found_myself = ICET_FALSE;
+    IceTInt i;
 
     icetGetIntegerv(ICET_RANK, &rank);
     for (i = 0; i < size; i++) {
@@ -117,20 +145,19 @@ void icetDataReplicationGroup(GLint size, const GLint *processes)
     icetStateSetIntegerv(ICET_DATA_REPLICATION_GROUP, size, processes);
 }
 
-void icetDataReplicationGroupColor(GLint color)
+void icetDataReplicationGroupColor(IceTInt color)
 {
-    GLint *allcolors;
-    GLint *mygroup;
-    GLint num_proc;
-    GLint i;
-    GLint size;
+    IceTInt *allcolors;
+    IceTInt *mygroup;
+    IceTInt num_proc;
+    IceTInt i;
+    IceTInt size;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    icetResizeBuffer(2*sizeof(GLint)*num_proc);
-    allcolors = icetReserveBufferMem(sizeof(GLint)*num_proc);
-    mygroup = icetReserveBufferMem(sizeof(GLint)*num_proc);
+    allcolors = malloc(sizeof(IceTInt)*num_proc);
+    mygroup = malloc(sizeof(IceTInt)*num_proc);
 
-    ICET_COMM_ALLGATHER(&color, 1, ICET_INT, allcolors);
+    icetCommAllgather(&color, 1, ICET_INT, allcolors);
 
     size = 0;
     for (i = 0; i < num_proc; i++) {
@@ -141,50 +168,24 @@ void icetDataReplicationGroupColor(GLint color)
     }
 
     icetDataReplicationGroup(size, mygroup);
+
+    free(allcolors);
+    free(mygroup);
 }
 
-GLubyte *icetGetColorBuffer(void)
+static void find_contained_viewport(const IceTDouble projection_matrix[16],
+                                    const IceTDouble modelview_matrix[16],
+                                    const IceTInt global_viewport[4],
+                                    IceTInt contained_viewport[4],
+                                    IceTDouble *znear, IceTDouble *zfar)
 {
-    GLint color_buffer_valid;
-
-    icetGetIntegerv(ICET_COLOR_BUFFER_VALID, &color_buffer_valid);
-    if (color_buffer_valid) {
-        GLvoid *color_buffer;
-        icetGetPointerv(ICET_COLOR_BUFFER, &color_buffer);
-        return (GLubyte *)color_buffer;
-    } else {
-        icetRaiseError("Color buffer not available.", ICET_INVALID_OPERATION);
-        return NULL;
-    }
-}
-GLuint *icetGetDepthBuffer(void)
-{
-    GLint depth_buffer_valid;
-
-    icetGetIntegerv(ICET_DEPTH_BUFFER_VALID, &depth_buffer_valid);
-    if (depth_buffer_valid) {
-        GLvoid *depth_buffer;
-        icetGetPointerv(ICET_DEPTH_BUFFER, &depth_buffer);
-        return (GLuint *)depth_buffer;
-    } else {
-        icetRaiseError("Depth buffer not available.", ICET_INVALID_OPERATION);
-        return NULL;
-    }
-}
-
-static void find_contained_viewport(const GLdouble projection_matrix[16],
-                                    const GLint global_viewport[4],
-                                    GLint contained_viewport[4],
-                                    GLdouble *znear, GLdouble *zfar)
-{
-    GLdouble *bound_vert;
-    GLdouble modelview_matrix[16];
-    GLdouble viewport_matrix[16];
-    GLdouble tmp_matrix[16];
-    GLdouble total_transform[16];
-    GLdouble left, right, bottom, top;
-    GLdouble *transformed_verts;
-    GLint num_bounding_verts;
+    IceTDouble *bound_vert;
+    IceTDouble viewport_matrix[16];
+    IceTDouble tmp_matrix[16];
+    IceTDouble total_transform[16];
+    IceTDouble left, right, bottom, top;
+    IceTDouble *transformed_verts;
+    IceTInt num_bounding_verts;
     int i;
 
   /* Strange projection matrix that transforms the x and y of normalized
@@ -210,8 +211,6 @@ static void find_contained_viewport(const GLdouble projection_matrix[16],
     viewport_matrix[14] = 0.0;
     viewport_matrix[15] = 2.0;
 
-    glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
-
     multMatrix(tmp_matrix, projection_matrix, modelview_matrix);
     multMatrix(total_transform, viewport_matrix, tmp_matrix);
 
@@ -225,10 +224,10 @@ static void find_contained_viewport(const GLdouble projection_matrix[16],
 
   /* Transform each vertex to find where it lies in the global viewport and
      normalized z.  Leave the results in homogeneous coordinates for now. */
-    bound_vert = icetUnsafeStateGet(ICET_GEOMETRY_BOUNDS);
+    bound_vert = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
     icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
-    transformed_verts
-        = icetReserveBufferMem(sizeof(GLdouble)*num_bounding_verts*4);
+    transformed_verts = icetGetStateBuffer(ICET_TRANSFORMED_BOUNDS,
+                                       sizeof(IceTDouble)*num_bounding_verts*4);
     for (i = 0; i < num_bounding_verts; i++) {
         transformed_verts[4*i + 0]
             = (  total_transform[MI(0,0)]*bound_vert[3*i+0]
@@ -256,17 +255,17 @@ static void find_contained_viewport(const GLdouble projection_matrix[16],
      and maxs to include them all. */
     for (i = 0; i < num_bounding_verts; i++)
     {
-        GLdouble *vert = transformed_verts + 4*i;
+        IceTDouble *vert = transformed_verts + 4*i;
 
       /* Check to see if the vertex is in front of the near cut plane.  This
          is true when z/w >= -1 or z + w >= 0.  The second form is better
          just in case w is 0. */
         if (vert[2] + vert[3] >= 0.0) {
           /* Normalize homogeneous coordinates. */
-            GLdouble invw = 1.0/vert[3];
-            GLdouble x = vert[0]*invw;
-            GLdouble y = vert[1]*invw;
-            GLdouble z = vert[2]*invw;
+            IceTDouble invw = 1.0/vert[3];
+            IceTDouble x = vert[0]*invw;
+            IceTDouble y = vert[1]*invw;
+            IceTDouble z = vert[2]*invw;
 
           /* Update contained region. */
             if (left   > x) left   = x;
@@ -284,9 +283,9 @@ static void find_contained_viewport(const GLdouble projection_matrix[16],
              coordinates) and use that as the projection. */
             int j;
             for (j = 0; j < num_bounding_verts; j++) {
-                GLdouble *vert2 = transformed_verts + 4*j;
+                IceTDouble *vert2 = transformed_verts + 4*j;
                 double t;
-                GLdouble x, y, invw;
+                IceTDouble x, y, invw;
                 if (vert2[2] + vert2[3] < 0.0) {
                   /* Ignore other points behind near plane. */
                     continue;
@@ -335,17 +334,17 @@ static void find_contained_viewport(const GLdouble projection_matrix[16],
     contained_viewport[3] = (int)(top - bottom);
 }
 
-static void determine_contained_tiles(const GLint contained_viewport[4],
-                                      GLdouble znear, GLdouble zfar,
-                                      const GLint *tile_viewports,
-                                      GLint num_tiles,
-                                      GLint *contained_list,
-                                      GLboolean *contained_mask,
-                                      GLint *num_contained)
+static void determine_contained_tiles(const IceTInt contained_viewport[4],
+                                      IceTDouble znear, IceTDouble zfar,
+                                      const IceTInt *tile_viewports,
+                                      IceTInt num_tiles,
+                                      IceTInt *contained_list,
+                                      IceTBoolean *contained_mask,
+                                      IceTInt *num_contained)
 {
     int i;
     *num_contained = 0;
-    memset(contained_mask, 0, sizeof(GLboolean)*num_tiles);
+    memset(contained_mask, 0, sizeof(IceTBoolean)*num_tiles);
     for (i = 0; i < num_tiles; i++) {
         if (   (znear  <= 1.0)
             && (zfar   >= -1.0)
@@ -364,42 +363,40 @@ static void determine_contained_tiles(const GLint contained_viewport[4],
     }
 }
 
-static GLfloat black[] = {0.0, 0.0, 0.0, 0.0};
+static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
 
-void icetDrawFrame(void)
+IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
+                        const IceTDouble *modelview_matrix,
+                        const IceTFloat *background_color)
 {
-    GLint rank, num_proc;
-    GLboolean isDrawing;
-    GLint frame_count;
-    GLdouble projection_matrix[16];
-    GLint global_viewport[4];
-    GLint contained_viewport[4];
-    GLdouble znear, zfar;
-    IceTStrategy strategy;
-    GLvoid *value;
-    GLint num_tiles;
-    GLint num_bounding_verts;
-    GLint *tile_viewports;
-    GLint *contained_list;
-    GLint num_contained;
-    GLboolean *contained_mask;
-    GLboolean *all_contained_masks;
-    GLint *data_replication_group;
-    GLint data_replication_group_size;
-    GLint *contrib_counts;
-    GLint total_image_count;
+    IceTInt rank, num_proc;
+    IceTBoolean isDrawing;
+    IceTInt frame_count;
+    IceTInt global_viewport[4];
+    IceTInt contained_viewport[4];
+    IceTDouble znear, zfar;
+    IceTEnum strategy;
+    IceTVoid *value;
+    IceTInt num_tiles;
+    IceTInt num_bounding_verts;
+    IceTInt *tile_viewports;
+    IceTInt *contained_list;
+    IceTInt num_contained;
+    IceTBoolean *contained_mask;
+    IceTBoolean *all_contained_masks;
+    IceTInt *data_replication_group;
+    IceTInt data_replication_group_size;
+    IceTInt *contrib_counts;
+    IceTInt total_image_count;
     IceTImage image;
-    GLint display_tile;
-    GLint *display_nodes;
-    GLint color_format;
-    GLdouble render_time;
-    GLdouble buf_read_time;
-    GLdouble buf_write_time;
-    GLdouble compose_time;
-    GLdouble total_time;
-    GLfloat background_color[4];
-    GLuint background_color_word;
-    GLboolean color_blending;
+    IceTInt display_tile;
+    IceTInt *display_nodes;
+    IceTDouble render_time;
+    IceTDouble buf_read_time;
+    IceTDouble compose_time;
+    IceTDouble total_time;
+    IceTUInt background_color_word;
+    IceTBoolean color_blending;
     int i, j;
 
     icetRaiseDebug("In icetDrawFrame");
@@ -407,52 +404,28 @@ void icetDrawFrame(void)
     icetGetBooleanv(ICET_IS_DRAWING_FRAME, &isDrawing);
     if (isDrawing) {
         icetRaiseError("Recursive frame draw detected.",ICET_INVALID_OPERATION);
-        return;
+        return icetImageNull();
     }
-
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
 
     icetStateResetTiming();
     total_time = icetWallTime();
 
     color_blending =
-        (GLboolean)(   *((GLuint *)icetUnsafeStateGet(ICET_INPUT_BUFFERS))
-                    == ICET_COLOR_BUFFER_BIT);
+        (IceTBoolean)(   *(icetUnsafeStateGetInteger(ICET_COMPOSITE_MODE))
+                      == ICET_COMPOSITE_MODE_BLEND);
 
   /* Make sure background color is up to date. */
-    glGetFloatv(GL_COLOR_CLEAR_VALUE, background_color);
-    switch (color_format) {
-      case GL_RGBA:
-      default:
-          ((GLubyte *)&background_color_word)[0]
-              = (GLubyte)(255*background_color[0]);
-          ((GLubyte *)&background_color_word)[1]
-              = (GLubyte)(255*background_color[1]);
-          ((GLubyte *)&background_color_word)[2]
-              = (GLubyte)(255*background_color[2]);
-          ((GLubyte *)&background_color_word)[3]
-              = (GLubyte)(255*background_color[3]);
-          break;
-#if defined(GL_BGRA)
-      case GL_BGRA:
-#elif defined(GL_BGRA_EXT)
-      case GL_BGRA_EXT:
-#endif
-          ((GLubyte *)&background_color_word)[0]
-              = (GLubyte)(255*background_color[2]);
-          ((GLubyte *)&background_color_word)[1]
-              = (GLubyte)(255*background_color[1]);
-          ((GLubyte *)&background_color_word)[2]
-              = (GLubyte)(255*background_color[0]);
-          ((GLubyte *)&background_color_word)[3]
-              = (GLubyte)(255*background_color[3]);
-          break;
-    }
-    if (color_blending && (   icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND)
-                           || icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND))) {
+    ((IceTUByte *)&background_color_word)[0]
+      = (IceTUByte)(255*background_color[0]);
+    ((IceTUByte *)&background_color_word)[1]
+      = (IceTUByte)(255*background_color[1]);
+    ((IceTUByte *)&background_color_word)[2]
+      = (IceTUByte)(255*background_color[2]);
+    ((IceTUByte *)&background_color_word)[3]
+      = (IceTUByte)(255*background_color[3]);
+    if (color_blending) {
       /* We need to correct the background color by zeroing it out at
        * blending it back at the end. */
-        glClearColor(0.0, 0.0, 0.0, 0.0);
         icetStateSetFloatv(ICET_BACKGROUND_COLOR, 4, black);
         icetStateSetInteger(ICET_BACKGROUND_COLOR_WORD, 0);
     } else {
@@ -463,49 +436,25 @@ void icetDrawFrame(void)
     icetGetIntegerv(ICET_FRAME_COUNT, &frame_count);
     frame_count++;
     icetStateSetIntegerv(ICET_FRAME_COUNT, 1, &frame_count);
-    if (frame_count == 1) {
-      /* On the first frame, try to fix the far depth. */
-        GLint readBuffer;
-        GLuint depth;
-        GLuint far_depth;
-        icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
-
-        icetRaiseDebug("Trying to get far depth.");
-
-        glClear(GL_DEPTH_BUFFER_BIT);
-        glReadBuffer(readBuffer);
-        glFlush();
-        glReadPixels(0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, &depth);
-
-        icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, (GLint *)&far_depth);
-        if (depth > far_depth) {
-            icetStateSetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, 1, (GLint *)&depth);
-        }
-    }
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     icetGetIntegerv(ICET_NUM_BOUNDING_VERTS, &num_bounding_verts);
-    icetResizeBuffer(  sizeof(GLint)*num_tiles
-                     + sizeof(GLboolean)*num_tiles*(num_proc+1)
-                     + sizeof(int)    /* So stuff can land on byte boundries.*/
-                     + sizeof(GLint)*num_tiles*num_proc
-                     + sizeof(GLint)*num_proc
-                     + sizeof(GLdouble)*num_bounding_verts*4 );
-    contained_list = icetReserveBufferMem(sizeof(GLint) * num_tiles);
-    contained_mask = icetReserveBufferMem(sizeof(GLboolean)*num_tiles);
+
+    contained_list = icetGetStateBuffer(ICET_CONTAINED_LIST_BUF,
+                                        sizeof(IceTInt) * num_tiles);
+    contained_mask = icetGetStateBuffer(ICET_CONTAINED_MASK_BUF,
+                                        sizeof(IceTBoolean)*num_tiles);
 
     icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
-    tile_viewports = icetUnsafeStateGet(ICET_TILE_VIEWPORTS);
+    tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
-    display_nodes = icetUnsafeStateGet(ICET_DISPLAY_NODES);
+    display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
 
-  /* Get the current projection matrix. */
-    icetRaiseDebug("Getting projection matrix.");
-    glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
     icetStateSetDoublev(ICET_PROJECTION_MATRIX, 16, projection_matrix);
+    icetStateSetDoublev(ICET_MODELVIEW_MATRIX, 16, modelview_matrix);
 
     if (num_bounding_verts < 1) {
       /* User never set bounding vertices.  Assume image covers all
@@ -523,8 +472,9 @@ void icetDrawFrame(void)
         num_contained = num_tiles;
     } else {
       /* Figure out how the geometry projects onto the display. */
-        find_contained_viewport(projection_matrix, global_viewport,
-                                contained_viewport, &znear, &zfar);
+        find_contained_viewport(projection_matrix, modelview_matrix,
+                                global_viewport, contained_viewport,
+                                &znear, &zfar);
 
       /* Now use this information to figure out which tiles need to be
          drawn. */
@@ -543,7 +493,10 @@ void icetDrawFrame(void)
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE,
                     &data_replication_group_size);
     if (data_replication_group_size > 1) {
-        data_replication_group = icetReserveBufferMem(sizeof(GLint)*num_proc);
+      /* Need to copy data_replication_group to temporary buffer so that we
+         can modify it based on the current view's projection. */
+        data_replication_group = icetGetStateBuffer(ICET_DATA_REP_GROUP_BUF,
+                                                    sizeof(IceTInt)*num_proc);
         icetGetIntegerv(ICET_DATA_REPLICATION_GROUP, data_replication_group);
         if (data_replication_group_size >= num_contained) {
           /* We have at least as many processes in the group as tiles we
@@ -606,7 +559,7 @@ void icetDrawFrame(void)
 
           /* Record a new viewport covering only my portion of the tile. */
             if (tile_rendering >= 0) {
-                GLint *tv = tile_viewports + 4*tile_rendering;
+                IceTInt *tv = tile_viewports + 4*tile_rendering;
                 int new_length = tv[2]/num_rendering_tile;
                 num_contained = 1;
                 contained_list[0] = tile_rendering;
@@ -631,7 +584,7 @@ void icetDrawFrame(void)
 
           /* Fix contained_mask. */
             for (i = 0; i < num_tiles; i++) {
-                contained_mask[i] = (GLboolean)(i == tile_rendering);
+                contained_mask[i] = (IceTBoolean)(i == tile_rendering);
             }
         } else {
           /* More tiles than processes.  Split up the contained_viewport as
@@ -678,13 +631,13 @@ void icetDrawFrame(void)
   /* Get information on what tiles other processes are supposed to render. */
     icetRaiseDebug("Gathering rendering information.");
     all_contained_masks
-        = icetReserveBufferMem(sizeof(GLint)*num_tiles*num_proc);
+        = icetStateAllocateBoolean(ICET_ALL_CONTAINED_TILES_MASKS,
+                                   num_tiles*num_proc);
     contrib_counts = contained_list;
 
-    ICET_COMM_ALLGATHER(contained_mask, num_tiles, ICET_BYTE,
-                        all_contained_masks);
-    icetStateSetBooleanv(ICET_ALL_CONTAINED_TILES_MASKS,
-                         num_tiles*num_proc, all_contained_masks);
+    icetCommAllgather(contained_mask, num_tiles, ICET_BYTE,
+                      all_contained_masks);
+
     total_image_count = 0;
     for (i = 0; i < num_tiles; i++) {
         contrib_counts[i] = 0;
@@ -700,246 +653,76 @@ void icetDrawFrame(void)
 
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     if (value == NULL) {
-        icetRaiseError("Drawing function not set.", ICET_INVALID_OPERATION);
-        return;
+        icetRaiseError("Drawing function not set.  Call icetDrawCallback.",
+                       ICET_INVALID_OPERATION);
+        return icetImageNull();
     }
-    icetRaiseDebug("Calling strategy.compose");
-    icetGetPointerv(ICET_STRATEGY_COMPOSE, &value);
-    if (value == NULL) {
-        icetRaiseError("Strategy not set.", ICET_INVALID_OPERATION);
-        return;
-    }
-    strategy.compose = (IceTImage (*)(void))value;
+
+    icetRaiseDebug("Calling strategy");
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 1);
-    image = (*strategy.compose)();
+    icetGetEnumv(ICET_STRATEGY, &strategy);
+    image = icetInvokeStrategy(strategy);
+
+  /* Ensure that the returned image is the expected size. */
+    if (display_tile >= 0) {
+        IceTInt *display_tile_viewport = tile_viewports + 4*display_tile;
+        if (   (display_tile_viewport[2] != icetImageGetWidth(image))
+            || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {
+            icetRaiseDebug4("Expected size: %d %d.  Returned size: %d %d",
+                            display_tile_viewport[2], display_tile_viewport[3],
+                            icetImageGetWidth(image),icetImageGetHeight(image));
+            icetRaiseError("Got unexpected image size from strategy.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+    }
 
   /* Correct background color where applicable. */
-    glClearColor(background_color[0], background_color[1],
-                 background_color[2], background_color[3]);
     if (   color_blending && (display_tile >= 0) && (background_color_word != 0)
         && icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-        GLubyte *color = icetGetImageColorBuffer(image);
-        GLubyte *bc = (GLubyte *)(&background_color_word);
-        GLuint pixels = icetGetImagePixelCount(image);
-        GLuint ui;
-        GLdouble blend_time;
+        IceTSizeType pixels =icetImageGetWidth(image)*icetImageGetHeight(image);
+        IceTEnum color_format = icetImageGetColorFormat(image);
+        IceTDouble blend_time;
         icetGetDoublev(ICET_BLEND_TIME, &blend_time);
         blend_time = icetWallTime() - blend_time;
-        for (ui = 0; ui < pixels; ui++, color += 4) {
-            ICET_UNDER(bc, color);
+        if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
+            IceTUByte *color = icetImageGetColorub(image);
+            IceTUByte *bc = (IceTUByte *)(&background_color_word);
+            IceTSizeType p;
+            for (p = 0; p < pixels; p++, color += 4) {
+                ICET_UNDER_UBYTE(bc, color);
+            }
+        } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
+            IceTFloat *color = icetImageGetColorf(image);
+            IceTSizeType p;
+            for (p = 0; p < pixels; p++, color += 4) {
+                ICET_UNDER_FLOAT(background_color, color);
+            }
+        } else {
+            icetRaiseError("Encountered invalid color buffer type"
+                           " with color blending.", ICET_SANITY_CHECK_FAIL);
         }
         blend_time = icetWallTime() - blend_time;
         icetStateSetDouble(ICET_BLEND_TIME, blend_time);
     }
 
-    buf_write_time = icetWallTime();
-    if (display_tile >= 0) {
-        GLubyte *colorBuffer;
-        GLenum output_buffers;
-
-        icetGetIntegerv(ICET_OUTPUT_BUFFERS, (GLint *)&output_buffers);
-        if ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0) {
-            icetStateSetBoolean(ICET_COLOR_BUFFER_VALID, 1);
-            colorBuffer = icetGetImageColorBuffer(image);
-            icetStateSetPointer(ICET_COLOR_BUFFER, colorBuffer);
-                                
-        }
-        if ((output_buffers & ICET_DEPTH_BUFFER_BIT) != 0) {
-            icetStateSetBoolean(ICET_DEPTH_BUFFER_VALID, 1);
-            icetStateSetPointer(ICET_DEPTH_BUFFER,
-                                icetGetImageDepthBuffer(image));
-        }    
-
-        if (   ((output_buffers & ICET_COLOR_BUFFER_BIT) != 0)
-            && icetIsEnabled(ICET_DISPLAY) ) {
-            GLint readBuffer;
-
-            icetRaiseDebug("Displaying image.");
-
-            icetGetIntegerv(ICET_READ_BUFFER, &readBuffer);
-            glDrawBuffer(readBuffer);
-
-          /* Place raster position in lower left corner. */
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
-            glLoadIdentity();
-            glRasterPos2f(-1, -1);
-            glPopMatrix();
-
-            colorBuffer = icetGetImageColorBuffer(image);
-
-            glPushAttrib(GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT);
-            glDisable(GL_TEXTURE_1D);
-            glDisable(GL_TEXTURE_2D);
-#ifdef GL_TEXTURE_3D
-            glDisable(GL_TEXTURE_3D);
-#endif
-            if (   color_blending
-                && icetIsEnabled(ICET_DISPLAY_COLORED_BACKGROUND)
-                && !icetIsEnabled(ICET_CORRECT_COLORED_BACKGROUND) ) {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glEnable(GL_BLEND);
-                glClear(GL_COLOR_BUFFER_BIT);
-            } else {
-                glDisable(GL_BLEND);
-            }
-            glClear(GL_DEPTH_BUFFER_BIT);
-            if (icetIsEnabled(ICET_DISPLAY_INFLATE)) {
-                inflateBuffer(colorBuffer,
-                              tile_viewports[display_tile*4+2],
-                              tile_viewports[display_tile*4+3]);
-            } else {
-                glDrawPixels(tile_viewports[display_tile*4+2],
-                             tile_viewports[display_tile*4+3],
-                             color_format, GL_UNSIGNED_BYTE, colorBuffer);
-            }
-            glPopAttrib();
-        }
-    }
-
-  /* Restore projection matrix. */
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixd(projection_matrix);
-    glMatrixMode(GL_MODELVIEW);
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
-    icetRaiseDebug("Calculating times.");
-    buf_write_time = icetWallTime() - buf_write_time;
-    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, buf_write_time);
-
+  /* Calculate times. */
     icetGetDoublev(ICET_RENDER_TIME, &render_time);
     icetGetDoublev(ICET_BUFFER_READ_TIME, &buf_read_time);
 
     total_time = icetWallTime() - total_time;
     icetStateSetDouble(ICET_TOTAL_DRAW_TIME, total_time);
 
-    compose_time = total_time - render_time - buf_read_time - buf_write_time;
+    compose_time = total_time - render_time - buf_read_time;
     icetStateSetDouble(ICET_COMPOSITE_TIME, compose_time);
+
+    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, 0.0);
+
+    return image;
 }
 
-static void inflateBuffer(GLubyte *buffer, GLsizei width, GLsizei height)
-{
-    GLint physical_viewport[4];
-    GLint display_width, display_height;
-    GLint color_format;
-
-    glGetIntegerv(GL_VIEWPORT, physical_viewport);
-    display_width = physical_viewport[2];
-    display_height = physical_viewport[3];
-
-    icetGetIntegerv(ICET_COLOR_FORMAT, &color_format);
-
-    if ((display_width <= width) && (display_height <= height)) {
-      /* No need to inflate image. */
-        glDrawPixels(width, height, color_format, GL_UNSIGNED_BYTE, buffer);
-    } else {
-        GLsizei x, y;
-        GLsizei x_div, y_div;
-        GLubyte *last_scanline;
-        GLint target_width, target_height;
-        int use_textures = icetIsEnabled(ICET_DISPLAY_INFLATE_WITH_HARDWARE);
-
-      /* If using hardware, resize to the nearest greater power of two.
-         Otherwise, resize to screen size. */
-        if (use_textures) {
-            for (target_width=1; target_width < width; target_width <<= 1);
-            for (target_height=1; target_height < height; target_height <<= 1);
-            if (target_width*target_height >= display_width*display_height) {
-              /* Sizing up to a power of two takes more data than just
-                 sizing up to the screen size. */
-                use_textures = 0;
-                target_width = display_width;
-                target_height = display_height;
-            }
-        } else {
-            target_width = display_width;
-            target_height = display_height;
-        }
-
-      /* Make sure buffer is big enough. */
-        if (display_buffer_size < target_width*target_height) {
-            free(display_buffer);
-            display_buffer_size = target_width*target_height;
-            display_buffer = malloc(4*sizeof(GLubyte)*display_buffer_size);
-        }
-
-      /* This is how we scale the image with integer arithmetic.
-       * If a/b = r = a div b + (a mod b)/b then:
-       *        c/r = c/(a div b + (a mod b)/b) = c*b/(b*(a div b) + a mod b)
-       * In our case a/b is target_width/width and target_height/height.
-       * x_div and y_div are the denominators in the equation above.
-       */
-        x_div = width*(target_width/width) + target_width%width;
-        y_div = height*(target_height/height) + target_height%height;
-        last_scanline = NULL;
-        for (y = 0; y < target_height; y++) {
-            GLubyte *src_scanline;
-            GLubyte *dest_scanline;
-
-            src_scanline = buffer + 4*width*((y*height)/y_div);
-            dest_scanline = display_buffer + 4*target_width*y;
-
-            if (src_scanline == last_scanline) {
-              /* Repeating last scanline.  Just copy memory. */
-                memcpy(dest_scanline,
-                       (const GLubyte *)(dest_scanline - 4*target_width),
-                       4*target_width);
-                continue;
-            }
-
-            for (x = 0; x < target_width; x++) {
-                ((GLuint *)dest_scanline)[x] =
-                    ((GLuint *)src_scanline)[(x*width)/x_div];
-            }
-
-            last_scanline = src_scanline;
-        }
-
-        if (use_textures) {
-          /* Setup texture. */
-            if (icet_current_context->display_inflate_texture == 0) {
-                glGenTextures(1,
-                              &(icet_current_context->display_inflate_texture));
-            }
-            glBindTexture(GL_TEXTURE_2D,
-                          icet_current_context->display_inflate_texture);
-            glEnable(GL_TEXTURE_2D);
-            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target_width, target_height,
-                         0, color_format, GL_UNSIGNED_BYTE, display_buffer);
-
-          /* Setup geometry. */
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
-            glLoadIdentity();
-
-          /* Draw texture. */
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glBegin(GL_QUADS);
-              glTexCoord2f(0, 0);  glVertex2f(-1, -1);
-              glTexCoord2f(1, 0);  glVertex2f( 1, -1);
-              glTexCoord2f(1, 1);  glVertex2f( 1,  1);
-              glTexCoord2f(0, 1);  glVertex2f(-1,  1);
-            glEnd();
-
-          /* Clean up. */
-            glPopMatrix();
-        } else {
-            glDrawPixels(target_width, target_height, color_format,
-                         GL_UNSIGNED_BYTE, display_buffer);
-        }
-    }
-}
-
-static void multMatrix(GLdouble *C, const GLdouble *A, const GLdouble *B)
+static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
 {
     int i, j, k;
 
