@@ -12,6 +12,7 @@ SET(MyTests
   DisplayNoDraw.c
   RandomTransform.c
   SimpleExample.c
+  SimpleTiming.c
   )
 
 SET(UTIL_SRCS init.c ppm.c)
