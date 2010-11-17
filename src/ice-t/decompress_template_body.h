@@ -35,7 +35,7 @@
 #endif
 
 {
-    const IceTVoid *_src;
+    const IceTByte *_src;  /* Use IceTByte for byte-based pointer arithmetic. */
     IceTSizeType _pixels;
     IceTSizeType _p;
     IceTSizeType _i;
