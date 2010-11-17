@@ -67,7 +67,7 @@
 #endif
 
 {
-    IceTVoid *_dest;
+  IceTByte *_dest;  /* Use IceTByte for byte-based pointer arithmetic. */
     IceTSizeType _pixels = CT_PIXEL_COUNT;
     IceTSizeType _p;
     IceTSizeType _count;
@@ -103,7 +103,8 @@
                     CT_INCREMENT_PIXEL();
                 }
                 if (_x >= _lastx) break;
-                _runlengths = _dest;
+                /* Yes, this cast is OK. */
+                _runlengths = (IceTUInt*)_dest;
                 _dest += RUN_LENGTH_SIZE;
                 while (_count > 0xFFFF) {
                     INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
@@ -112,7 +113,8 @@
                     _totalcount += 0xFFFF;
 #endif
                     _count -= 0xFFFF;
-                    _runlengths = _dest;
+                    /* Yes, this cast is OK. */
+                    _runlengths = (IceTUInt*)_dest;
                     _dest += RUN_LENGTH_SIZE;
                 }
                 INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
@@ -141,7 +143,8 @@
 
         _p = 0;
         while (_p < _pixels) {
-            IceTUInt *_runlengths = _dest;
+          /* Yes, this cast is OK. */
+            IceTUInt *_runlengths = (IceTUInt*)_dest;
             _dest += RUN_LENGTH_SIZE;
           /* Count background pixels. */
             while ((_p < _pixels) && (!CT_ACTIVE())) {
@@ -156,7 +159,8 @@
                 _totalcount += 0xFFFF;
 #endif
                 _count -= 0xFFFF;
-                _runlengths = _dest;
+                /* Yes, this cast is OK. */
+                _runlengths = (IceTUInt*)_dest;
                 _dest += RUN_LENGTH_SIZE;
             }
             INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;

@@ -59,7 +59,7 @@ IceTImage icetSplitCompose(void)
 
     IceTSparseImage incoming;
     IceTVoid **incomingBuffers;
-    IceTVoid *nextInBuf;
+    IceTByte *nextInBuf;  /* Use IceTByte for byte-based pointer arithmetic. */
     IceTSparseImage outgoing;
     IceTImage imageFragment;
     IceTImage fullImage;
@@ -313,7 +313,8 @@ IceTImage icetSplitCompose(void)
                             (  tile_groups[tile_displayed+1]
                              - tile_groups[tile_displayed] ));
             if (color_format != ICET_IMAGE_COLOR_NONE) {
-                IceTVoid *cb = icetImageGetColorVoid(fullImage, &pixel_size);
+              /* Use IceTByte for byte-based pointer arithmetic. */
+                IceTByte *cb = icetImageGetColorVoid(fullImage, &pixel_size);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final color fragment from %d",
@@ -324,7 +325,8 @@ IceTImage icetSplitCompose(void)
                 }
             }
             if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-                IceTVoid *db = icetImageGetDepthVoid(fullImage, &pixel_size);
+              /* Use IceTByte for byte-based pointer arithmetic. */
+                IceTByte *db = icetImageGetDepthVoid(fullImage, &pixel_size);
                 for (node = tile_groups[tile_displayed];
                      node < tile_groups[tile_displayed+1]; node++) {
                     icetRaiseDebug1("Getting final depth fragment from %d",

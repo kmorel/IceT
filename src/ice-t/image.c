@@ -514,6 +514,7 @@ IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
     IceTSizeType color_format_bytes;
+    IceTByte *image_data_pointer;
 
     if (pixel_size) {
         IceTEnum depth_format = icetImageGetDepthFormat(image);
@@ -523,7 +524,10 @@ IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
     color_format_bytes = (  icetImageGetNumPixels(image)
                           * colorPixelSize(color_format) );
 
-    return ICET_IMAGE_DATA(image) + color_format_bytes;
+    /* Cast to IceTByte to ensure pointer arithmetic is correct. */
+    image_data_pointer = (IceTByte*)ICET_IMAGE_DATA(image);
+
+    return image_data_pointer + color_format_bytes;
 }
 IceTFloat *icetImageGetDepthf(IceTImage image)
 {
@@ -673,8 +677,8 @@ void icetImageCopyPixels(const IceTImage in_image, IceTSizeType in_offset,
     }
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
-        const IceTVoid *in_colors;
-        IceTVoid *out_colors;
+        const IceTByte *in_colors;  /* Use IceTByte for pointer arithmetic */
+        IceTByte *out_colors;
         IceTSizeType pixel_size;
         in_colors = icetImageGetColorVoid(in_image, &pixel_size);
         out_colors = icetImageGetColorVoid(out_image, NULL);
@@ -684,8 +688,8 @@ void icetImageCopyPixels(const IceTImage in_image, IceTSizeType in_offset,
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        const IceTVoid *in_depths;
-        IceTVoid *out_depths;
+        const IceTByte *in_depths;  /* Use IceTByte for pointer arithmetic */
+        IceTByte *out_depths;
         IceTSizeType pixel_size;
         in_depths = icetImageGetDepthVoid(in_image, &pixel_size);
         out_depths = icetImageGetDepthVoid(out_image, NULL);
@@ -719,8 +723,9 @@ void icetImageCopyRegion(const IceTImage in_image,
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
         IceTSizeType pixel_size;
-        const IceTVoid *src = icetImageGetColorVoid(in_image, &pixel_size);
-        IceTVoid *dest = icetImageGetColorVoid(out_image, &pixel_size);
+        /* Use IceTByte for byte-based pointer arithmetic. */
+        const IceTByte *src = icetImageGetColorVoid(in_image, &pixel_size);
+        IceTByte *dest = icetImageGetColorVoid(out_image, &pixel_size);
         IceTSizeType y;
 
       /* Advance pointers up to vertical offset. */
@@ -740,8 +745,9 @@ void icetImageCopyRegion(const IceTImage in_image,
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
         IceTSizeType pixel_size;
-        const IceTVoid *src = icetImageGetDepthVoid(in_image, &pixel_size);
-        IceTVoid *dest = icetImageGetDepthVoid(out_image, &pixel_size);
+        /* Use IceTByte for byte-based pointer arithmetic. */
+        const IceTByte *src = icetImageGetDepthVoid(in_image, &pixel_size);
+        IceTByte *dest = icetImageGetDepthVoid(out_image, &pixel_size);
         IceTSizeType y;
 
       /* Advance pointers up to vertical offset. */
@@ -1015,7 +1021,8 @@ void icetClearSparseImage(IceTSparseImage image)
 {
     ICET_TEST_SPARSE_IMAGE_HEADER(image);
 
-    IceTVoid *data = ICET_IMAGE_DATA(image);
+    /* Use IceTByte for byte-based pointer arithmetic. */
+    IceTByte *data = ICET_IMAGE_DATA(image);
     IceTSizeType p = icetSparseImageGetNumPixels(image);
 
     while (p > 0xFFFF) {
