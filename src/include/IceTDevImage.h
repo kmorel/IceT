@@ -32,8 +32,14 @@ ICET_EXPORT void icetImageSetDimensions(IceTImage image,
                                         IceTSizeType height);
 ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
+ICET_EXPORT const IceTVoid *icetImageGetColorConstVoid(
+                                                      const IceTImage image,
+                                                      IceTSizeType *pixel_size);
 ICET_EXPORT IceTVoid *icetImageGetDepthVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
+ICET_EXPORT const IceTVoid *icetImageGetDepthConstVoid(
+                                                      const IceTImage image,
+                                                      IceTSizeType *pixel_size);
 ICET_EXPORT IceTBoolean icetImageEqual(const IceTImage image1,
                                        const IceTImage image2);
 ICET_EXPORT void icetImageCopyPixels(const IceTImage in_image,
