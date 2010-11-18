@@ -10,6 +10,7 @@
 *****************************************************************************/
 
 #include <IceTGL.h>
+#include <IceTDevCommunication.h>
 #include "test-util.h"
 #include "test_codes.h"
 
@@ -24,10 +25,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 /* Program arguments. */
 static int g_num_tiles_x;
 static int g_num_tiles_y;
+static int g_num_frames;
+static int g_seed;
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -35,6 +39,8 @@ static void parse_arguments(int argc, char *argv[])
 
     g_num_tiles_x = 1;
     g_num_tiles_y = 1;
+    g_num_frames = 100;
+    g_seed = time(NULL);
 
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-tilesx") == 0) {
@@ -43,6 +49,12 @@ static void parse_arguments(int argc, char *argv[])
         } else if (strcmp(argv[arg], "-tilesy") == 0) {
             arg++;
             g_num_tiles_y = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-frames") == 0) {
+            arg++;
+            g_num_frames = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-seed") == 0) {
+            arg++;
+            g_seed = atoi(argv[arg]);
         } else {
             printf("Unknown option `%s'.\n", argv[arg]);
             exit(1);
@@ -108,7 +120,7 @@ static int SimpleTimingRun()
 
     float aspect
         = (float)(g_num_tiles_x*SCREEN_WIDTH)/(g_num_tiles_y*SCREEN_HEIGHT);
-    float angle;
+    int frame;
     float bounds_min[3];
     float bounds_max[3];
 
@@ -187,13 +199,25 @@ static int SimpleTimingRun()
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
     }
 
-    /* Print logging header. */
+    /* Initialize randomness. */
     if (rank == 0) {
-        printf("HEADER,num processes,tiles x,tiles y,rank,render time,buffer read time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
+        int i;
+        printf("Seed = %d\n", g_seed);
+        for (i = 1; i < num_proc; i++) {
+            icetCommSend(&g_seed, 1, ICET_INT, i, 33);
+        }
+    } else {
+        icetCommRecv(&g_seed, 1, ICET_INT, 0, 33);
     }
 
-    /* Here is an example of an animation loop. */
-    for (angle = 0; angle < 360; angle += 10) {
+    srand(g_seed);
+
+    /* Print logging header. */
+    if (rank == 0) {
+        printf("HEADER,num processes,tiles x,tiles y,frame,rank,render time,buffer read time,buffer write time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
+    }
+
+    for (frame = 0; frame < g_num_frames; frame++) {
         IceTDouble elapsed_time = icetWallTime();
 
         /* We can set up a modelview matrix here and IceT will factor this in
@@ -204,8 +228,10 @@ static int SimpleTimingRun()
         /* Move geometry back so that it can be seen by the camera. */
         glTranslatef(0.0, 0.0, -2.0);
 
-        /* Rotate around the predetermined angle. */
-        glRotatef(angle, 0.0, 1.0, 0.0);
+        /* Rotate to some random view. */
+        glRotatef((360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
+        glRotatef((360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
+        glRotatef((360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
 
         /* Translate the unit box centered on the origin to the region specified
          * by bounds_min and bounds_max. */
@@ -248,10 +274,11 @@ static int SimpleTimingRun()
             icetGetDoublev(ICET_COMPOSITE_TIME, &composite_time);
             icetGetIntegerv(ICET_BYTES_SENT, &bytes_sent);
 
-            printf("LOG,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
+            printf("LOG,%d,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
                    num_proc,
                    g_num_tiles_x,
                    g_num_tiles_y,
+                   frame,
                    rank,
                    render_time,
                    buffer_read_time,
