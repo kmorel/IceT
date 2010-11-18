@@ -204,9 +204,11 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     glutInitWindowPosition(0, 0);
     glutInitWindowSize(width, height);
 
-    char title[256];
-    sprintf(title, "IceT Test %d of %d", rank, num_proc);
-    windowId = glutCreateWindow(title);
+    {
+        char title[256];
+        sprintf(title, "IceT Test %d of %d", rank, num_proc);
+        windowId = glutCreateWindow(title);
+    }
 
     SCREEN_WIDTH = width;
     SCREEN_HEIGHT = height;
@@ -267,12 +269,14 @@ static void no_op()
 
 static void glut_draw()
 {
+    int result;
+
     glEnable(GL_DEPTH_TEST);
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glClear(GL_COLOR_BUFFER_BIT);
     swap_buffers();
 
-    int result = test_function();
+    result = test_function();
 
     finalize_test(result);
 

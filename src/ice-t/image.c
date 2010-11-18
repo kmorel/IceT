@@ -472,7 +472,8 @@ void icetSparseImageSetDimensions(IceTSparseImage image,
     icetClearSparseImage(image);
 }
 
-IceTVoid *icetImageGetColorVoid(IceTImage image, IceTSizeType *pixel_size)
+const IceTVoid *icetImageGetColorConstVoid(const IceTImage image,
+                                           IceTSizeType *pixel_size)
 {
     if (pixel_size) {
         IceTEnum color_format = icetImageGetColorFormat(image);
@@ -481,7 +482,16 @@ IceTVoid *icetImageGetColorVoid(IceTImage image, IceTSizeType *pixel_size)
 
     return ICET_IMAGE_DATA(image);
 }
-IceTUByte *icetImageGetColorub(IceTImage image)
+IceTVoid *icetImageGetColorVoid(IceTImage image, IceTSizeType *pixel_size)
+{
+    const IceTVoid *const_buffer = icetImageGetColorConstVoid(image, pixel_size);
+
+    /* This const cast is OK because we actually got the pointer from a
+       non-const image. */
+    return (IceTVoid *)const_buffer;
+}
+
+const IceTUByte *icetImageGetColorcub(IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
@@ -491,13 +501,25 @@ IceTUByte *icetImageGetColorub(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetColorVoid(image, NULL);
+    return icetImageGetColorConstVoid(image, NULL);
+}
+IceTUByte *icetImageGetColorub(IceTImage image)
+{
+    const IceTUByte *const_buffer = icetImageGetColorcub(image);
+
+    /* This const cast is OK because we actually got the pointer from a
+       non-const image. */
+    return (IceTUByte *)const_buffer;
+}
+const IceTUInt *icetImageGetColorcui(IceTImage image)
+{
+    return (const IceTUInt *)icetImageGetColorcub(image);
 }
 IceTUInt *icetImageGetColorui(IceTImage image)
 {
     return (IceTUInt *)icetImageGetColorub(image);
 }
-IceTFloat *icetImageGetColorf(IceTImage image)
+const IceTFloat *icetImageGetColorcf(const IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
@@ -507,14 +529,24 @@ IceTFloat *icetImageGetColorf(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetColorVoid(image, NULL);
+    return icetImageGetColorConstVoid(image, NULL);
+}
+IceTFloat *icetImageGetColorf(IceTImage image)
+{
+    const IceTFloat *const_buffer = icetImageGetColorcf(image);
+
+    
+    /* This const cast is OK because we actually got the pointer from a
+       non-const image. */
+    return (IceTFloat *)const_buffer;
 }
 
-IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
+const IceTVoid *icetImageGetDepthConstVoid(const IceTImage image,
+                                           IceTSizeType *pixel_size)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
     IceTSizeType color_format_bytes;
-    IceTByte *image_data_pointer;
+    const IceTByte *image_data_pointer;
 
     if (pixel_size) {
         IceTEnum depth_format = icetImageGetDepthFormat(image);
@@ -525,11 +557,19 @@ IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
                           * colorPixelSize(color_format) );
 
     /* Cast to IceTByte to ensure pointer arithmetic is correct. */
-    image_data_pointer = (IceTByte*)ICET_IMAGE_DATA(image);
+    image_data_pointer = (const IceTByte*)ICET_IMAGE_DATA(image);
 
     return image_data_pointer + color_format_bytes;
 }
-IceTFloat *icetImageGetDepthf(IceTImage image)
+IceTVoid *icetImageGetDepthVoid(IceTImage image, IceTSizeType *pixel_size)
+{
+    const IceTVoid *const_buffer =icetImageGetDepthConstVoid(image, pixel_size);
+
+    /* This const cast is OK because we actually got the pointer from a
+       non-const image. */
+    return (IceTVoid *)const_buffer;  
+}
+const IceTFloat *icetImageGetDepthcf(const IceTImage image)
 {
     IceTEnum depth_format = icetImageGetDepthFormat(image);
 
@@ -539,7 +579,16 @@ IceTFloat *icetImageGetDepthf(IceTImage image)
         return NULL;
     }
 
-    return icetImageGetDepthVoid(image, NULL);
+    return icetImageGetDepthConstVoid(image, NULL);
+}
+IceTFloat *icetImageGetDepthf(IceTImage image)
+{
+    const IceTFloat *const_buffer = icetImageGetDepthcf(image);
+
+    
+    /* This const cast is OK because we actually got the pointer from a
+       non-const image. */
+    return (IceTFloat *)const_buffer;
 }
 
 void icetImageCopyColorub(const IceTImage image,
@@ -560,13 +609,13 @@ void icetImageCopyColorub(const IceTImage image,
     }
 
     if (in_color_format == out_color_format) {
-        const IceTUByte *in_buffer = icetImageGetColorub((IceTImage)image);
+        const IceTUByte *in_buffer = icetImageGetColorcub(image);
         IceTSizeType color_format_bytes = (  icetImageGetNumPixels(image)
                                            * colorPixelSize(in_color_format) );
         memcpy(color_buffer, in_buffer, color_format_bytes);
     } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
                && (out_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) ) {
-        const IceTFloat *in_buffer = icetImageGetColorf((IceTImage)image);
+        const IceTFloat *in_buffer = icetImageGetColorcf(image);
         IceTSizeType num_pixels = icetImageGetNumPixels(image);
         IceTSizeType i;
         const IceTFloat *in;
@@ -599,13 +648,13 @@ void icetImageCopyColorf(const IceTImage image,
     }
 
     if (in_color_format == out_color_format) {
-        const IceTFloat *in_buffer = icetImageGetColorf((IceTImage)image);
+        const IceTFloat *in_buffer = icetImageGetColorcf(image);
         IceTSizeType color_format_bytes = (  icetImageGetNumPixels(image)
                                            * colorPixelSize(in_color_format) );
         memcpy(color_buffer, in_buffer, color_format_bytes);
     } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
                && (out_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) ) {
-        const IceTUByte *in_buffer = icetImageGetColorub((IceTImage)image);
+        const IceTUByte *in_buffer = icetImageGetColorcub(image);
         IceTSizeType num_pixels = icetImageGetNumPixels(image);
         IceTSizeType i;
         const IceTUByte *in;
@@ -639,10 +688,12 @@ void icetImageCopyDepthf(const IceTImage image,
 
   /* Currently only possibility is
      in_color_format == out_color_format == ICET_IMAGE_DEPTH_FLOAT. */
-    const IceTFloat *in_buffer = icetImageGetDepthf((IceTImage)image);
-    IceTSizeType depth_format_bytes = (  icetImageGetNumPixels(image)
-                                       * depthPixelSize(in_depth_format) );
-    memcpy(depth_buffer, in_buffer, depth_format_bytes);
+    {
+        const IceTFloat *in_buffer = icetImageGetDepthcf(image);
+        IceTSizeType depth_format_bytes = (  icetImageGetNumPixels(image)
+                                           * depthPixelSize(in_depth_format) );
+        memcpy(depth_buffer, in_buffer, depth_format_bytes);
+    }
 }
 
 IceTBoolean icetImageEqual(const IceTImage image1, const IceTImage image2)
@@ -1019,11 +1070,14 @@ void icetClearImage(IceTImage image)
 
 void icetClearSparseImage(IceTSparseImage image)
 {
+    IceTByte *data;
+    IceTSizeType p;
+
     ICET_TEST_SPARSE_IMAGE_HEADER(image);
 
     /* Use IceTByte for byte-based pointer arithmetic. */
-    IceTByte *data = ICET_IMAGE_DATA(image);
-    IceTSizeType p = icetSparseImageGetNumPixels(image);
+    data = ICET_IMAGE_DATA(image);
+    p = icetSparseImageGetNumPixels(image);
 
     while (p > 0xFFFF) {
         INACTIVE_RUN_LENGTH(data) = 0xFFFF;
@@ -1290,7 +1344,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                              ICET_INVALID_VALUE);
         }
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            const IceTUByte *srcColorBuffer = icetImageGetColorub(srcBuffer);
+            const IceTUByte *srcColorBuffer = icetImageGetColorcub(srcBuffer);
             IceTUByte *destColorBuffer = icetImageGetColorub(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
@@ -1304,7 +1358,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                 }
             }
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+            const IceTFloat *srcColorBuffer = icetImageGetColorcf(srcBuffer);
             IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
