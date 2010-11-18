@@ -5,8 +5,8 @@
 **
 ** This source code is released under the New BSD License.
 **
-** This test provides a simple example of using IceT to perform parallel
-** rendering.
+** This test provides a simple means of timing the IceT compositing.  It can be
+** used for quick measurements and simple scaling studies.
 *****************************************************************************/
 
 #include <IceTGL.h>
@@ -23,6 +23,32 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+
+/* Program arguments. */
+static int g_num_tiles_x;
+static int g_num_tiles_y;
+
+static void parse_arguments(int argc, char *argv[])
+{
+    int arg;
+
+    g_num_tiles_x = 1;
+    g_num_tiles_y = 1;
+
+    for (arg = 1; arg < argc; arg++) {
+        if (strcmp(argv[arg], "-tilesx") == 0) {
+            arg++;
+            g_num_tiles_x = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-tilesy") == 0) {
+            arg++;
+            g_num_tiles_y = atoi(argv[arg]);
+        } else {
+            printf("Unknown option `%s'.\n", argv[arg]);
+            exit(1);
+        }
+    }
+}
 
 static void draw(void)
 {
@@ -80,7 +106,8 @@ static int SimpleTimingRun()
     IceTInt rank;
     IceTInt num_proc;
 
-    float aspect = (float)SCREEN_WIDTH/SCREEN_HEIGHT;
+    float aspect
+        = (float)(g_num_tiles_x*SCREEN_WIDTH)/(g_num_tiles_y*SCREEN_HEIGHT);
     float angle;
     float bounds_min[3];
     float bounds_max[3];
@@ -115,37 +142,27 @@ static int SimpleTimingRun()
      * used for the modelview transformation later. */
     find_region(rank, num_proc, bounds_min, bounds_max);
 
-    /* Set up the tiled display.  Normally, the display will be fixed for a
-     * given installation, but since this is a demo, we give two specific
-     * examples. */
-    if (num_proc < 4) {
-        /* Here is an example of a "1 tile" case.  This is functionally
-         * identical to a traditional sort last algorithm. */
+    /* Set up the tiled display.  The asignment of displays to processes is
+     * arbitrary because,as this is a timing test, I am not too concerned
+     * about who shows what. */
+    if (g_num_tiles_x*g_num_tiles_y <= num_proc) {
+        int x, y, display_rank;
         icetResetTiles();
-        icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        display_rank = 0;
+        for (y = 0; y < g_num_tiles_y; y++) {
+            for (x = 0; x < g_num_tiles_x; x++) {
+                icetAddTile(x*SCREEN_WIDTH,
+                            y*SCREEN_HEIGHT,
+                            SCREEN_WIDTH,
+                            SCREEN_HEIGHT,
+                            display_rank);
+                display_rank++;
+            }
+        }
     } else {
-        /* Here is an example of a 4x4 tile layout.  The tiles are displayed
-         * with the following ranks:
-         *
-         *               +---+---+
-         *               | 0 | 1 |
-         *               +---+---+
-         *               | 2 | 3 |
-         *               +---+---+
-         *
-         * Each tile is simply defined by grabing a viewport in an infinite
-         * global display screen.  The global viewport projection is
-         * automatically set to the smallest region containing all tiles.
-         *
-         * This example also shows tiles abutted against each other.  Mullions
-         * and overlaps can be implemented by simply shifting tiles on top of or
-         * away from each other.
-         */
-        icetResetTiles();
-        icetAddTile(0,           SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
-        icetAddTile(SCREEN_WIDTH,SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
-        icetAddTile(0,           0,             SCREEN_WIDTH, SCREEN_HEIGHT, 2);
-        icetAddTile(SCREEN_WIDTH,0,             SCREEN_WIDTH, SCREEN_HEIGHT, 3);
+        printf("Not enough processes to %dx%d tiles.\n",
+               g_num_tiles_x, g_num_tiles_y);
+        return TEST_FAILED;
     }
 
     /* Tell IceT what strategy to use.  The REDUCE strategy is an all-around
@@ -172,7 +189,7 @@ static int SimpleTimingRun()
 
     /* Print logging header. */
     if (rank == 0) {
-        printf("HEADER,num processes,rank,render time,buffer read time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
+        printf("HEADER,num processes,tiles x,tiles y,rank,render time,buffer read time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
     }
 
     /* Here is an example of an animation loop. */
@@ -231,8 +248,10 @@ static int SimpleTimingRun()
             icetGetDoublev(ICET_COMPOSITE_TIME, &composite_time);
             icetGetIntegerv(ICET_BYTES_SENT, &bytes_sent);
 
-            printf("LOG,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
+            printf("LOG,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
                    num_proc,
+                   g_num_tiles_x,
+                   g_num_tiles_y,
                    rank,
                    render_time,
                    buffer_read_time,
@@ -251,9 +270,7 @@ static int SimpleTimingRun()
 
 int SimpleTiming(int argc, char * argv[])
 {
-    /* To remove warning */
-    (void)argc;
-    (void)argv;
+    parse_arguments(argc, argv);
 
     return run_test(SimpleTimingRun);
 }
