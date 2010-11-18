@@ -1344,7 +1344,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                              ICET_INVALID_VALUE);
         }
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
-            const IceTUByte *srcColorBuffer = icetImageGetColorub(srcBuffer);
+            const IceTUByte *srcColorBuffer = icetImageGetColorcub(srcBuffer);
             IceTUByte *destColorBuffer = icetImageGetColorub(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
@@ -1358,7 +1358,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                 }
             }
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
-            const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+            const IceTFloat *srcColorBuffer = icetImageGetColorcf(srcBuffer);
             IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
             if (srcOnTop) {
                 for (i = 0; i < pixels; i++) {
