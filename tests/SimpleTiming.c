@@ -170,10 +170,17 @@ static int SimpleTimingRun()
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
     }
 
-  /* Here is an example of an animation loop. */
+    /* Print logging header. */
+    if (rank == 0) {
+        printf("HEADER,num processes,rank,render time,buffer read time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
+    }
+
+    /* Here is an example of an animation loop. */
     for (angle = 0; angle < 360; angle += 10) {
-      /* We can set up a modelview matrix here and IceT will factor this in
-       * determining the screen projection of the geometry. */
+        IceTDouble elapsed_time = icetWallTime();
+
+        /* We can set up a modelview matrix here and IceT will factor this in
+         * determining the screen projection of the geometry. */
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
@@ -201,6 +208,42 @@ static int SimpleTimingRun()
        * synchronize (a barrier is often about as good as you can do) and
        * then a swap buffers. */
         swap_buffers();
+
+        elapsed_time = icetWallTime() - elapsed_time;
+
+        /* Print timings to logging. */
+        {
+            IceTDouble render_time;
+            IceTDouble buffer_read_time;
+            IceTDouble buffer_write_time;
+            IceTDouble compress_time;
+            IceTDouble blend_time;
+            IceTDouble draw_time;
+            IceTDouble composite_time;
+            IceTInt bytes_sent;
+
+            icetGetDoublev(ICET_RENDER_TIME, &render_time);
+            icetGetDoublev(ICET_BUFFER_READ_TIME, &buffer_read_time);
+            icetGetDoublev(ICET_BUFFER_WRITE_TIME, &buffer_write_time);
+            icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
+            icetGetDoublev(ICET_BLEND_TIME, &blend_time);
+            icetGetDoublev(ICET_TOTAL_DRAW_TIME, &draw_time);
+            icetGetDoublev(ICET_COMPOSITE_TIME, &composite_time);
+            icetGetIntegerv(ICET_BYTES_SENT, &bytes_sent);
+
+            printf("LOG,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
+                   num_proc,
+                   rank,
+                   render_time,
+                   buffer_read_time,
+                   buffer_write_time,
+                   compress_time,
+                   blend_time,
+                   draw_time,
+                   composite_time,
+                   bytes_sent,
+                   elapsed_time);
+        }
     }
 
     return TEST_PASSED;
