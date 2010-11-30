@@ -16,9 +16,11 @@
 
 #ifdef __APPLE__
 #  include <OpenGL/gl.h>
+#  include <OpenGL/glu.h>
 #  include <GLUT/glut.h>
 #else
 #  include <GL/gl.h>
+#  include <GL/glu.h>
 #  include <GL/glut.h>
 #endif
 
@@ -27,11 +29,25 @@
 #include <string.h>
 #include <time.h>
 
+/* Structure used to capture the recursive division of space. */
+struct region_divide_struct {
+    int axis;           /* x = 0, y = 1, z = 2: the index to a vector array. */
+    float cut;          /* Coordinate where cut occurs. */
+    int my_side;        /* -1 on the negative side, 1 on the positive side. */
+    int num_other_side; /* Number of partitions on other side. */
+    struct region_divide_struct *next;
+};
+
+typedef struct region_divide_struct *region_divide;
+
 /* Program arguments. */
 static int g_num_tiles_x;
 static int g_num_tiles_y;
 static int g_num_frames;
 static int g_seed;
+static int g_transparent;
+static IceTEnum g_strategy;
+static IceTEnum g_single_image_strategy;
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -41,6 +57,9 @@ static void parse_arguments(int argc, char *argv[])
     g_num_tiles_y = 1;
     g_num_frames = 100;
     g_seed = time(NULL);
+    g_transparent = 0;
+    g_strategy = ICET_STRATEGY_REDUCE;
+    g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
 
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-tilesx") == 0) {
@@ -55,6 +74,18 @@ static void parse_arguments(int argc, char *argv[])
         } else if (strcmp(argv[arg], "-seed") == 0) {
             arg++;
             g_seed = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-transparent") == 0) {
+            g_transparent = 1;
+        } else if (strcmp(argv[arg], "-reduce") == 0) {
+            g_strategy = ICET_STRATEGY_REDUCE;
+        } else if (strcmp(argv[arg], "-vtree") == 0) {
+            g_strategy = ICET_STRATEGY_VTREE;
+        } else if (strcmp(argv[arg], "-sequential") == 0) {
+            g_strategy = ICET_STRATEGY_SEQUENTIAL;
+        } else if (strcmp(argv[arg], "-bswap") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+        } else if (strcmp(argv[arg], "-tree") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_TREE;
         } else {
             printf("Unknown option `%s'.\n", argv[arg]);
             exit(1);
@@ -77,14 +108,18 @@ static void draw(void)
 static void find_region(int rank,
                         int num_proc,
                         float *bounds_min,
-                        float *bounds_max)
+                        float *bounds_max,
+                        region_divide *divisions)
 {
     int axis = 0;
     int start_rank = 0;         /* The first rank. */
     int end_rank = num_proc;    /* One after the last rank. */
+    region_divide current_division = NULL;
 
     bounds_min[0] = bounds_min[1] = bounds_min[2] = -0.5;
     bounds_max[0] = bounds_max[1] = bounds_max[2] = 0.5;
+
+    *divisions = NULL;
 
     /* Recursively split each axis, dividing the number of processes in my group
        in half each time. */
@@ -92,6 +127,7 @@ static void find_region(int rank,
         float length = bounds_max[axis] - bounds_min[axis];
         int middle_rank = (start_rank + end_rank)/2;
         float region_cut;
+        region_divide new_divide = malloc(sizeof(struct region_divide_struct));
 
         /* Skew the place where we cut the region based on the relative size
          * of the group size on each side, which may be different if the
@@ -99,18 +135,115 @@ static void find_region(int rank,
         region_cut = (  bounds_min[axis]
                       + length*(middle_rank-start_rank)/(end_rank-start_rank) );
 
+        new_divide->axis = axis;
+        new_divide->cut = region_cut;
+        new_divide->next = NULL;
+
         if (rank < middle_rank) {
             /* My rank is in the lower region. */
+            new_divide->my_side = -1;
+            new_divide->num_other_side = end_rank - middle_rank;
             bounds_max[axis] = region_cut;
             end_rank = middle_rank;
         } else {
             /* My rank is in the upper region. */
+            new_divide->my_side = 1;
+            new_divide->num_other_side = middle_rank - start_rank;
             bounds_min[axis] = region_cut;
             start_rank = middle_rank;
         }
 
+        if (current_division != NULL) {
+            current_division->next = new_divide;
+        } else {
+            *divisions = new_divide;
+        }
+        current_division = new_divide;
+
         axis = (axis + 1)%3;
     }
+}
+
+/* Given the current OpenGL transformation matricies (representing camera
+ * position), determine which side of each axis-aligned plane faces the
+ * camera.  The results are stored in plane_orientations, which is expected
+ * to be an array of size 3.  Entry 0 in plane_orientations will be positive
+ * if the vector (1, 0, 0) points towards the camera, negative otherwise.
+ * Entries 1 and 2 are likewise for the y and z vectors. */
+static void get_axis_plane_orientations(int *plane_orientations)
+{
+    GLdouble modelview[16];
+    GLdouble projection[16];
+    GLint view[4] = { 0, 0, 1, 1};
+    GLdouble dummy_x, dummy_y;
+    GLdouble dist_0;
+    int i;
+
+    /* Get transformation matrices. */
+    glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+    glGetDoublev(GL_PROJECTION_MATRIX, projection);
+
+    /* Get distance from viewpoint to origin. */
+    gluProject(0.0, 0.0, 0.0,
+               modelview, projection, view,
+               &dummy_x, &dummy_y, &dist_0);
+
+    /* For each axis, determine the distance between viewpoint and unit vector
+     * and use that and the distance to origin to determine whether the vector
+     * points towards or away from the camera. */
+    for (i = 0; i < 3; i++) {
+        GLdouble unit_vector[3];
+        GLdouble dist_unit;
+
+        unit_vector[0] = unit_vector[1] = unit_vector[2] = 0.0;
+        unit_vector[i] = 1.0;
+        gluProject(unit_vector[0], unit_vector[1], unit_vector[2],
+                   modelview, projection, view,
+                   &dummy_x, &dummy_y, &dist_unit);
+
+        if (dist_unit < dist_0) {
+            plane_orientations[i] = 1;
+        } else {
+            plane_orientations[i] = -1;
+        }
+    }
+}
+
+/* Use the current OpenGL transformation matricies (representing camera
+ * position) and the given region divisions to determine the composite
+ * ordering. */
+static void find_composite_order(region_divide region_divisions)
+{
+    int num_proc = icetCommSize();
+    IceTInt *process_ranks = malloc(num_proc * sizeof(IceTInt));
+    IceTInt my_position;
+    int plane_orientations[3];
+    region_divide current_divide;
+
+    get_axis_plane_orientations(plane_orientations);
+
+    my_position = 0;
+    for (current_divide = region_divisions;
+         current_divide != NULL;
+         current_divide = current_divide->next) {
+        int axis = current_divide->axis;
+        int my_side = current_divide->my_side;
+        int plane_side = plane_orientations[axis];
+        /* If my_side is the side of the plane away from the camera, add
+           everything on the other side as before me. */
+        if (   ((my_side < 0) && (0 < plane_side))
+            || ((0 < my_side) && (plane_side < 0)) ) {
+            my_position += current_divide->num_other_side;
+        }
+    }
+
+    process_ranks = malloc(num_proc * sizeof(IceTInt));
+    icetCommAllgather(&my_position, 1, ICET_INT, process_ranks);
+
+    icetEnable(ICET_ORDERED_COMPOSITE);
+    icetCompositeOrder(process_ranks);
+
+    free(process_ranks);
 }
 
 static int SimpleTimingRun()
@@ -123,6 +256,7 @@ static int SimpleTimingRun()
     int frame;
     float bounds_min[3];
     float bounds_max[3];
+    region_divide region_divisions;
 
     /* Normally, the first thing that you do is set up your communication and
      * then create at least one IceT context.  This has already been done in the
@@ -145,6 +279,17 @@ static int SimpleTimingRun()
     /* Give IceT a function that will issue the OpenGL drawing commands. */
     icetGLDrawCallback(draw);
 
+    /* Other IceT state. */
+    if (g_transparent) {
+        icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
+        icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
+        icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+    } else {
+        icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+        icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+        icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    }
+
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
      * will take care of any transformation that happens before
      * icetGLDrawFrame. */
@@ -152,7 +297,7 @@ static int SimpleTimingRun()
 
     /* Determine the region we want the local geometry to be in.  This will be
      * used for the modelview transformation later. */
-    find_region(rank, num_proc, bounds_min, bounds_max);
+    find_region(rank, num_proc, bounds_min, bounds_max, &region_divisions);
 
     /* Set up the tiled display.  The asignment of displays to processes is
      * arbitrary because,as this is a timing test, I am not too concerned
@@ -177,9 +322,8 @@ static int SimpleTimingRun()
         return TEST_FAILED;
     }
 
-    /* Tell IceT what strategy to use.  The REDUCE strategy is an all-around
-     * good performer. */
-    icetStrategy(ICET_STRATEGY_REDUCE);
+    icetStrategy(g_strategy);
+    icetSingleImageStrategy(g_single_image_strategy);
 
     /* Set up the projection matrix as you normally would. */
     glMatrixMode(GL_PROJECTION);
@@ -196,6 +340,12 @@ static int SimpleTimingRun()
         color[1] = (float)((rank/2)%2);
         color[2] = (float)((rank/4)%2);
         color[3] = 1.0;
+        if (g_transparent) {
+            color[0] *= 0.25;
+            color[1] *= 0.25;
+            color[2] *= 0.25;
+            color[3] *= 0.25;
+        }
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
     }
 
@@ -232,6 +382,12 @@ static int SimpleTimingRun()
         glRotatef((360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
         glRotatef((360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
         glRotatef((360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
+
+        /* Determine view ordering of geometry based on camera position
+           (represented by the current projection and modelview matrices). */
+        if (g_transparent) {
+            find_composite_order(region_divisions);
+        }
 
         /* Translate the unit box centered on the origin to the region specified
          * by bounds_min and bounds_max. */
