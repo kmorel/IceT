@@ -32,6 +32,8 @@ static int g_num_tiles_x;
 static int g_num_tiles_y;
 static int g_num_frames;
 static int g_seed;
+static IceTEnum g_strategy;
+static IceTEnum g_single_image_strategy;
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -41,6 +43,8 @@ static void parse_arguments(int argc, char *argv[])
     g_num_tiles_y = 1;
     g_num_frames = 100;
     g_seed = time(NULL);
+    g_strategy = ICET_STRATEGY_REDUCE;
+    g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
 
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-tilesx") == 0) {
@@ -55,6 +59,16 @@ static void parse_arguments(int argc, char *argv[])
         } else if (strcmp(argv[arg], "-seed") == 0) {
             arg++;
             g_seed = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-reduce") == 0) {
+            g_strategy = ICET_STRATEGY_REDUCE;
+        } else if (strcmp(argv[arg], "-vtree") == 0) {
+            g_strategy = ICET_STRATEGY_VTREE;
+        } else if (strcmp(argv[arg], "-sequential") == 0) {
+            g_strategy = ICET_STRATEGY_SEQUENTIAL;
+        } else if (strcmp(argv[arg], "-bswap") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+        } else if (strcmp(argv[arg], "-tree") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_TREE;
         } else {
             printf("Unknown option `%s'.\n", argv[arg]);
             exit(1);
@@ -177,9 +191,8 @@ static int SimpleTimingRun()
         return TEST_FAILED;
     }
 
-    /* Tell IceT what strategy to use.  The REDUCE strategy is an all-around
-     * good performer. */
-    icetStrategy(ICET_STRATEGY_REDUCE);
+    icetStrategy(g_strategy);
+    icetSingleImageStrategy(g_single_image_strategy);
 
     /* Set up the projection matrix as you normally would. */
     glMatrixMode(GL_PROJECTION);
