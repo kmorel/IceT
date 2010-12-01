@@ -1427,6 +1427,8 @@ void icetCompressedSubComposite(IceTImage destBuffer,
 #define BLEND_RGBA_FLOAT        ICET_UNDER_FLOAT
 #include "decompress_func_body.h"
     }
+
+    *compare_time += icetWallTime() - timer;
 }
 
 static IceTImage renderTile(int tile,
