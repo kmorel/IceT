@@ -45,6 +45,7 @@ static int g_num_tiles_y;
 static int g_num_frames;
 static int g_seed;
 static int g_transparent;
+static int g_write_image;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
 
@@ -59,6 +60,7 @@ static void parse_arguments(int argc, char *argv[])
     g_num_frames = 100;
     g_seed = time(NULL);
     g_transparent = 0;
+    g_write_image = 0;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
 
@@ -77,6 +79,8 @@ static void parse_arguments(int argc, char *argv[])
             g_seed = atoi(argv[arg]);
         } else if (strcmp(argv[arg], "-transparent") == 0) {
             g_transparent = 1;
+        } else if (strcmp(argv[arg], "-write-image") == 0) {
+            g_write_image = 1;
         } else if (strcmp(argv[arg], "-reduce") == 0) {
             g_strategy = ICET_STRATEGY_REDUCE;
         } else if (strcmp(argv[arg], "-vtree") == 0) {
@@ -324,6 +328,7 @@ static int SimpleTimingRun()
         icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
         icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+        icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
     } else {
         icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
@@ -411,6 +416,7 @@ static int SimpleTimingRun()
     for (frame = 0; frame < g_num_frames; frame++) {
         IceTDouble elapsed_time = icetWallTime();
         IceTDouble modelview_matrix[16];
+        IceTImage image;
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
@@ -444,7 +450,9 @@ static int SimpleTimingRun()
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image
        * compositing. */
-        icetDrawFrame(projection_matrix, modelview_matrix, background_color);
+        image = icetDrawFrame(projection_matrix,
+                              modelview_matrix,
+                              background_color);
 
       /* For obvious reasons, IceT should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a
@@ -489,6 +497,19 @@ static int SimpleTimingRun()
                    composite_time,
                    bytes_sent,
                    elapsed_time);
+        }
+
+        /* Write out image to verify rendering occurred correctly. */
+        if (   g_write_image
+            && (rank < (g_num_tiles_x*g_num_tiles_y))
+            && (frame == 0)
+               ) {
+            IceTUByte *buffer = malloc(SCREEN_WIDTH*SCREEN_HEIGHT*4);
+            char filename[256];
+            icetImageCopyColorub(image, buffer, ICET_IMAGE_COLOR_RGBA_UBYTE);
+            sprintf(filename, "SimpleTiming%02d.ppm", rank);
+            write_ppm(filename, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+            free(buffer);
         }
     }
 
