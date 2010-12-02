@@ -7,8 +7,8 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_MPI_H_
-#define _ICET_MPI_H_
+#ifndef __IceTMPI_h
+#define __IceTMPI_h
 
 #include <IceT.h>
 #include <mpi.h>
@@ -27,4 +27,4 @@ ICET_MPI_EXPORT void icetDestroyMPICommunicator(IceTCommunicator comm);
 }
 #endif
 
-#endif /*_ICET_MPI_H_*/
+#endif /*__IceTMPI_h*/

@@ -7,8 +7,8 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_GL_H_
-#define _ICET_GL_H_
+#ifndef __IceTGL_h
+#define __IceTGL_h
 
 #include <IceT.h>
 
@@ -60,4 +60,4 @@ ICET_GL_EXPORT void icetGLDrawCallback(IceTGLDrawCallbackType callback);
 }
 #endif
 
-#endif /* _ICET_GL_H_ */
+#endif /* __IceTGL_h */

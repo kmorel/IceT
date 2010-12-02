@@ -7,7 +7,17 @@
  * This source code is released under the New BSD License.
  */
 
+#ifndef __IceTDevProjections_h
+#define __IceTDevProjections_h
+
 #include <IceT.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_EXPORT void icetProjectTile(IceTInt tile, IceTDouble *mat_out);
 
@@ -23,3 +33,9 @@ ICET_EXPORT void icetOrtho(IceTDouble left, IceTDouble right,
                            IceTDouble bottom, IceTDouble top,
                            IceTDouble znear, IceTDouble zfar,
                            IceTDouble *mat_out);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__IceTDevProjections_h*/

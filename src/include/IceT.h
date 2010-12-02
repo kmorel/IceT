@@ -7,8 +7,8 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_H_
-#define _ICET_H_
+#ifndef __IceT_h
+#define __IceT_h
 
 #include <IceTConfig.h>
 
@@ -372,4 +372,4 @@ ICET_EXPORT IceTEnum icetGetError(void);
 }
 #endif
 
-#endif /* _ICET_H_ */
+#endif /* __IceT_h */

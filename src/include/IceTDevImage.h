@@ -7,11 +7,18 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_IMAGE_H_
-#define _ICET_IMAGE_H_
+#ifndef __IceTDevImage_h
+#define __IceTDevImage_h
 
 #include <IceT.h>
 #include <IceTDevState.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_EXPORT IceTImage       icetGetStateBufferImage(IceTEnum pname,
                                                     IceTSizeType width,
@@ -155,4 +162,8 @@ ICET_EXPORT void icetCompressedSubComposite(IceTImage destBuffer,
     (dest)[3] = (dest)[3] + (src)[3]*sfactor;                           \
 }
 
-#endif /* _ICET_IMAGE_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __IceTDevImage_h */
