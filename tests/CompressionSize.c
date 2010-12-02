@@ -163,8 +163,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
 
     pixels = SCREEN_WIDTH*SCREEN_HEIGHT;
 
-    printf("Allocating memory for %dx%x pixel image.\n",
-           SCREEN_WIDTH, SCREEN_HEIGHT);
+    printf("Allocating memory for %dx%d pixel image.\n",
+           (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
     imagesize = icetImageBufferSize(SCREEN_WIDTH, SCREEN_HEIGHT);
     imagebuffer = malloc(imagesize);
     image = icetImageAssignBuffer(imagebuffer, SCREEN_WIDTH, SCREEN_HEIGHT);
