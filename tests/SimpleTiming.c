@@ -9,7 +9,6 @@
 ** used for quick measurements and simple scaling studies.
 *****************************************************************************/
 
-#include <IceTGL.h>
 #include <IceTDevCommunication.h>
 #include "test-util.h"
 #include "test_codes.h"
@@ -48,6 +47,8 @@ static int g_seed;
 static int g_transparent;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
+
+static float g_color[4];
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -93,16 +94,53 @@ static void parse_arguments(int argc, char *argv[])
     }
 }
 
-static void draw(void)
+static void draw(const IceTDouble *projection_matrix,
+                 const IceTDouble *modelview_matrix,
+                 const IceTFloat *background_color,
+                 const IceTInt *readback_viewport,
+                 IceTImage result)
 {
+    glClearColor(background_color[0], background_color[1],
+                 background_color[2], background_color[3]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g_color);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixd(projection_matrix);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixd(modelview_matrix);
 
     /* Draws an axis aligned cube from (-.5, -.5, -.5) to (.5, .5, .5). */
     glutSolidCube(1.0);
+
+    /* Read back the pixels. */
+    {
+        IceTInt screen_width;
+        IceTInt screen_height;
+
+        icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &screen_width);
+        icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &screen_height);
+
+        glReadBuffer(GL_BACK);
+
+        if (g_transparent) {
+            IceTFloat *colors = icetImageGetColorf(result);
+            glReadPixels(0, 0, screen_width, screen_height,
+                         GL_RGBA, GL_FLOAT, colors);
+        } else {
+            IceTUByte *colors = icetImageGetColorub(result);
+            IceTFloat *depths = icetImageGetDepthf(result);
+            glReadPixels(0, 0, screen_width, screen_height,
+                         GL_RGBA, GL_UNSIGNED_BYTE, colors);
+            glReadPixels(0, 0, screen_width, screen_height,
+                         GL_DEPTH_COMPONENT, GL_FLOAT, depths);
+        }
+    }
 }
 
 /* Given the rank of this process in all of them, divides the unit box
- * centered on the origin evenly (w.r.t. area) amongst all processes.  The
+ * centered on the origin evenly (w.r.t. volume) amongst all processes.  The
  * region for this process, characterized by the min and max corners, is
  * returned in the bounds_min and bounds_max parameters. */
 static void find_region(int rank,
@@ -258,6 +296,9 @@ static int SimpleTimingRun()
     float bounds_max[3];
     region_divide region_divisions;
 
+    IceTDouble projection_matrix[16];
+    IceTFloat background_color[4];
+
     /* Normally, the first thing that you do is set up your communication and
      * then create at least one IceT context.  This has already been done in the
      * calling function (i.e. icetTests_mpi.c).  See the init_mpi_comm in
@@ -270,14 +311,13 @@ static int SimpleTimingRun()
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
-    /* We should be able to set any color we want, but we should do it BEFORE
-     * icetDrawFrame() is called, not in the callback drawing function.  There
-     * may also be limitations on the background color when performing color
-     * blending. */
-    glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
+    background_color[0] = 0.2f;
+    background_color[1] = 0.5f;
+    background_color[2] = 0.1f;
+    background_color[3] = 1.0f;
 
-    /* Give IceT a function that will issue the OpenGL drawing commands. */
-    icetGLDrawCallback(draw);
+    /* Give IceT a function that will issue the drawing commands. */
+    icetDrawCallback(draw);
 
     /* Other IceT state. */
     if (g_transparent) {
@@ -300,7 +340,7 @@ static int SimpleTimingRun()
     find_region(rank, num_proc, bounds_min, bounds_max, &region_divisions);
 
     /* Set up the tiled display.  The asignment of displays to processes is
-     * arbitrary because,as this is a timing test, I am not too concerned
+     * arbitrary because, as this is a timing test, I am not too concerned
      * about who shows what. */
     if (g_num_tiles_x*g_num_tiles_y <= num_proc) {
         int x, y, display_rank;
@@ -329,24 +369,25 @@ static int SimpleTimingRun()
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0);
+    glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
 
     /* Other normal OpenGL setup. */
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     if (rank%8 != 0) {
-        GLfloat color[4];
-        color[0] = (float)(rank%2);
-        color[1] = (float)((rank/2)%2);
-        color[2] = (float)((rank/4)%2);
-        color[3] = 1.0;
-        if (g_transparent) {
-            color[0] *= 0.25;
-            color[1] *= 0.25;
-            color[2] *= 0.25;
-            color[3] *= 0.25;
-        }
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
+        g_color[0] = (float)(rank%2);
+        g_color[1] = (float)((rank/2)%2);
+        g_color[2] = (float)((rank/4)%2);
+        g_color[3] = 1.0;
+    } else {
+        g_color[0] = g_color[1] = g_color[2] = g_color[3] = 1.0f;
+    }
+    if (g_transparent) {
+        g_color[0] *= 0.25;
+        g_color[1] *= 0.25;
+        g_color[2] *= 0.25;
+        g_color[3] *= 0.25;
     }
 
     /* Initialize randomness. */
@@ -369,6 +410,7 @@ static int SimpleTimingRun()
 
     for (frame = 0; frame < g_num_frames; frame++) {
         IceTDouble elapsed_time = icetWallTime();
+        IceTDouble modelview_matrix[16];
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
@@ -397,10 +439,12 @@ static int SimpleTimingRun()
                  bounds_max[2] - bounds_min[2]);
         glTranslatef(0.5, 0.5, 0.5);
 
+        glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
+
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image
        * compositing. */
-        icetGLDrawFrame();
+        icetDrawFrame(projection_matrix, modelview_matrix, background_color);
 
       /* For obvious reasons, IceT should be run in double-buffered frame
        * mode.  After calling icetDrawFrame, the application should do a
