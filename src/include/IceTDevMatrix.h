@@ -27,6 +27,18 @@ ICET_EXPORT void icetMatrixMultiply(IceTDouble *C,
                                     const IceTDouble *A,
                                     const IceTDouble *B);
 
+/* Multiplies A (a 4x4 matrix) and v (a 4 vector) and returns the result (a 4
+ * vector) in out. */
+ICET_EXPORT void icetMatrixVectorMultiply(IceTDouble *out,
+                                          const IceTDouble *A,
+                                          const IceTDouble *v);
+
+/* Returns the dot product of two vector 3's. */
+#define icetDot3(v1, v2) ((v1)[0]*(v2)[0] + (v1)[1]*(v2)[1] + (v1)[2]*(v2)[2])
+
+/* Returns the dot product of two vector 4's. */
+#define icetDot4(v1, v2) (icetDot3(v1, v2) + (v1)[3]*(v2)[3])
+
 /* Returns an orthographic projection that is equivalent to glOrtho. */
 ICET_EXPORT void icetMatrixOrtho(IceTDouble left, IceTDouble right,
                                  IceTDouble bottom, IceTDouble top,

@@ -27,6 +27,19 @@ void icetMatrixMultiply(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
     }
 }
 
+void icetMatrixVectorMultiply(IceTDouble *out,
+                              const IceTDouble *A,
+                              const IceTDouble *v)
+{
+    int row, k;
+    for (row = 0; row < 4; row++) {
+        out[row] = 0.0;
+        for (k = 0; k < 4; k++) {
+            out[row] += MAT(A, row, k) * v[k];
+        }
+    }
+}
+
 ICET_EXPORT void icetMatrixOrtho(IceTDouble left, IceTDouble right,
                                  IceTDouble bottom, IceTDouble top,
                                  IceTDouble znear, IceTDouble zfar,

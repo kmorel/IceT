@@ -10,17 +10,16 @@
 *****************************************************************************/
 
 #include <IceTDevCommunication.h>
+#include <IceTDevMatrix.h>
 #include "test-util.h"
 #include "test_codes.h"
 
 #ifdef __APPLE__
 #  include <OpenGL/gl.h>
 #  include <OpenGL/glu.h>
-#  include <GLUT/glut.h>
 #else
 #  include <GL/gl.h>
 #  include <GL/glu.h>
-#  include <GL/glut.h>
 #endif
 
 #include <stdlib.h>
@@ -98,47 +97,207 @@ static void parse_arguments(int argc, char *argv[])
     }
 }
 
+#define NUM_HEX_PLANES 6
+struct hexahedron {
+    IceTDouble planes[NUM_HEX_PLANES][4];
+};
+
+static void intersect_ray_plane(const IceTDouble *ray_origin,
+                                const IceTDouble *ray_direction,
+                                const IceTDouble *plane,
+                                IceTDouble *distance,
+                                IceTBoolean *front_facing,
+                                IceTBoolean *parallel)
+{
+    IceTDouble distance_numerator = icetDot3(plane, ray_origin) + plane[3];
+    IceTDouble distance_denominator = icetDot3(plane, ray_direction);
+
+    if (distance_denominator == 0.0) {
+        *parallel = ICET_TRUE;
+        *front_facing = (distance_numerator > 0);
+    } else {
+        *parallel = ICET_FALSE;
+        *distance = -distance_numerator/distance_denominator;
+        *front_facing = (distance_denominator < 0);
+    }
+}
+
+/* This algorithm (and associated intersect_ray_plane) come from Graphics Gems
+ * II, Fast Ray-Convex Polyhedron Intersection by Eric Haines. */
+static void intersect_ray_hexahedron(const IceTDouble *ray_origin,
+                                     const IceTDouble *ray_direction,
+                                     const struct hexahedron hexahedron,
+                                     IceTDouble *near_distance,
+                                     IceTDouble *far_distance,
+                                     IceTInt *near_plane_index,
+                                     IceTBoolean *intersection_happened)
+{
+    int planeIdx;
+
+    *near_distance = 0.0;
+    *far_distance = 2.0;
+    *near_plane_index = -1;
+
+    for (planeIdx = 0; planeIdx < NUM_HEX_PLANES; planeIdx++) {
+        IceTDouble distance;
+        IceTBoolean front_facing;
+        IceTBoolean parallel;
+
+        intersect_ray_plane(ray_origin,
+                            ray_direction,
+                            hexahedron.planes[planeIdx],
+                            &distance,
+                            &front_facing,
+                            &parallel);
+
+        if (!parallel) {
+            if (front_facing) {
+                if (*near_distance < distance) {
+                    *near_distance = distance;
+                    *near_plane_index = planeIdx;
+                }
+            } else {
+                if (distance < *far_distance) {
+                    *far_distance = distance;
+                }
+            }
+        } else { /*parallel*/
+            if (front_facing) {
+                /* Ray missed parallel plane.  No intersection. */
+                *intersection_happened = ICET_FALSE;
+                return;
+            }
+        }
+    }
+
+    *intersection_happened = (*near_distance < *far_distance);
+}
+
+/* Plane equations for unit box on origin. */
+struct hexahedron unit_box = {
+    {
+        { -1.0, 0.0, 0.0, -0.5 },
+        { 1.0, 0.0, 0.0, -0.5 },
+        { 0.0, -1.0, 0.0, -0.5 },
+        { 0.0, 1.0, 0.0, -0.5 },
+        { 0.0, 0.0, -1.0, -0.5 },
+        { 0.0, 0.0, 1.0, -0.5 }
+    }
+};
+
 static void draw(const IceTDouble *projection_matrix,
                  const IceTDouble *modelview_matrix,
                  const IceTFloat *background_color,
                  const IceTInt *readback_viewport,
                  IceTImage result)
 {
-    glClearColor(background_color[0], background_color[1],
-                 background_color[2], background_color[3]);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    IceTDouble transform[16];
+    IceTDouble inverse_transpose_transform[16];
+    IceTBoolean success;
+    int planeIdx;
+    struct hexahedron transformed_box;
+    IceTInt screen_width;
+    IceTInt screen_height;
+    IceTFloat *colors_float = NULL;
+    IceTUByte *colors_byte = NULL;
+    IceTFloat *depths = NULL;
+    IceTInt pixel_x;
+    IceTInt pixel_y;
+    IceTDouble ray_origin[3];
+    IceTDouble ray_direction[3];
 
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g_color);
+    icetMatrixMultiply(transform, projection_matrix, modelview_matrix);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixd(projection_matrix);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixd(modelview_matrix);
+    success = icetMatrixInverseTranspose((const IceTDouble *)transform,
+                                         inverse_transpose_transform);
+    if (!success) {
+        printf("ERROR: Inverse failed.\n");
+    }
 
-    /* Draws an axis aligned cube from (-.5, -.5, -.5) to (.5, .5, .5). */
-    glutSolidCube(1.0);
+    for (planeIdx = 0; planeIdx < NUM_HEX_PLANES; planeIdx++) {
+        const IceTDouble *original_plane = unit_box.planes[planeIdx];
+        IceTDouble *transformed_plane = transformed_box.planes[planeIdx];
 
-    /* Read back the pixels. */
-    {
-        IceTInt screen_width;
-        IceTInt screen_height;
+        icetMatrixVectorMultiply(transformed_plane,
+                                 inverse_transpose_transform,
+                                 original_plane);
+    }
 
-        icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &screen_width);
-        icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &screen_height);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &screen_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &screen_height);
 
-        glReadBuffer(GL_BACK);
+    if (g_transparent) {
+        colors_float = icetImageGetColorf(result);
+    } else {
+        colors_byte = icetImageGetColorub(result);
+        depths = icetImageGetDepthf(result);
+    }
 
-        if (g_transparent) {
-            IceTFloat *colors = icetImageGetColorf(result);
-            glReadPixels(0, 0, screen_width, screen_height,
-                         GL_RGBA, GL_FLOAT, colors);
-        } else {
-            IceTUByte *colors = icetImageGetColorub(result);
-            IceTFloat *depths = icetImageGetDepthf(result);
-            glReadPixels(0, 0, screen_width, screen_height,
-                         GL_RGBA, GL_UNSIGNED_BYTE, colors);
-            glReadPixels(0, 0, screen_width, screen_height,
-                         GL_DEPTH_COMPONENT, GL_FLOAT, depths);
+    ray_direction[0] = ray_direction[1] = 0.0;
+    ray_direction[2] = 1.0;
+    ray_origin[2] = -1.0;
+    for (pixel_y = readback_viewport[1];
+         pixel_y < readback_viewport[1] + readback_viewport[3];
+         pixel_y++) {
+        ray_origin[1] = (2.0*pixel_y)/screen_height - 1.0;
+        for (pixel_x = readback_viewport[0];
+             pixel_x < readback_viewport[0] + readback_viewport[2];
+             pixel_x++) {
+            IceTDouble near_distance;
+            IceTDouble far_distance;
+            IceTInt near_plane_index;
+            IceTBoolean intersection_happened;
+            IceTFloat color[4];
+            IceTFloat depth;
+
+            ray_origin[0] = (2.0*pixel_x)/screen_width - 1.0;
+
+            intersect_ray_hexahedron(ray_origin,
+                                     ray_direction,
+                                     transformed_box,
+                                     &near_distance,
+                                     &far_distance,
+                                     &near_plane_index,
+                                     &intersection_happened);
+
+            if (intersection_happened) {
+                const IceTDouble *near_plane;
+                IceTDouble shading;
+
+                near_plane = transformed_box.planes[near_plane_index];
+                shading = near_plane[2]/icetDot3(near_plane, near_plane);
+
+                color[0] = g_color[0] * shading;
+                color[1] = g_color[1] * shading;
+                color[2] = g_color[2] * shading;
+                color[3] = g_color[3];
+                depth = 0.5*near_distance;
+            } else {
+                color[0] = background_color[0];
+                color[1] = background_color[1];
+                color[2] = background_color[2];
+                color[3] = background_color[3];
+                depth = 1.0;
+            }
+
+            if (g_transparent) {
+                IceTFloat *color_dest
+                    = colors_float + 4*(pixel_y*screen_width + pixel_x);
+                color_dest[0] = color[0];
+                color_dest[1] = color[1];
+                color_dest[2] = color[2];
+                color_dest[3] = color[3];
+            } else {
+                IceTUByte *color_dest
+                    = colors_byte + 4*(pixel_y*screen_width + pixel_x);
+                IceTFloat *depth_dest
+                    = depths + pixel_y*screen_width + pixel_x;
+                color_dest[0] = (IceTUByte)(color[0]*255);
+                color_dest[1] = (IceTUByte)(color[1]*255);
+                color_dest[2] = (IceTUByte)(color[2]*255);
+                color_dest[3] = (IceTUByte)(color[3]*255);
+                depth_dest[0] = depth;
+            }
         }
     }
 }
@@ -374,6 +533,7 @@ static int SimpleTimingRun()
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0);
+    /* glOrtho(-1.0*aspect, 1.0*aspect, -1.0, 1.0, 1.0, 3.0); */
     glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
 
     /* Other normal OpenGL setup. */
@@ -386,7 +546,7 @@ static int SimpleTimingRun()
         g_color[2] = (float)((rank/4)%2);
         g_color[3] = 1.0;
     } else {
-        g_color[0] = g_color[1] = g_color[2] = g_color[3] = 1.0f;
+        g_color[0] = g_color[1] = g_color[2] = g_color[3] = 0.5f;
     }
     if (g_transparent) {
         g_color[0] *= 0.25;
