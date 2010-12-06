@@ -63,8 +63,9 @@ void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
                         -1.0, 2.0*renderable_height/tile_height - 1.0,
                         1.0, -1.0, viewport_proj);
 
-        icetMatrixMult(tile_viewport_proj, (const IceTDouble *)viewport_proj,
-                       (const IceTDouble *)tile_proj);
+        icetMatrixMultiply(tile_viewport_proj,
+                           (const IceTDouble *)viewport_proj,
+                           (const IceTDouble *)tile_proj);
     } else {
         memcpy(tile_viewport_proj, (const IceTDouble*)tile_proj,
                16*sizeof(IceTDouble));
@@ -72,8 +73,9 @@ void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
 
   /* Project the user requested view to the tile projection. */
     global_proj = icetUnsafeStateGetDouble(ICET_PROJECTION_MATRIX);
-    icetMatrixMult(mat_out, (const IceTDouble *)tile_viewport_proj,
-                   (const IceTDouble *)global_proj);
+    icetMatrixMultiply(mat_out,
+                       (const IceTDouble *)tile_viewport_proj,
+                       (const IceTDouble *)global_proj);
 }
 
 void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
