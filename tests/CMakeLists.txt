@@ -18,6 +18,7 @@ ENDIF (NOT ICET_TESTS_USE_OPENGL)
 
 SET(MyTests
   CompressionSize.c
+  SimpleTiming.c
   )
 
 IF (ICET_TESTS_USE_OPENGL)
@@ -27,7 +28,6 @@ IF (ICET_TESTS_USE_OPENGL)
     DisplayNoDraw.c
     RandomTransform.c
     SimpleExample.c
-    SimpleTiming.c
     )
 ENDIF (ICET_TESTS_USE_OPENGL)
 

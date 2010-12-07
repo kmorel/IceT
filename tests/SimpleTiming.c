@@ -14,20 +14,10 @@
 #include "test-util.h"
 #include "test_codes.h"
 
-#ifdef __APPLE__
-#  include <OpenGL/gl.h>
-#  include <OpenGL/glu.h>
-#else
-#  include <GL/gl.h>
-#  include <GL/glu.h>
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-
-#define USE_OGL 0
 
 /* Structure used to capture the recursive division of space. */
 struct region_divide_struct {
@@ -367,47 +357,46 @@ static void find_region(int rank,
     }
 }
 
-/* Given the current OpenGL transformation matricies (representing camera
- * position), determine which side of each axis-aligned plane faces the
- * camera.  The results are stored in plane_orientations, which is expected
- * to be an array of size 3.  Entry 0 in plane_orientations will be positive
- * if the vector (1, 0, 0) points towards the camera, negative otherwise.
- * Entries 1 and 2 are likewise for the y and z vectors. */
-static void get_axis_plane_orientations(int *plane_orientations)
+/* Given the transformation matricies (representing camera position), determine
+ * which side of each axis-aligned plane faces the camera.  The results are
+ * stored in plane_orientations, which is expected to be an array of size 3.
+ * Entry 0 in plane_orientations will be positive if the vector (1, 0, 0) points
+ * towards the camera, negative otherwise.  Entries 1 and 2 are likewise for the
+ * y and z vectors. */
+static void get_axis_plane_orientations(const IceTDouble *projection,
+                                        const IceTDouble *modelview,
+                                        int *plane_orientations)
 {
-    GLdouble modelview[16];
-    GLdouble projection[16];
-    GLint view[4] = { 0, 0, 1, 1};
-    GLdouble dummy_x, dummy_y;
-    GLdouble dist_0;
-    int i;
+    IceTDouble full_transform[16];
+    IceTDouble inverse_transpose_transform[16];
+    IceTBoolean success;
+    int planeIdx;
 
-    /* Get transformation matrices. */
-    glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
-    glGetDoublev(GL_PROJECTION_MATRIX, projection);
+    icetMatrixMultiply(full_transform, projection, modelview);
+    success = icetMatrixInverseTranspose((const IceTDouble *)full_transform,
+                                         inverse_transpose_transform);
 
-    /* Get distance from viewpoint to origin. */
-    gluProject(0.0, 0.0, 0.0,
-               modelview, projection, view,
-               &dummy_x, &dummy_y, &dist_0);
+    for (planeIdx = 0; planeIdx < 3; planeIdx++) {
+        IceTDouble plane_equation[4];
+        IceTDouble transformed_plane[4];
 
-    /* For each axis, determine the distance between viewpoint and unit vector
-     * and use that and the distance to origin to determine whether the vector
-     * points towards or away from the camera. */
-    for (i = 0; i < 3; i++) {
-        GLdouble unit_vector[3];
-        GLdouble dist_unit;
+        plane_equation[0] = plane_equation[1]
+            = plane_equation[2] = plane_equation[3] = 0.0;
+        plane_equation[planeIdx] = 1.0;
 
-        unit_vector[0] = unit_vector[1] = unit_vector[2] = 0.0;
-        unit_vector[i] = 1.0;
-        gluProject(unit_vector[0], unit_vector[1], unit_vector[2],
-                   modelview, projection, view,
-                   &dummy_x, &dummy_y, &dist_unit);
+        /* To transform a plane, multiply the vector representing the plane
+         * equation (ax + by + cz + d = 0) by the inverse transpose of the
+         * transform. */
+        icetMatrixVectorMultiply(transformed_plane,
+                                 (const IceTDouble*)inverse_transpose_transform,
+                                 (const IceTDouble*)plane_equation);
 
-        if (dist_unit < dist_0) {
-            plane_orientations[i] = 1;
+        /* If the normal of the plane is facing in the -z direction, then the
+         * front of the plane is facing the camera. */
+        if (transformed_plane[3] < 0) {
+            plane_orientations[planeIdx] = 1;
         } else {
-            plane_orientations[i] = -1;
+            plane_orientations[planeIdx] = -1;
         }
     }
 }
@@ -415,7 +404,9 @@ static void get_axis_plane_orientations(int *plane_orientations)
 /* Use the current OpenGL transformation matricies (representing camera
  * position) and the given region divisions to determine the composite
  * ordering. */
-static void find_composite_order(region_divide region_divisions)
+static void find_composite_order(const IceTDouble *projection,
+                                 const IceTDouble *modelview,
+                                 region_divide region_divisions)
 {
     int num_proc = icetCommSize();
     IceTInt *process_ranks = malloc(num_proc * sizeof(IceTInt));
@@ -423,7 +414,7 @@ static void find_composite_order(region_divide region_divisions)
     int plane_orientations[3];
     region_divide current_divide;
 
-    get_axis_plane_orientations(plane_orientations);
+    get_axis_plane_orientations(projection, modelview, plane_orientations);
 
     my_position = 0;
     for (current_divide = region_divisions;
@@ -532,16 +523,8 @@ static int SimpleTimingRun()
     icetSingleImageStrategy(g_single_image_strategy);
 
     /* Set up the projection matrix. */
-#if USE_OGL
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0);
-    /* glOrtho(-1.0*aspect, 1.0*aspect, -1.0, 1.0, 1.0, 3.0); */
-    glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
-#else
     icetMatrixFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0,
                       projection_matrix);
-#endif
 
     if (rank%8 != 0) {
         g_color[0] = (float)(rank%2);
@@ -583,49 +566,29 @@ static int SimpleTimingRun()
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
-#if USE_OGL
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-#else
         icetMatrixIdentity(modelview_matrix);
-#endif
 
         /* Move geometry back so that it can be seen by the camera. */
-#if USE_OGL
-        glTranslatef(0.0, 0.0, -2.0);
-#else
         icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -2.0);
-#endif
 
         /* Rotate to some random view. */
-#if USE_OGL
-        glRotatef((360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
-        glRotatef((360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
-        glRotatef((360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
-#else
         icetMatrixMultiplyRotate(modelview_matrix,
                                  (360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
         icetMatrixMultiplyRotate(modelview_matrix,
                                  (360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
         icetMatrixMultiplyRotate(modelview_matrix,
                                  (360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
-#endif
 
         /* Determine view ordering of geometry based on camera position
            (represented by the current projection and modelview matrices). */
         if (g_transparent) {
-            find_composite_order(region_divisions);
+            find_composite_order(projection_matrix,
+                                 modelview_matrix,
+                                 region_divisions);
         }
 
         /* Translate the unit box centered on the origin to the region specified
          * by bounds_min and bounds_max. */
-#if USE_OGL
-        glTranslatef(bounds_min[0], bounds_min[1], bounds_min[2]);
-        glScalef(bounds_max[0] - bounds_min[0],
-                 bounds_max[1] - bounds_min[1],
-                 bounds_max[2] - bounds_min[2]);
-        glTranslatef(0.5, 0.5, 0.5);
-#else
         icetMatrixMultiplyTranslate(modelview_matrix,
                                     bounds_min[0],
                                     bounds_min[1],
@@ -635,16 +598,6 @@ static int SimpleTimingRun()
                                 bounds_max[1] - bounds_min[1],
                                 bounds_max[2] - bounds_min[2]);
         icetMatrixMultiplyTranslate(modelview_matrix, 0.5, 0.5, 0.5);
-#endif
-
-#if USE_OGL
-        glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
-#endif
-
-        int i;
-        for (i = 0; i < 4; i++) {
-            printf("%10f%10f%10f%10f\n", projection_matrix[i], projection_matrix[i+4], projection_matrix[i+8], projection_matrix[i+12]);
-        }
 
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image
@@ -652,12 +605,6 @@ static int SimpleTimingRun()
         image = icetDrawFrame(projection_matrix,
                               modelview_matrix,
                               background_color);
-
-      /* For obvious reasons, IceT should be run in double-buffered frame
-       * mode.  After calling icetDrawFrame, the application should do a
-       * synchronize (a barrier is often about as good as you can do) and
-       * then a swap buffers. */
-        swap_buffers();
 
         elapsed_time = icetWallTime() - elapsed_time;
 
