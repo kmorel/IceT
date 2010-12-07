@@ -262,7 +262,7 @@ static void draw(const IceTDouble *projection_matrix,
                 IceTDouble shading;
 
                 near_plane = transformed_box.planes[near_plane_index];
-                shading = -near_plane[2]/icetDot3(near_plane, near_plane);
+                shading = -near_plane[2]/sqrt(icetDot3(near_plane, near_plane));
 
                 color[0] = g_color[0] * shading;
                 color[1] = g_color[1] * shading;
