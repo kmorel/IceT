@@ -16,8 +16,13 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <time.h>
+
+#ifndef M_E
+#define M_E         2.71828182845904523536028747135266250   /* e */
+#endif
 
 /* Structure used to capture the recursive division of space. */
 struct region_divide_struct {
@@ -264,6 +269,15 @@ static void draw(const IceTDouble *projection_matrix,
                 color[2] = g_color[2] * shading;
                 color[3] = g_color[3];
                 depth = 0.5*near_distance;
+                if (g_transparent) {
+                    /* Modify color by an opacity determined by thickness. */
+                    IceTDouble thickness = far_distance - near_distance;
+                    IceTDouble opacity = 1.0 - pow(M_E, -4.0*thickness);
+                    color[0] *= opacity;
+                    color[1] *= opacity;
+                    color[2] *= opacity;
+                    color[3] *= opacity;
+                }
             } else {
                 color[0] = background_color[0];
                 color[1] = background_color[1];
@@ -425,8 +439,8 @@ static void find_composite_order(const IceTDouble *projection,
         int plane_side = plane_orientations[axis];
         /* If my_side is the side of the plane away from the camera, add
            everything on the other side as before me. */
-        if (   ((my_side < 0) && (0 < plane_side))
-            || ((0 < my_side) && (plane_side < 0)) ) {
+        if (   ((my_side < 0) && (plane_side < 0))
+            || ((0 < my_side) && (0 < plane_side)) ) {
             my_position += current_divide->num_other_side;
         }
     }
@@ -469,7 +483,7 @@ static int SimpleTimingRun()
 
     background_color[0] = 0.2f;
     background_color[1] = 0.5f;
-    background_color[2] = 0.1f;
+    background_color[2] = 0.7f;
     background_color[3] = 1.0f;
 
     /* Give IceT a function that will issue the drawing commands. */
@@ -532,13 +546,8 @@ static int SimpleTimingRun()
         g_color[2] = (float)((rank/4)%2);
         g_color[3] = 1.0;
     } else {
-        g_color[0] = g_color[1] = g_color[2] = g_color[3] = 0.5f;
-    }
-    if (g_transparent) {
-        g_color[0] *= 0.25;
-        g_color[1] *= 0.25;
-        g_color[2] *= 0.25;
-        g_color[3] *= 0.25;
+        g_color[0] = g_color[1] = g_color[2] = 0.5f;
+        g_color[3] = 1.0;
     }
 
     /* Initialize randomness. */
