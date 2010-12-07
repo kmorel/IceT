@@ -27,6 +27,8 @@
 #include <string.h>
 #include <time.h>
 
+#define USE_OGL 0
+
 /* Structure used to capture the recursive division of space. */
 struct region_divide_struct {
     int axis;           /* x = 0, y = 1, z = 2: the index to a vector array. */
@@ -265,7 +267,7 @@ static void draw(const IceTDouble *projection_matrix,
                 IceTDouble shading;
 
                 near_plane = transformed_box.planes[near_plane_index];
-                shading = near_plane[2]/icetDot3(near_plane, near_plane);
+                shading = -near_plane[2]/icetDot3(near_plane, near_plane);
 
                 color[0] = g_color[0] * shading;
                 color[1] = g_color[1] * shading;
@@ -495,8 +497,8 @@ static int SimpleTimingRun()
     }
 
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
-     * will take care of any transformation that happens before
-     * icetGLDrawFrame. */
+     * will take care of any transformation that gets passed to
+     * icetDrawFrame. */
     icetBoundingBoxf(-0.5f, 0.5f, -0.5, 0.5, -0.5, 0.5);
 
     /* Determine the region we want the local geometry to be in.  This will be
@@ -529,17 +531,18 @@ static int SimpleTimingRun()
     icetStrategy(g_strategy);
     icetSingleImageStrategy(g_single_image_strategy);
 
-    /* Set up the projection matrix as you normally would. */
+    /* Set up the projection matrix. */
+#if USE_OGL
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0);
     /* glOrtho(-1.0*aspect, 1.0*aspect, -1.0, 1.0, 1.0, 3.0); */
     glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
+#else
+    icetMatrixFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0,
+                      projection_matrix);
+#endif
 
-    /* Other normal OpenGL setup. */
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
     if (rank%8 != 0) {
         g_color[0] = (float)(rank%2);
         g_color[1] = (float)((rank/2)%2);
@@ -580,16 +583,33 @@ static int SimpleTimingRun()
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
+#if USE_OGL
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
+#else
+        icetMatrixIdentity(modelview_matrix);
+#endif
 
         /* Move geometry back so that it can be seen by the camera. */
+#if USE_OGL
         glTranslatef(0.0, 0.0, -2.0);
+#else
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -2.0);
+#endif
 
         /* Rotate to some random view. */
+#if USE_OGL
         glRotatef((360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
         glRotatef((360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
         glRotatef((360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
+#else
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
+#endif
 
         /* Determine view ordering of geometry based on camera position
            (represented by the current projection and modelview matrices). */
@@ -599,13 +619,32 @@ static int SimpleTimingRun()
 
         /* Translate the unit box centered on the origin to the region specified
          * by bounds_min and bounds_max. */
+#if USE_OGL
         glTranslatef(bounds_min[0], bounds_min[1], bounds_min[2]);
         glScalef(bounds_max[0] - bounds_min[0],
                  bounds_max[1] - bounds_min[1],
                  bounds_max[2] - bounds_min[2]);
         glTranslatef(0.5, 0.5, 0.5);
+#else
+        icetMatrixMultiplyTranslate(modelview_matrix,
+                                    bounds_min[0],
+                                    bounds_min[1],
+                                    bounds_min[2]);
+        icetMatrixMultiplyScale(modelview_matrix,
+                                bounds_max[0] - bounds_min[0],
+                                bounds_max[1] - bounds_min[1],
+                                bounds_max[2] - bounds_min[2]);
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.5, 0.5, 0.5);
+#endif
 
+#if USE_OGL
         glGetDoublev(GL_MODELVIEW_MATRIX, modelview_matrix);
+#endif
+
+        int i;
+        for (i = 0; i < 4; i++) {
+            printf("%10f%10f%10f%10f\n", projection_matrix[i], projection_matrix[i+4], projection_matrix[i+8], projection_matrix[i+12]);
+        }
 
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image

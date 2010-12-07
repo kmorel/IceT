@@ -11,6 +11,10 @@
 
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI        3.14159265358979323846264338327950288   /* pi */
+#endif
+
 #define MAT(matrix, row, column) ICET_MATRIX(matrix, row, column)
 
 void icetMatrixMultiply(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
@@ -27,6 +31,14 @@ void icetMatrixMultiply(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
     }
 }
 
+void icetMatrixPostMultiply(IceTDouble *A, const IceTDouble *B)
+{
+    IceTDouble product[16];
+
+    icetMatrixMultiply(product, (const IceTDouble *)A, B);
+    icetMatrixCopy(A, (const IceTDouble *)product);
+}
+
 void icetMatrixVectorMultiply(IceTDouble *out,
                               const IceTDouble *A,
                               const IceTDouble *v)
@@ -38,6 +50,37 @@ void icetMatrixVectorMultiply(IceTDouble *out,
             out[row] += MAT(A, row, k) * v[k];
         }
     }
+}
+
+void icetMatrixCopy(IceTDouble *matrix_dest, const IceTDouble *matrix_src)
+{
+    int i;
+    for (i = 0; i < 16; i++) {
+        matrix_dest[i] = matrix_src[i];
+    }
+}
+
+ICET_EXPORT void icetMatrixIdentity(IceTDouble *mat_out)
+{
+    mat_out[ 0] = 1.0;
+    mat_out[ 1] = 0.0;
+    mat_out[ 2] = 0.0;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = 0.0;
+    mat_out[ 5] = 1.0;
+    mat_out[ 6] = 0.0;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = 0.0;
+    mat_out[ 9] = 0.0;
+    mat_out[10] = 1.0;
+    mat_out[11] = 0.0;
+
+    mat_out[12] = 0.0;
+    mat_out[13] = 0.0;
+    mat_out[14] = 0.0;
+    mat_out[15] = 1.0;
 }
 
 ICET_EXPORT void icetMatrixOrtho(IceTDouble left, IceTDouble right,
@@ -64,6 +107,148 @@ ICET_EXPORT void icetMatrixOrtho(IceTDouble left, IceTDouble right,
     mat_out[13] = -(top+bottom)/(top-bottom);
     mat_out[14] = -(zfar+znear)/(zfar-znear);
     mat_out[15] = 1.0;
+}
+
+ICET_EXPORT void icetMatrixFrustum(IceTDouble left, IceTDouble right,
+                                   IceTDouble bottom, IceTDouble top,
+                                   IceTDouble znear, IceTDouble zfar,
+                                   IceTDouble *mat_out)
+{
+    mat_out[ 0] = 2.0*znear/(right-left);
+    mat_out[ 1] = 0.0;
+    mat_out[ 2] = 0.0;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = 0.0;
+    mat_out[ 5] = 2.0*znear/(top-bottom);
+    mat_out[ 6] = 0.0;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = (right+left)/(right-left);
+    mat_out[ 9] = (top+bottom)/(top-bottom);
+    mat_out[10] = -(zfar+znear)/(zfar-znear);
+    mat_out[11] = -1.0;
+
+    mat_out[12] = 0.0;
+    mat_out[13] = 0.0;
+    mat_out[14] = -2.0*zfar*znear/(zfar-znear);
+    mat_out[15] = 0.0;
+}
+
+ICET_EXPORT void icetMatrixScale(IceTDouble x, IceTDouble y, IceTDouble z,
+                                 IceTDouble *mat_out)
+{
+    mat_out[ 0] = x;
+    mat_out[ 1] = 0.0;
+    mat_out[ 2] = 0.0;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = 0.0;
+    mat_out[ 5] = y;
+    mat_out[ 6] = 0.0;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = 0.0;
+    mat_out[ 9] = 0.0;
+    mat_out[10] = z;
+    mat_out[11] = 0.0;
+
+    mat_out[12] = 0.0;
+    mat_out[13] = 0.0;
+    mat_out[14] = 0.0;
+    mat_out[15] = 1.0;
+}
+
+ICET_EXPORT void icetMatrixTranslate(IceTDouble x, IceTDouble y, IceTDouble z,
+                                     IceTDouble *mat_out)
+{
+    mat_out[ 0] = 1.0;
+    mat_out[ 1] = 0.0;
+    mat_out[ 2] = 0.0;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = 0.0;
+    mat_out[ 5] = 1.0;
+    mat_out[ 6] = 0.0;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = 0.0;
+    mat_out[ 9] = 0.0;
+    mat_out[10] = 1.0;
+    mat_out[11] = 0.0;
+
+    mat_out[12] = x;
+    mat_out[13] = y;
+    mat_out[14] = z;
+    mat_out[15] = 1.0;
+}
+
+ICET_EXPORT void icetMatrixRotate(IceTDouble angle,
+                                  IceTDouble x, IceTDouble y, IceTDouble z,
+                                  IceTDouble *mat_out)
+{
+    IceTDouble v[3];
+    IceTDouble length;
+    IceTDouble c;
+    IceTDouble s;
+
+    v[0] = x;  v[1] = y;  v[2] = z;
+    length = sqrt(icetDot3(v, v));
+    v[0] /= length;  v[1] /= length;  v[2] /= length;
+
+    c = cos((M_PI/180.0)*angle);
+    s = sin((M_PI/180.0)*angle);
+
+    mat_out[ 0] = v[0]*v[0]*(1-c) + c;
+    mat_out[ 1] = v[0]*v[1]*(1-c) + v[2]*s;
+    mat_out[ 2] = v[0]*v[2]*(1-c) - v[1]*s;
+    mat_out[ 3] = 0.0;
+
+    mat_out[ 4] = v[0]*v[1]*(1-c) - v[2]*s;
+    mat_out[ 5] = v[1]*v[1]*(1-c) + c;
+    mat_out[ 6] = v[1]*v[2]*(1-c) + v[0]*s;
+    mat_out[ 7] = 0.0;
+
+    mat_out[ 8] = v[0]*v[2]*(1-c) + v[1]*s;
+    mat_out[ 9] = v[1]*v[2]*(1-c) - v[0]*s;
+    mat_out[10] = v[2]*v[2]*(1-c) + c;
+    mat_out[11] = 0.0;
+
+    mat_out[12] = 0.0;
+    mat_out[13] = 0.0;
+    mat_out[14] = 0.0;
+    mat_out[15] = 1.0;
+}
+
+void icetMatrixMultiplyScale(IceTDouble *mat_out,
+                             IceTDouble x,
+                             IceTDouble y,
+                             IceTDouble z)
+{
+    IceTDouble transform[16];
+    icetMatrixScale(x, y, z, transform);
+    icetMatrixPostMultiply(mat_out, (const IceTDouble *)transform);
+}
+
+void icetMatrixMultiplyTranslate(IceTDouble *mat_out,
+                                 IceTDouble x,
+                                 IceTDouble y,
+                                 IceTDouble z)
+{
+    IceTDouble transform[16];
+    icetMatrixTranslate(x, y, z, transform);
+    icetMatrixPostMultiply(mat_out, (const IceTDouble *)transform);
+}
+
+void icetMatrixMultiplyRotate(IceTDouble *mat_out,
+                              IceTDouble angle,
+                              IceTDouble x,
+                              IceTDouble y,
+                              IceTDouble z)
+{
+    IceTDouble transform[16];
+    icetMatrixRotate(angle, x, y, z, transform);
+    icetMatrixPostMultiply(mat_out, (const IceTDouble *)transform);
 }
 
 /*
