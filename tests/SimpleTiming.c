@@ -9,25 +9,20 @@
 ** used for quick measurements and simple scaling studies.
 *****************************************************************************/
 
-#include <IceTGL.h>
 #include <IceTDevCommunication.h>
+#include <IceTDevMatrix.h>
 #include "test-util.h"
 #include "test_codes.h"
 
-#ifdef __APPLE__
-#  include <OpenGL/gl.h>
-#  include <OpenGL/glu.h>
-#  include <GLUT/glut.h>
-#else
-#  include <GL/gl.h>
-#  include <GL/glu.h>
-#  include <GL/glut.h>
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <time.h>
+
+#ifndef M_E
+#define M_E         2.71828182845904523536028747135266250   /* e */
+#endif
 
 /* Structure used to capture the recursive division of space. */
 struct region_divide_struct {
@@ -46,8 +41,11 @@ static int g_num_tiles_y;
 static int g_num_frames;
 static int g_seed;
 static int g_transparent;
+static int g_write_image;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
+
+static float g_color[4];
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -58,6 +56,7 @@ static void parse_arguments(int argc, char *argv[])
     g_num_frames = 100;
     g_seed = time(NULL);
     g_transparent = 0;
+    g_write_image = 0;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
 
@@ -76,6 +75,8 @@ static void parse_arguments(int argc, char *argv[])
             g_seed = atoi(argv[arg]);
         } else if (strcmp(argv[arg], "-transparent") == 0) {
             g_transparent = 1;
+        } else if (strcmp(argv[arg], "-write-image") == 0) {
+            g_write_image = 1;
         } else if (strcmp(argv[arg], "-reduce") == 0) {
             g_strategy = ICET_STRATEGY_REDUCE;
         } else if (strcmp(argv[arg], "-vtree") == 0) {
@@ -93,16 +94,222 @@ static void parse_arguments(int argc, char *argv[])
     }
 }
 
-static void draw(void)
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#define NUM_HEX_PLANES 6
+struct hexahedron {
+    IceTDouble planes[NUM_HEX_PLANES][4];
+};
 
-    /* Draws an axis aligned cube from (-.5, -.5, -.5) to (.5, .5, .5). */
-    glutSolidCube(1.0);
+static void intersect_ray_plane(const IceTDouble *ray_origin,
+                                const IceTDouble *ray_direction,
+                                const IceTDouble *plane,
+                                IceTDouble *distance,
+                                IceTBoolean *front_facing,
+                                IceTBoolean *parallel)
+{
+    IceTDouble distance_numerator = icetDot3(plane, ray_origin) + plane[3];
+    IceTDouble distance_denominator = icetDot3(plane, ray_direction);
+
+    if (distance_denominator == 0.0) {
+        *parallel = ICET_TRUE;
+        *front_facing = (distance_numerator > 0);
+    } else {
+        *parallel = ICET_FALSE;
+        *distance = -distance_numerator/distance_denominator;
+        *front_facing = (distance_denominator < 0);
+    }
+}
+
+/* This algorithm (and associated intersect_ray_plane) come from Graphics Gems
+ * II, Fast Ray-Convex Polyhedron Intersection by Eric Haines. */
+static void intersect_ray_hexahedron(const IceTDouble *ray_origin,
+                                     const IceTDouble *ray_direction,
+                                     const struct hexahedron hexahedron,
+                                     IceTDouble *near_distance,
+                                     IceTDouble *far_distance,
+                                     IceTInt *near_plane_index,
+                                     IceTBoolean *intersection_happened)
+{
+    int planeIdx;
+
+    *near_distance = 0.0;
+    *far_distance = 2.0;
+    *near_plane_index = -1;
+
+    for (planeIdx = 0; planeIdx < NUM_HEX_PLANES; planeIdx++) {
+        IceTDouble distance;
+        IceTBoolean front_facing;
+        IceTBoolean parallel;
+
+        intersect_ray_plane(ray_origin,
+                            ray_direction,
+                            hexahedron.planes[planeIdx],
+                            &distance,
+                            &front_facing,
+                            &parallel);
+
+        if (!parallel) {
+            if (front_facing) {
+                if (*near_distance < distance) {
+                    *near_distance = distance;
+                    *near_plane_index = planeIdx;
+                }
+            } else {
+                if (distance < *far_distance) {
+                    *far_distance = distance;
+                }
+            }
+        } else { /*parallel*/
+            if (front_facing) {
+                /* Ray missed parallel plane.  No intersection. */
+                *intersection_happened = ICET_FALSE;
+                return;
+            }
+        }
+    }
+
+    *intersection_happened = (*near_distance < *far_distance);
+}
+
+/* Plane equations for unit box on origin. */
+struct hexahedron unit_box = {
+    {
+        { -1.0, 0.0, 0.0, -0.5 },
+        { 1.0, 0.0, 0.0, -0.5 },
+        { 0.0, -1.0, 0.0, -0.5 },
+        { 0.0, 1.0, 0.0, -0.5 },
+        { 0.0, 0.0, -1.0, -0.5 },
+        { 0.0, 0.0, 1.0, -0.5 }
+    }
+};
+
+static void draw(const IceTDouble *projection_matrix,
+                 const IceTDouble *modelview_matrix,
+                 const IceTFloat *background_color,
+                 const IceTInt *readback_viewport,
+                 IceTImage result)
+{
+    IceTDouble transform[16];
+    IceTDouble inverse_transpose_transform[16];
+    IceTBoolean success;
+    int planeIdx;
+    struct hexahedron transformed_box;
+    IceTInt screen_width;
+    IceTInt screen_height;
+    IceTFloat *colors_float = NULL;
+    IceTUByte *colors_byte = NULL;
+    IceTFloat *depths = NULL;
+    IceTInt pixel_x;
+    IceTInt pixel_y;
+    IceTDouble ray_origin[3];
+    IceTDouble ray_direction[3];
+
+    icetMatrixMultiply(transform, projection_matrix, modelview_matrix);
+
+    success = icetMatrixInverseTranspose((const IceTDouble *)transform,
+                                         inverse_transpose_transform);
+    if (!success) {
+        printf("ERROR: Inverse failed.\n");
+    }
+
+    for (planeIdx = 0; planeIdx < NUM_HEX_PLANES; planeIdx++) {
+        const IceTDouble *original_plane = unit_box.planes[planeIdx];
+        IceTDouble *transformed_plane = transformed_box.planes[planeIdx];
+
+        icetMatrixVectorMultiply(transformed_plane,
+                                 inverse_transpose_transform,
+                                 original_plane);
+    }
+
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &screen_width);
+    icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &screen_height);
+
+    if (g_transparent) {
+        colors_float = icetImageGetColorf(result);
+    } else {
+        colors_byte = icetImageGetColorub(result);
+        depths = icetImageGetDepthf(result);
+    }
+
+    ray_direction[0] = ray_direction[1] = 0.0;
+    ray_direction[2] = 1.0;
+    ray_origin[2] = -1.0;
+    for (pixel_y = readback_viewport[1];
+         pixel_y < readback_viewport[1] + readback_viewport[3];
+         pixel_y++) {
+        ray_origin[1] = (2.0*pixel_y)/screen_height - 1.0;
+        for (pixel_x = readback_viewport[0];
+             pixel_x < readback_viewport[0] + readback_viewport[2];
+             pixel_x++) {
+            IceTDouble near_distance;
+            IceTDouble far_distance;
+            IceTInt near_plane_index;
+            IceTBoolean intersection_happened;
+            IceTFloat color[4];
+            IceTFloat depth;
+
+            ray_origin[0] = (2.0*pixel_x)/screen_width - 1.0;
+
+            intersect_ray_hexahedron(ray_origin,
+                                     ray_direction,
+                                     transformed_box,
+                                     &near_distance,
+                                     &far_distance,
+                                     &near_plane_index,
+                                     &intersection_happened);
+
+            if (intersection_happened) {
+                const IceTDouble *near_plane;
+                IceTDouble shading;
+
+                near_plane = transformed_box.planes[near_plane_index];
+                shading = -near_plane[2]/sqrt(icetDot3(near_plane, near_plane));
+
+                color[0] = g_color[0] * shading;
+                color[1] = g_color[1] * shading;
+                color[2] = g_color[2] * shading;
+                color[3] = g_color[3];
+                depth = 0.5*near_distance;
+                if (g_transparent) {
+                    /* Modify color by an opacity determined by thickness. */
+                    IceTDouble thickness = far_distance - near_distance;
+                    IceTDouble opacity = 1.0 - pow(M_E, -4.0*thickness);
+                    color[0] *= opacity;
+                    color[1] *= opacity;
+                    color[2] *= opacity;
+                    color[3] *= opacity;
+                }
+            } else {
+                color[0] = background_color[0];
+                color[1] = background_color[1];
+                color[2] = background_color[2];
+                color[3] = background_color[3];
+                depth = 1.0;
+            }
+
+            if (g_transparent) {
+                IceTFloat *color_dest
+                    = colors_float + 4*(pixel_y*screen_width + pixel_x);
+                color_dest[0] = color[0];
+                color_dest[1] = color[1];
+                color_dest[2] = color[2];
+                color_dest[3] = color[3];
+            } else {
+                IceTUByte *color_dest
+                    = colors_byte + 4*(pixel_y*screen_width + pixel_x);
+                IceTFloat *depth_dest
+                    = depths + pixel_y*screen_width + pixel_x;
+                color_dest[0] = (IceTUByte)(color[0]*255);
+                color_dest[1] = (IceTUByte)(color[1]*255);
+                color_dest[2] = (IceTUByte)(color[2]*255);
+                color_dest[3] = (IceTUByte)(color[3]*255);
+                depth_dest[0] = depth;
+            }
+        }
+    }
 }
 
 /* Given the rank of this process in all of them, divides the unit box
- * centered on the origin evenly (w.r.t. area) amongst all processes.  The
+ * centered on the origin evenly (w.r.t. volume) amongst all processes.  The
  * region for this process, characterized by the min and max corners, is
  * returned in the bounds_min and bounds_max parameters. */
 static void find_region(int rank,
@@ -164,47 +371,46 @@ static void find_region(int rank,
     }
 }
 
-/* Given the current OpenGL transformation matricies (representing camera
- * position), determine which side of each axis-aligned plane faces the
- * camera.  The results are stored in plane_orientations, which is expected
- * to be an array of size 3.  Entry 0 in plane_orientations will be positive
- * if the vector (1, 0, 0) points towards the camera, negative otherwise.
- * Entries 1 and 2 are likewise for the y and z vectors. */
-static void get_axis_plane_orientations(int *plane_orientations)
+/* Given the transformation matricies (representing camera position), determine
+ * which side of each axis-aligned plane faces the camera.  The results are
+ * stored in plane_orientations, which is expected to be an array of size 3.
+ * Entry 0 in plane_orientations will be positive if the vector (1, 0, 0) points
+ * towards the camera, negative otherwise.  Entries 1 and 2 are likewise for the
+ * y and z vectors. */
+static void get_axis_plane_orientations(const IceTDouble *projection,
+                                        const IceTDouble *modelview,
+                                        int *plane_orientations)
 {
-    GLdouble modelview[16];
-    GLdouble projection[16];
-    GLint view[4] = { 0, 0, 1, 1};
-    GLdouble dummy_x, dummy_y;
-    GLdouble dist_0;
-    int i;
+    IceTDouble full_transform[16];
+    IceTDouble inverse_transpose_transform[16];
+    IceTBoolean success;
+    int planeIdx;
 
-    /* Get transformation matrices. */
-    glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
-    glGetDoublev(GL_PROJECTION_MATRIX, projection);
+    icetMatrixMultiply(full_transform, projection, modelview);
+    success = icetMatrixInverseTranspose((const IceTDouble *)full_transform,
+                                         inverse_transpose_transform);
 
-    /* Get distance from viewpoint to origin. */
-    gluProject(0.0, 0.0, 0.0,
-               modelview, projection, view,
-               &dummy_x, &dummy_y, &dist_0);
+    for (planeIdx = 0; planeIdx < 3; planeIdx++) {
+        IceTDouble plane_equation[4];
+        IceTDouble transformed_plane[4];
 
-    /* For each axis, determine the distance between viewpoint and unit vector
-     * and use that and the distance to origin to determine whether the vector
-     * points towards or away from the camera. */
-    for (i = 0; i < 3; i++) {
-        GLdouble unit_vector[3];
-        GLdouble dist_unit;
+        plane_equation[0] = plane_equation[1]
+            = plane_equation[2] = plane_equation[3] = 0.0;
+        plane_equation[planeIdx] = 1.0;
 
-        unit_vector[0] = unit_vector[1] = unit_vector[2] = 0.0;
-        unit_vector[i] = 1.0;
-        gluProject(unit_vector[0], unit_vector[1], unit_vector[2],
-                   modelview, projection, view,
-                   &dummy_x, &dummy_y, &dist_unit);
+        /* To transform a plane, multiply the vector representing the plane
+         * equation (ax + by + cz + d = 0) by the inverse transpose of the
+         * transform. */
+        icetMatrixVectorMultiply(transformed_plane,
+                                 (const IceTDouble*)inverse_transpose_transform,
+                                 (const IceTDouble*)plane_equation);
 
-        if (dist_unit < dist_0) {
-            plane_orientations[i] = 1;
+        /* If the normal of the plane is facing in the -z direction, then the
+         * front of the plane is facing the camera. */
+        if (transformed_plane[3] < 0) {
+            plane_orientations[planeIdx] = 1;
         } else {
-            plane_orientations[i] = -1;
+            plane_orientations[planeIdx] = -1;
         }
     }
 }
@@ -212,7 +418,9 @@ static void get_axis_plane_orientations(int *plane_orientations)
 /* Use the current OpenGL transformation matricies (representing camera
  * position) and the given region divisions to determine the composite
  * ordering. */
-static void find_composite_order(region_divide region_divisions)
+static void find_composite_order(const IceTDouble *projection,
+                                 const IceTDouble *modelview,
+                                 region_divide region_divisions)
 {
     int num_proc = icetCommSize();
     IceTInt *process_ranks = malloc(num_proc * sizeof(IceTInt));
@@ -220,7 +428,7 @@ static void find_composite_order(region_divide region_divisions)
     int plane_orientations[3];
     region_divide current_divide;
 
-    get_axis_plane_orientations(plane_orientations);
+    get_axis_plane_orientations(projection, modelview, plane_orientations);
 
     my_position = 0;
     for (current_divide = region_divisions;
@@ -231,8 +439,8 @@ static void find_composite_order(region_divide region_divisions)
         int plane_side = plane_orientations[axis];
         /* If my_side is the side of the plane away from the camera, add
            everything on the other side as before me. */
-        if (   ((my_side < 0) && (0 < plane_side))
-            || ((0 < my_side) && (plane_side < 0)) ) {
+        if (   ((my_side < 0) && (plane_side < 0))
+            || ((0 < my_side) && (0 < plane_side)) ) {
             my_position += current_divide->num_other_side;
         }
     }
@@ -258,6 +466,9 @@ static int SimpleTimingRun()
     float bounds_max[3];
     region_divide region_divisions;
 
+    IceTDouble projection_matrix[16];
+    IceTFloat background_color[4];
+
     /* Normally, the first thing that you do is set up your communication and
      * then create at least one IceT context.  This has already been done in the
      * calling function (i.e. icetTests_mpi.c).  See the init_mpi_comm in
@@ -270,20 +481,20 @@ static int SimpleTimingRun()
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
-    /* We should be able to set any color we want, but we should do it BEFORE
-     * icetDrawFrame() is called, not in the callback drawing function.  There
-     * may also be limitations on the background color when performing color
-     * blending. */
-    glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
+    background_color[0] = 0.2f;
+    background_color[1] = 0.5f;
+    background_color[2] = 0.7f;
+    background_color[3] = 1.0f;
 
-    /* Give IceT a function that will issue the OpenGL drawing commands. */
-    icetGLDrawCallback(draw);
+    /* Give IceT a function that will issue the drawing commands. */
+    icetDrawCallback(draw);
 
     /* Other IceT state. */
     if (g_transparent) {
         icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
         icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+        icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
     } else {
         icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
@@ -291,8 +502,8 @@ static int SimpleTimingRun()
     }
 
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
-     * will take care of any transformation that happens before
-     * icetGLDrawFrame. */
+     * will take care of any transformation that gets passed to
+     * icetDrawFrame. */
     icetBoundingBoxf(-0.5f, 0.5f, -0.5, 0.5, -0.5, 0.5);
 
     /* Determine the region we want the local geometry to be in.  This will be
@@ -300,7 +511,7 @@ static int SimpleTimingRun()
     find_region(rank, num_proc, bounds_min, bounds_max, &region_divisions);
 
     /* Set up the tiled display.  The asignment of displays to processes is
-     * arbitrary because,as this is a timing test, I am not too concerned
+     * arbitrary because, as this is a timing test, I am not too concerned
      * about who shows what. */
     if (g_num_tiles_x*g_num_tiles_y <= num_proc) {
         int x, y, display_rank;
@@ -325,28 +536,18 @@ static int SimpleTimingRun()
     icetStrategy(g_strategy);
     icetSingleImageStrategy(g_single_image_strategy);
 
-    /* Set up the projection matrix as you normally would. */
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0);
+    /* Set up the projection matrix. */
+    icetMatrixFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0,
+                      projection_matrix);
 
-    /* Other normal OpenGL setup. */
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
     if (rank%8 != 0) {
-        GLfloat color[4];
-        color[0] = (float)(rank%2);
-        color[1] = (float)((rank/2)%2);
-        color[2] = (float)((rank/4)%2);
-        color[3] = 1.0;
-        if (g_transparent) {
-            color[0] *= 0.25;
-            color[1] *= 0.25;
-            color[2] *= 0.25;
-            color[3] *= 0.25;
-        }
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
+        g_color[0] = (float)(rank%2);
+        g_color[1] = (float)((rank/2)%2);
+        g_color[2] = (float)((rank/4)%2);
+        g_color[3] = 1.0;
+    } else {
+        g_color[0] = g_color[1] = g_color[2] = 0.5f;
+        g_color[3] = 1.0;
     }
 
     /* Initialize randomness. */
@@ -369,44 +570,50 @@ static int SimpleTimingRun()
 
     for (frame = 0; frame < g_num_frames; frame++) {
         IceTDouble elapsed_time = icetWallTime();
+        IceTDouble modelview_matrix[16];
+        IceTImage image;
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+        icetMatrixIdentity(modelview_matrix);
 
         /* Move geometry back so that it can be seen by the camera. */
-        glTranslatef(0.0, 0.0, -2.0);
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -2.0);
 
         /* Rotate to some random view. */
-        glRotatef((360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
-        glRotatef((360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
-        glRotatef((360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 1.0, 0.0, 0.0);
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 0.0, 1.0, 0.0);
+        icetMatrixMultiplyRotate(modelview_matrix,
+                                 (360.0*rand())/RAND_MAX, 0.0, 0.0, 1.0);
 
         /* Determine view ordering of geometry based on camera position
            (represented by the current projection and modelview matrices). */
         if (g_transparent) {
-            find_composite_order(region_divisions);
+            find_composite_order(projection_matrix,
+                                 modelview_matrix,
+                                 region_divisions);
         }
 
         /* Translate the unit box centered on the origin to the region specified
          * by bounds_min and bounds_max. */
-        glTranslatef(bounds_min[0], bounds_min[1], bounds_min[2]);
-        glScalef(bounds_max[0] - bounds_min[0],
-                 bounds_max[1] - bounds_min[1],
-                 bounds_max[2] - bounds_min[2]);
-        glTranslatef(0.5, 0.5, 0.5);
+        icetMatrixMultiplyTranslate(modelview_matrix,
+                                    bounds_min[0],
+                                    bounds_min[1],
+                                    bounds_min[2]);
+        icetMatrixMultiplyScale(modelview_matrix,
+                                bounds_max[0] - bounds_min[0],
+                                bounds_max[1] - bounds_min[1],
+                                bounds_max[2] - bounds_min[2]);
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.5, 0.5, 0.5);
 
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image
        * compositing. */
-        icetGLDrawFrame();
-
-      /* For obvious reasons, IceT should be run in double-buffered frame
-       * mode.  After calling icetDrawFrame, the application should do a
-       * synchronize (a barrier is often about as good as you can do) and
-       * then a swap buffers. */
-        swap_buffers();
+        image = icetDrawFrame(projection_matrix,
+                              modelview_matrix,
+                              background_color);
 
         elapsed_time = icetWallTime() - elapsed_time;
 
@@ -445,6 +652,19 @@ static int SimpleTimingRun()
                    composite_time,
                    bytes_sent,
                    elapsed_time);
+        }
+
+        /* Write out image to verify rendering occurred correctly. */
+        if (   g_write_image
+            && (rank < (g_num_tiles_x*g_num_tiles_y))
+            && (frame == 0)
+               ) {
+            IceTUByte *buffer = malloc(SCREEN_WIDTH*SCREEN_HEIGHT*4);
+            char filename[256];
+            icetImageCopyColorub(image, buffer, ICET_IMAGE_COLOR_RGBA_UBYTE);
+            sprintf(filename, "SimpleTiming%02d.ppm", rank);
+            write_ppm(filename, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+            free(buffer);
         }
     }
 

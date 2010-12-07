@@ -7,10 +7,17 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef __icetGLImage_h
-#define __icetGLImage_h
+#ifndef __IceTDevGLImage_h
+#define __IceTDevGLImage_h
 
 #include <IceTGL.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_GL_EXPORT void icetGLDrawCallbackFunction(
                                             const IceTDouble *projection_matrix,
@@ -19,4 +26,8 @@ ICET_GL_EXPORT void icetGLDrawCallbackFunction(
                                             const IceTInt *readback_viewport,
                                             IceTImage result);
 
-#endif /*__icetGLImage_h*/
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__IceTDevGLImage_h*/
