@@ -42,6 +42,11 @@ ICET_EXPORT void icetCommSendrecv(const void *sendbuf,
                                   IceTEnum recvtype,
                                   int src,
                                   int recvtag);
+ICET_EXPORT void icetCommGather(const void *sendbuf,
+                                int sendcount,
+                                int type,
+                                void *recvbuf,
+                                int root);
 ICET_EXPORT void icetCommAllgather(const void *sendbuf,
                                    int sendcount,
                                    int type,
@@ -58,6 +63,7 @@ ICET_EXPORT IceTCommRequest icetCommIrecv(void *buf,
                                           int tag);
 ICET_EXPORT void icetCommWait(IceTCommRequest *request);
 ICET_EXPORT int icetCommWaitany(int count, IceTCommRequest *array_of_requests);
+ICET_EXPORT void icetCommWaitall(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT int icetCommSize();
 ICET_EXPORT int icetCommRank();
 
