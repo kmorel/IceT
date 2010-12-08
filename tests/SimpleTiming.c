@@ -85,6 +85,8 @@ static void parse_arguments(int argc, char *argv[])
             g_strategy = ICET_STRATEGY_SEQUENTIAL;
         } else if (strcmp(argv[arg], "-bswap") == 0) {
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
+        } else if (strcmp(argv[arg], "-radixk") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
         } else if (strcmp(argv[arg], "-tree") == 0) {
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_TREE;
         } else {
