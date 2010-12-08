@@ -7,11 +7,18 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_IMAGE_H_
-#define _ICET_IMAGE_H_
+#ifndef __IceTDevImage_h
+#define __IceTDevImage_h
 
 #include <IceT.h>
 #include <IceTDevState.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_EXPORT IceTImage       icetGetStateBufferImage(IceTEnum pname,
                                                     IceTSizeType width,
@@ -32,8 +39,14 @@ ICET_EXPORT void icetImageSetDimensions(IceTImage image,
                                         IceTSizeType height);
 ICET_EXPORT IceTVoid *icetImageGetColorVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
+ICET_EXPORT const IceTVoid *icetImageGetColorConstVoid(
+                                                      const IceTImage image,
+                                                      IceTSizeType *pixel_size);
 ICET_EXPORT IceTVoid *icetImageGetDepthVoid(IceTImage image,
                                             IceTSizeType *pixel_size);
+ICET_EXPORT const IceTVoid *icetImageGetDepthConstVoid(
+                                                      const IceTImage image,
+                                                      IceTSizeType *pixel_size);
 ICET_EXPORT IceTBoolean icetImageEqual(const IceTImage image1,
                                        const IceTImage image2);
 ICET_EXPORT void icetImageCopyPixels(const IceTImage in_image,
@@ -149,4 +162,8 @@ ICET_EXPORT void icetCompressedSubComposite(IceTImage destBuffer,
     (dest)[3] = (dest)[3] + (src)[3]*sfactor;                           \
 }
 
-#endif /* _ICET_IMAGE_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __IceTDevImage_h */

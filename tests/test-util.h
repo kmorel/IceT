@@ -10,6 +10,8 @@
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
 
+#include "test-config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,9 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm);
 
 int run_test(int (*test_function)(void));
 
+#ifdef ICET_TESTS_USE_OPENGL
 void swap_buffers(void);
+#endif
 
 void finalize_test(int result);
 

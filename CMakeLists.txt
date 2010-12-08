@@ -71,7 +71,11 @@ IF (ICET_USE_MPI)
   MARK_AS_ADVANCED(CLEAR MPI_EXTRA_LIBRARY)
 
   INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-  SET(ICET_MPI_LIBRARIES ${MPI_LIBRARY} ${MPI_EXTRA_LIBRARY})
+  SET(ICET_MPI_LIBRARIES ${MPI_LIBRARY})
+  
+  IF(MPI_EXTRA_LIBRARY)
+    SET(ICET_MPI_LIBRARIES ${ICET_MPI_LIBRARIES} ${MPI_EXTRA_LIBRARY})
+  ENDIF(MPI_EXTRA_LIBRARY)
 
   # Set up variables used to run MPI programs.  In CMake 2.8 or later, they are
   # defined by the FindMPI module.
@@ -101,7 +105,7 @@ ENDIF (ICET_USE_MPI)
 # Add extra warnings when possible.  The IceT build should be clean.  I expect
 # no warnings when bulding this code.
 IF (CMAKE_COMPILER_IS_GNUCC)
-  SET(ICET_C_FLAGS_WARN "-ansi -Wall -Wno-long-long -Wcast-align -Wextra -Wformat-security -Wshadow -Wunused -Wreturn-type")
+  SET(ICET_C_FLAGS_WARN "-ansi -Wall -Wno-long-long -Wcast-align -Wextra -Wformat-security -Wshadow -Wunused -Wreturn-type -Wpointer-arith -Wdeclaration-after-statement")
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ICET_C_FLAGS_WARN}")
 ENDIF (CMAKE_COMPILER_IS_GNUCC)
 
@@ -165,16 +169,11 @@ INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
 ADD_SUBDIRECTORY(src)
 
 IF (BUILD_TESTING AND ICET_BUILD_TESTING)
-  IF (ICET_USE_OPENGL AND ICET_USE_MPI)
-    FIND_PACKAGE(GLUT)
-    IF (GLUT_FOUND)
-      ADD_SUBDIRECTORY(tests)
-    ELSE (GLUT_FOUND)
-      MESSAGE(STATUS "Tests require Glut, which is not found.  Disabling tests.")
-    ENDIF (GLUT_FOUND)
-  ELSE (ICET_USE_OPENGL AND ICET_USE_MPI)
-    MESSAGE(STATUS "Tests require ICET_USE_OPENGL and ICET_USE_MPI.  Disabling tests.")
-  ENDIF (ICET_USE_OPENGL AND ICET_USE_MPI)
+  IF (ICET_USE_MPI)
+    ADD_SUBDIRECTORY(tests)
+  ELSE (ICET_USE_MPI)
+    MESSAGE(STATUS "Tests require ICET_USE_MPI.  Disabling tests.")
+  ENDIF (ICET_USE_MPI)
 ENDIF (BUILD_TESTING AND ICET_BUILD_TESTING)
 
 ADD_SUBDIRECTORY(doc)

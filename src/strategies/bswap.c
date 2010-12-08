@@ -52,7 +52,8 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
     requests = malloc((group_size)*sizeof(IceTCommRequest));
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
-        IceTVoid *colorBuffer;
+      /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *colorBuffer;
         IceTSizeType pixel_size;
         colorBuffer = icetImageGetColorVoid(image, &pixel_size);
         icetRaiseDebug("Collecting image data.");
@@ -75,7 +76,8 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        IceTVoid *depthBuffer;
+      /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *depthBuffer;
         IceTSizeType pixel_size;
         depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
         icetRaiseDebug("Collecting depth data.");
@@ -116,7 +118,8 @@ static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
     pixel_count = MIN(pixel_count, icetImageGetNumPixels(image) - offset);
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
-        IceTVoid *colorBuffer;
+      /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *colorBuffer;
         IceTSizeType pixel_size;
         colorBuffer = icetImageGetColorVoid(image, &pixel_size);
         icetRaiseDebug("Sending image data.");
@@ -126,7 +129,8 @@ static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        IceTVoid *depthBuffer;
+      /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *depthBuffer;
         IceTSizeType pixel_size;
         depthBuffer = icetImageGetDepthVoid(image, &pixel_size);
         icetRaiseDebug("Sending depth data.");

@@ -13,7 +13,18 @@
 #include <IceT.h>
 #include <IceTDevState.h>
 
-IceTState icetGetState();
-IceTCommunicator icetGetCommunicator();
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
+
+ICET_EXPORT IceTState icetGetState();
+ICET_EXPORT IceTCommunicator icetGetCommunicator();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ICET_CONTEXT_H_ */

@@ -7,7 +7,17 @@
  * This source code is released under the New BSD License.
  */
 
+#ifndef __IceTDevProjections_h
+#define __IceTDevProjections_h
+
 #include <IceT.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_EXPORT void icetProjectTile(IceTInt tile, IceTDouble *mat_out);
 
@@ -15,11 +25,8 @@ ICET_EXPORT void icetGetViewportProject(IceTInt x, IceTInt y,
 					IceTSizeType width, IceTSizeType height,
 					IceTDouble *mat_out);
 
-ICET_EXPORT void icetMultMatrix(IceTDouble *C,
-                                const IceTDouble *A, const IceTDouble *B);
+#ifdef __cplusplus
+}
+#endif
 
-/* Returns an orthographic projection that is equivalent to glOrtho. */
-ICET_EXPORT void icetOrtho(IceTDouble left, IceTDouble right,
-                           IceTDouble bottom, IceTDouble top,
-                           IceTDouble znear, IceTDouble zfar,
-                           IceTDouble *mat_out);
+#endif /*__IceTDevProjections_h*/

@@ -670,7 +670,8 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
             || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {
             icetRaiseDebug4("Expected size: %d %d.  Returned size: %d %d",
                             display_tile_viewport[2], display_tile_viewport[3],
-                            icetImageGetWidth(image),icetImageGetHeight(image));
+                            (int)icetImageGetWidth(image),
+                            (int)icetImageGetHeight(image));
             icetRaiseError("Got unexpected image size from strategy.",
                            ICET_SANITY_CHECK_FAIL);
         }

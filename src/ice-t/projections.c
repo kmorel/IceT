@@ -13,6 +13,7 @@
 
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevMatrix.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -58,12 +59,13 @@ void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
          Use an orthographic projection to place the tile in the lower left
          corner of the tile. */
         IceTDouble viewport_proj[16];
-        icetOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
-                  -1.0, 2.0*renderable_height/tile_height - 1.0,
-                  1.0, -1.0, viewport_proj);
+        icetMatrixOrtho(-1.0, 2.0*renderable_width/tile_width - 1.0,
+                        -1.0, 2.0*renderable_height/tile_height - 1.0,
+                        1.0, -1.0, viewport_proj);
 
-        icetMultMatrix(tile_viewport_proj, (const IceTDouble *)viewport_proj,
-                       (const IceTDouble *)tile_proj);
+        icetMatrixMultiply(tile_viewport_proj,
+                           (const IceTDouble *)viewport_proj,
+                           (const IceTDouble *)tile_proj);
     } else {
         memcpy(tile_viewport_proj, (const IceTDouble*)tile_proj,
                16*sizeof(IceTDouble));
@@ -71,8 +73,9 @@ void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
 
   /* Project the user requested view to the tile projection. */
     global_proj = icetUnsafeStateGetDouble(ICET_PROJECTION_MATRIX);
-    icetMultMatrix(mat_out, (const IceTDouble *)tile_viewport_proj,
-                   (const IceTDouble *)global_proj);
+    icetMatrixMultiply(mat_out,
+                       (const IceTDouble *)tile_viewport_proj,
+                       (const IceTDouble *)global_proj);
 }
 
 void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
@@ -164,45 +167,4 @@ static void update_tile_projections(void)
                                viewports[i*4+2], viewports[i*4+3],
                                tile_projections + 16*i);
     }
-}
-
-#define MI(r,c)      ((c)*4+(r))
-void icetMultMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
-{
-    int i, j, k;
-
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            C[MI(i,j)] = 0.0;
-            for (k = 0; k < 4; k++) {
-                C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)];
-            }
-        }
-    }
-}
-
-ICET_EXPORT void icetOrtho(IceTDouble left, IceTDouble right,
-                           IceTDouble bottom, IceTDouble top,
-                           IceTDouble znear, IceTDouble zfar,
-                           IceTDouble *mat_out)
-{
-    mat_out[ 0] = 2.0/(right-left);
-    mat_out[ 1] = 0.0;
-    mat_out[ 2] = 0.0;
-    mat_out[ 3] = 0.0;
-
-    mat_out[ 4] = 0.0;
-    mat_out[ 5] = 2.0/(top-bottom);
-    mat_out[ 6] = 0.0;
-    mat_out[ 7] = 0.0;
-
-    mat_out[ 8] = 0.0;
-    mat_out[ 9] = 0.0;
-    mat_out[10] = -2.0/(zfar - znear);
-    mat_out[11] = 0.0;
-
-    mat_out[12] = -(right+left)/(right-left);
-    mat_out[13] = -(top+bottom)/(top-bottom);
-    mat_out[14] = -(zfar+znear)/(zfar-znear);
-    mat_out[15] = 1.0;
 }

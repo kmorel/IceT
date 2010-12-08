@@ -71,7 +71,7 @@ static int SimpleExampleRun()
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
   /* We should be able to set any color we want, but we should do it BEFORE
-   * icetDrawFrame() is called, not in the callback drawing function.
+   * icetGLDrawFrame() is called, not in the callback drawing function.
    * There may also be limitations on the background color when performing
    * color blending. */
     glClearColor(0.2f, 0.5f, 0.1f, 1.0f);
@@ -82,7 +82,7 @@ static int SimpleExampleRun()
   /* Give IceT the bounds of the polygons that will be drawn.  Note that
    * we must take into account any transformation that happens within the
    * draw function (but IceT will take care of any transformation that
-   * happens before icetDrawFrame). */
+   * happens before icetGLDrawFrame). */
     icetBoundingBoxf(-0.5f+rank, 0.5f+rank, -0.5, 0.5, -0.5, 0.5);
 
   /* Set up the tiled display.  Normally, the display will be fixed for a
