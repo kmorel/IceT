@@ -61,6 +61,9 @@ struct IceTCommunicatorStruct {
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
+    void (*Gather)(struct IceTCommunicatorStruct *self,
+                   const void *sendbuf, int sendcount, int type,
+                   void *recvbuf, int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);
@@ -74,6 +77,8 @@ struct IceTCommunicatorStruct {
 
     void (*Wait)(struct IceTCommunicatorStruct *self, IceTCommRequest *request);
     int  (*Waitany)(struct IceTCommunicatorStruct *self,
+                    int count, IceTCommRequest *array_of_requests);
+    void (*Waitall)(struct IceTCommunicatorStruct *self,
                     int count, IceTCommRequest *array_of_requests);
 
     int  (*Comm_size)(struct IceTCommunicatorStruct *self);
@@ -167,6 +172,7 @@ ICET_EXPORT const char *icetGetStrategyName(void);
 #define ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC    (IceTEnum)0x7001
 #define ICET_SINGLE_IMAGE_STRATEGY_BSWAP        (IceTEnum)0x7002
 #define ICET_SINGLE_IMAGE_STRATEGY_TREE         (IceTEnum)0x7003
+#define ICET_SINGLE_IMAGE_STRATEGY_RADIXK       (IceTEnum)0x7004
 
 ICET_EXPORT void icetSingleImageStrategy(IceTEnum strategy);
 

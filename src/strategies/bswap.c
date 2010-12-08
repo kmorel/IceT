@@ -310,7 +310,7 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     IceTSizeType width, height;
 
     icetRaiseDebug("In bswapCompose");
-
+#if 1 
     width = icetImageGetWidth(image);
     height = icetImageGetHeight(image);
 
@@ -344,7 +344,6 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     bswapComposeNoCombine(compose_group, group_size, pow2size, group_rank,
                           image, pixel_count,
                           inSparseImageBuffer, outSparseImage);
-
     if (group_rank == image_dest) {
       /* Collect image if I'm the destination. */
         bswapCollectFinalImages(compose_group, pow2size, group_rank,
@@ -357,4 +356,5 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
         bswapSendFinalImage(compose_group, image_dest, image,
                             sub_image_size, piece_num*sub_image_size);
     }
+#endif
 }

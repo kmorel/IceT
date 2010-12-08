@@ -24,6 +24,7 @@ SET(ICET_SRCS
         ../strategies/reduce.c
         ../strategies/vtree.c
 	../strategies/bswap.c
+	../strategies/radixk.c
 	../strategies/tree.c
 	../strategies/automatic.c
 )
