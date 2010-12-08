@@ -77,8 +77,11 @@ static int* radixkGetK(int world_size, int* r)
     return k;
 }
 
+#if 0
+radixkMirrorPermuation and RadixDist do not seem to be used.
+
 /* computes the generalized mirror permutation of rank in k-space */
-static int radixkMirrorPermutation(int r, int *k, int rank)
+static int radixkMirrorPermutation(int r, const int *k, int rank)
 {
     int *digits = malloc(r * sizeof(int));
     int suffix_base;
@@ -155,16 +158,19 @@ static void RadixDist(int size,
     }
 
     /* now permute the calculated values into their actual locations */
-    int ofst_total = 0;
-    for (rank = 0; rank < nprocs; ++rank) {
-        int mirror_rank = radixkMirrorPermutation(r, k, rank);
-        ofsts[mirror_rank] = ofst_total;
-        ofst_total += sizes[mirror_rank];
+    {
+        int ofst_total = 0;
+        for (rank = 0; rank < nprocs; ++rank) {
+            int mirror_rank = radixkMirrorPermutation(r, k, rank);
+            ofsts[mirror_rank] = ofst_total;
+            ofst_total += sizes[mirror_rank];
+        }
     }
 
     free(classes);
 
 }
+#endif
 
 /* radixkGetRndVec
 
@@ -227,20 +233,25 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
                                    IceTInt group_size, IceTInt image_dest,
                                    int offset, int size, IceTImage image)
 {
+    int i;
+    IceTEnum color_format;
+    IceTEnum depth_format;
+    IceTCommRequest *requests;
+    int *all_sizes;
+    int* all_offsets;
+
     icetRaiseDebug("Collecting image data.");
     /* Adjust image for output as some buffers, such as depth, might be
        dropped. */
     icetImageAdjustForOutput(image);
 
-    int i;
-    IceTEnum color_format = icetImageGetColorFormat(image);
-    IceTEnum depth_format = icetImageGetDepthFormat(image);
-    IceTCommRequest* requests = 
-        malloc((group_size) * sizeof(IceTCommRequest));
+    color_format = icetImageGetColorFormat(image);
+    depth_format = icetImageGetDepthFormat(image);
+    requests =  malloc((group_size) * sizeof(IceTCommRequest));
 
     /* TODO: Compute the sizes instead of communicate them. */ 
     /* Find out the sizes of each process. */
-    int* all_sizes = malloc(sizeof(int) * group_size);
+    all_sizes = malloc(sizeof(int) * group_size);
     if (group_rank == image_dest) {
         all_sizes[group_rank] = size;
         for (i = 0; i < group_size; i++) {
@@ -260,7 +271,7 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
     }
 
     /* Compute all the offsets. */
-    int* all_offsets = malloc(sizeof(int) * group_size);
+    all_offsets = malloc(sizeof(int) * group_size);
     all_offsets[0] = 0;
     for (i = 1; i < group_size; i++) {
         all_offsets[i] = all_offsets[i - 1] + all_sizes[i - 1];
@@ -273,7 +284,7 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
         if (group_rank == image_dest) {
             for (i = 0; i < group_size; i++) {
                 if (i != group_rank) {
-                    requests[i] = icetCommIrecv(color_buf
+                    requests[i] = icetCommIrecv((IceTByte*)color_buf
                                                 + pixel_size * all_offsets[i],
                                                 pixel_size * all_sizes[i],
                                                 ICET_BYTE,
@@ -287,8 +298,11 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
                 icetCommWait(requests + i);
             }
         } else {
-            icetCommSend(color_buf + pixel_size * offset, pixel_size * size,
-                         ICET_BYTE, compose_group[image_dest], SWAP_IMAGE_DATA);
+            icetCommSend((IceTByte*)color_buf + pixel_size * offset,
+                         pixel_size * size,
+                         ICET_BYTE,
+                         compose_group[image_dest],
+                         SWAP_IMAGE_DATA);
         }
     }
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
@@ -297,7 +311,7 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
         if (group_rank == image_dest) {
             for (i = 0; i < group_size; i++) {
                 if (i != group_rank) {
-                    requests[i] = icetCommIrecv(depth_buf
+                    requests[i] = icetCommIrecv((IceTByte*)depth_buf
                                                 + pixel_size * all_offsets[i],
                                                 pixel_size * all_sizes[i],
                                                 ICET_BYTE,
@@ -311,8 +325,11 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
                 icetCommWait(requests + i);
             }
         } else {
-            icetCommSend(depth_buf + pixel_size * offset, pixel_size * size,
-                         ICET_BYTE, compose_group[image_dest], SWAP_IMAGE_DATA);
+            icetCommSend((IceTByte*)depth_buf + pixel_size * offset,
+                         pixel_size * size,
+                         ICET_BYTE,
+                         compose_group[image_dest],
+                         SWAP_IMAGE_DATA);
         }
     }
 
@@ -360,18 +377,6 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     int r; /* Number of rounds. */
     int* k = radixkGetK(group_size, &r); /* Communication sizes per round. */
 
-    /* Find your rank in your group. */
-    IceTInt rank = 0;
-    IceTInt world_rank = icetCommRank();
-    while ((rank < group_size) && (compose_group[rank] != world_rank)) {
-        rank++;
-    }
-    if (rank >= group_size) {
-        icetRaiseError("Local process not in compose_group?",
-                       ICET_SANITY_CHECK_FAIL);
-        return;
-    }
-
     IceTCommRequest r_reqs[MAX_K]; /* Receive requests */
     IceTCommRequest s_reqs[MAX_K]; /* Send requests */
     IceTVoid *recv_bufs[MAX_K]; /* Receive buffers */
@@ -395,6 +400,22 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
        function. */
     int partners[MAX_K];
 
+    IceTVoid* intermediate_compose_buf;
+    IceTImage intermediate_compose_img;
+    int max_sparse_img_size;
+
+    /* Find your rank in your group. */
+    IceTInt rank = 0;
+    IceTInt world_rank = icetCommRank();
+    while ((rank < group_size) && (compose_group[rank] != world_rank)) {
+        rank++;
+    }
+    if (rank >= group_size) {
+        icetRaiseError("Local process not in compose_group?",
+                       ICET_SANITY_CHECK_FAIL);
+        return;
+    }
+
     /* r > 0 is assumed several places throughout this function */
     assert(r > 0);
 
@@ -408,13 +429,12 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     /* A space for uncompressing an intermediate image and then compositing it
        with another compressed image. This is used for group sizes that are 
        greater than two for compositing intermediate results. */
-    IceTVoid* intermediate_compose_buf =
-        malloc(icetImageBufferSize(width, height));
-    IceTImage intermediate_compose_img = 
-        icetImageAssignBuffer(intermediate_compose_buf, width, height);
+    intermediate_compose_buf = malloc(icetImageBufferSize(width, height));
+    intermediate_compose_img
+        = icetImageAssignBuffer(intermediate_compose_buf, width, height);
 
     /* Allocate buffers */
-    int max_sparse_img_size = icetSparseImageBufferSize(width, height);
+    max_sparse_img_size = icetSparseImageBufferSize(width, height);
     max_k = 0;
     for (i = 0; i < r; i++) {
         max_k = k[i] > max_k ? k[i] : max_k;
@@ -488,13 +508,13 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
             }
         }
 
-        IceTVoid* package_buffer;
-        IceTSizeType package_size;
         /* Compress subimages and post sends in the same order */
         n = 0;
         for (j = 1; j < k[i]; j++) {
             dest = rv[i] + j; /* Toward higher group members */
             if (dest < k[i]) {
+                IceTVoid* package_buffer;
+                IceTSizeType package_size;
                 icetCompressSubImage(image, ofsts[dest], sizes[dest],
                                      send_img_bufs[MAP_BUF(dest)]);
                 icetSparseImagePackageForSend(send_img_bufs[MAP_BUF(dest)], 
@@ -507,6 +527,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
             }
             dest = rv[i] - j; /* Toward lower group members */
             if (dest >= 0) {
+                IceTVoid* package_buffer;
+                IceTSizeType package_size;
                 icetCompressSubImage(image, ofsts[dest], sizes[dest],
                                      send_img_bufs[MAP_BUF(dest)]);
                 icetSparseImagePackageForSend(send_img_bufs[MAP_BUF(dest)], 
@@ -573,12 +595,15 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                            operations. Once a function for compositing two
                            compressed images is available, this can be
                            changed. */
-                        IceTSparseImage firstSparseImage =
+                        IceTSparseImage firstSparseImage;
+                        IceTSparseImage secondSparseImage;
+                        IceTSizeType package_size;
+                        firstSparseImage =
                             icetSparseImageUnpackageFromReceive(
                                                   recv_bufs[MAP_BUF(dest - b)]);
                         icetDecompressImage(firstSparseImage,
                                             intermediate_compose_img);
-                        IceTSparseImage secondSparseImage =
+                        secondSparseImage =
                             icetSparseImageUnpackageFromReceive(
                                                       recv_bufs[MAP_BUF(dest)]);
 
@@ -641,12 +666,15 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                            operations. Once a function for compositing two
                            compressed images is available, this can be
                            changed. */
-                        IceTSparseImage firstSparseImage =
+                        IceTSparseImage firstSparseImage;
+                        IceTSparseImage secondSparseImage;
+                        IceTSizeType package_size;
+                        firstSparseImage =
                             icetSparseImageUnpackageFromReceive(
                                                   recv_bufs[MAP_BUF(dest + b)]);
                         icetDecompressImage(firstSparseImage,
                                             intermediate_compose_img);
-                        IceTSparseImage secondSparseImage =
+                        secondSparseImage =
                             icetSparseImageUnpackageFromReceive(
                                                       recv_bufs[MAP_BUF(dest)]);
                         /* Start compositing at offset 0 because we just
