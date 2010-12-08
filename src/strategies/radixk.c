@@ -38,7 +38,8 @@
 #define MAX_K 256 /* Maximum k value */
 #define MAX_R 128 /* Maximum number of rounds */
 
-int* radixkGetK(int world_size, int* r) {
+static int* radixkGetK(int world_size, int* r)
+{
     /* Divide the world size into groups that are closest to the magic k
        value. */
     int* k = NULL;
@@ -77,7 +78,7 @@ int* radixkGetK(int world_size, int* r) {
 }
 
 /* computes the generalized mirror permutation of rank in k-space */
-int radixkMirrorPermutation(int r, int *k, int rank)
+static int radixkMirrorPermutation(int r, int *k, int rank)
 {
     int *digits = malloc(r * sizeof(int));
     int suffix_base;
@@ -121,7 +122,13 @@ int radixkMirrorPermutation(int r, int *k, int rank)
 
    ofsts and sizes need to be allocated large enough hold nprocs elements
 */
-void RadixDist(int size, int nprocs, int r, int *k, int *ofsts, int *sizes) {
+static void RadixDist(int size,
+                      int nprocs,
+                      int r,
+                      const int *k,
+                      int *ofsts,
+                      int *sizes)
+{
     int prod_k;
     int *classes = malloc(nprocs * sizeof(int));
     int rank;
@@ -174,7 +181,8 @@ void RadixDist(int size, int nprocs, int r, int *k, int *ofsts, int *sizes) {
    outputs:
      rv: round vector coordinates
 */
-void radixkGetRndVec(int r, int *k, int rank, int *rv) {
+static void radixkGetRndVec(int r, int *k, int rank, int *rv)
+{
 
     int step; /* step size in rank for a lattice direction */
     int i;
@@ -199,7 +207,8 @@ void radixkGetRndVec(int r, int *k, int rank, int *rv) {
    output:
     partners: MPI ranks of the partners in my group, including myself
 */
-void GetPartners(int *k, int cur_r, int rc, int rank, int *partners) {
+static void GetPartners(int *k, int cur_r, int rc, int rank, int *partners)
+{
 
     int step; /* ranks jump by this much in the current round */
     int i;
@@ -214,9 +223,10 @@ void GetPartners(int *k, int cur_r, int rc, int rank, int *partners) {
 
 }
 
-void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
-                            IceTInt group_size, IceTInt image_dest,
-                            int offset, int size, IceTImage image) {
+static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
+                                   IceTInt group_size, IceTInt image_dest,
+                                   int offset, int size, IceTImage image)
+{
     icetRaiseDebug("Collecting image data.");
     /* Adjust image for output as some buffers, such as depth, might be
        dropped. */
