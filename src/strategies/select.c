@@ -30,6 +30,9 @@ extern void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
 extern void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
                             IceTImage image);
+extern void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
+                              IceTInt image_dest,
+                              IceTImage image);
 
 /*==================================================================*/
 
