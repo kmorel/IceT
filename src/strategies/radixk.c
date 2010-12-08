@@ -1,16 +1,21 @@
-/* radix.c: radix-k compositing
-   Copyright (c) 2009 Tom Peterka
+/* -*- c -*- *******************************************************/
+/*
+ * Copyright (C) 2010 Sandia Corporation
+ * Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+ * the U.S. Government retains certain rights in this software.
+ *
+ * This source code is released under the New BSD License.
+ */
 
-   Contact:
-    Tom Peterka
-    MCS Radix Lab
-    Argonne National Laboratory
-    9700 S. Cass Ave.
-    Argonne, IL 60439
-    tpeterka@mcs.anl.gov
+/* The Radix-k algorithm was designed by Tom Peterka at Argonne National
+   Laboratory.
 
-   All rights reserved. May not be used, modified, or copied
-   without permission
+   Copyright (c) University of Chicago
+   Permission is hereby granted to use, reproduce, prepare derivative works, and
+   to redistribute to others.
+
+   The Radix-k algorithm was ported to IceT by Wesley Kendall from University
+   of Tennessee at Knoxville.
 */
 
 #include <stdio.h>
