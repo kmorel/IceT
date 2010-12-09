@@ -78,8 +78,6 @@ struct IceTCommunicatorStruct {
     void (*Wait)(struct IceTCommunicatorStruct *self, IceTCommRequest *request);
     int  (*Waitany)(struct IceTCommunicatorStruct *self,
                     int count, IceTCommRequest *array_of_requests);
-    void (*Waitall)(struct IceTCommunicatorStruct *self,
-                    int count, IceTCommRequest *array_of_requests);
 
     int  (*Comm_size)(struct IceTCommunicatorStruct *self);
     int  (*Comm_rank)(struct IceTCommunicatorStruct *self);

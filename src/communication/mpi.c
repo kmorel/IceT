@@ -46,8 +46,6 @@ static IceTCommRequest Irecv(IceTCommunicator self,
 static void Waitone(IceTCommunicator self, IceTCommRequest *request);
 static int  Waitany(IceTCommunicator self,
                     int count, IceTCommRequest *array_of_requests);
-static void Waitall(IceTCommunicator self,
-                    int count, IceTCommRequest *array_of_requests);
 static int Comm_size(IceTCommunicator self);
 static int Comm_rank(IceTCommunicator self);
 
@@ -147,7 +145,6 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Irecv = Irecv;
     comm->Wait = Waitone;
     comm->Waitany = Waitany;
-    comm->Waitall = Waitall;
     comm->Comm_size = Comm_size;
     comm->Comm_rank = Comm_rank;
     comm->data = malloc(sizeof(MPI_Comm));
@@ -327,32 +324,6 @@ static int  Waitany(IceTCommunicator  self,
 
     return idx;
 }
-
-static void Waitall(IceTCommunicator  self,
-                    int count, IceTCommRequest *array_of_requests)
-{
-    MPI_Request *mpi_requests;
-    int idx;
-
-    /* To remove warning */
-    (void)self;
-
-    mpi_requests = malloc(sizeof(MPI_Request)*count);
-    for (idx = 0; idx < count; idx++) {
-        mpi_requests[idx] = getMPIRequest(array_of_requests[idx]);
-    }
-
-    MPI_Waitall(count, mpi_requests, MPI_STATUS_IGNORE);
-
-    for (idx = 0; idx < count; idx++) {
-      setMPIRequest(array_of_requests[idx], mpi_requests[idx]);
-      destroy_request(array_of_requests[idx]);
-      array_of_requests[idx] = ICET_COMM_REQUEST_NULL;
-    }
-
-    free(mpi_requests);
-}
-
 
 static int Comm_size(IceTCommunicator self)
 {
