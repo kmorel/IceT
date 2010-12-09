@@ -427,6 +427,12 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
         return;
     }
 
+    if (group_size == 1) {
+        /* I am the only process in the group.  No compositing to be done.
+         * Just return and the image will be complete. */
+        return;
+    }
+
     /* r > 0 is assumed several places throughout this function */
     if (r <= 0) {
         icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
