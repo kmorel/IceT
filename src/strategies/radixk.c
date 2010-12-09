@@ -45,33 +45,63 @@ static int* radixkGetK(int world_size, int* r)
     int num_groups = 0;
     int next_divide = world_size;
     while (next_divide > 1) {
+        int next_k = -1;
+
         /* If the magic k value is perfectly divisible by the next_divide
            size, we are good to go */
-        int next_k = -1;
-        if (next_divide % MAGIC_K == 0) {
+        if ((next_divide % MAGIC_K) == 0) {
             next_k = MAGIC_K;
-        } else if (MAGIC_K > next_divide) {
-            next_k = next_divide;
-        } else {
-            /* Iteratively progress upwards to find the next best match for 
-               the magic k value. */
-            int i;
-            for (i = 1; i <= next_divide - MAGIC_K; i++) {
-                if ((MAGIC_K + i) % next_divide == 0) {
-                    next_k = MAGIC_K + i;
+        }
+
+        /* If that does not work, look for a factor near the magic_k. */
+        if (next_k == -1) {
+            int magic_k_distance;
+            for (magic_k_distance = 1;
+                 magic_k_distance <= MAGIC_K-2;
+                 magic_k_distance++) {
+                if ((next_divide % (MAGIC_K-magic_k_distance)) == 0) {
+                    next_k = MAGIC_K-magic_k_distance;
+                    break;
+                }
+                if ((next_divide % (MAGIC_K+magic_k_distance)) == 0) {
+                    next_k = MAGIC_K+magic_k_distance;
                     break;
                 }
             }
-            if (next_k == -1) {
-                icetRaiseError("Did not find a next_k.",
-                               ICET_SANITY_CHECK_FAIL);
+        }
+
+        /* If you STILL don't have a good factor, progress upwards to find the
+           best match. */
+        if (next_k == -1) {
+            int try_k;
+            int max_k;
+
+            /* The largest possible smallest factor (other than next_divide
+               itself) is the square root of next_divide.  We don't have to
+               check the values between the square root and next_divide. */
+            max_k = (int)floor(sqrt(next_divide));
+
+            /* It would be better to just visit prime numbers, but other than
+               having a huge table, how would you do that?  Hopefully this is an
+               uncommon use case. */
+            for (try_k = MAGIC_K+1; try_k < max_k; try_k++) {
+                if ((next_divide % try_k) == 0) {
+                    next_k = try_k;
+                    break;
+                }
             }
+        }
+
+        /* If we STILL don't have a factor, then next_division must be a large
+           prime.  Basically give up by using next_divide as the next k. */
+        if (next_k == -1) {
+            next_k = next_divide;
         }
 
         /* Set the k value in the array. */
         k = realloc(k, sizeof(int) * (num_groups + 1));
         k[num_groups] = next_k;
-        next_divide /= MAGIC_K;
+        next_divide /= next_k;
         num_groups++;
     }
 
