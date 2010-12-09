@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
-#include <assert.h>
 #include <string.h>
 
 #include <IceT.h>
@@ -63,7 +62,10 @@ static int* radixkGetK(int world_size, int* r)
                     break;
                 }
             }
-            assert(next_k != -1);
+            if (next_k == -1) {
+                icetRaiseError("Did not find a next_k.",
+                               ICET_SANITY_CHECK_FAIL);
+            }
         }
 
         /* Set the k value in the array. */
@@ -95,7 +97,10 @@ static int radixkMirrorPermutation(int r, const int *k, int rank)
         digits[r-i-1] = quot % k[r-i-1]; /* remainder is the current digit */
         quot = quot / k[r-i-1];
     }
-    assert(quot == 0);
+    if (quot != 0) {
+        icetRaiseError("Rank not completely decomposed into digits.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
 
     /* mirror and calculate the new rank at the same time */
     suffix_base = 1;
@@ -137,12 +142,18 @@ static void RadixDist(int size,
     int rank;
     int i;
 
-    assert(r > 0);
+    if (r <= 0) {
+        icetRaiseError("Invalid number of rounds passed to RadixDist.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
     prod_k = k[0];
     for (i = 1; i < r; ++i) {
         prod_k *= k[i];
     }
-    assert(prod_k == nprocs); /* sanity */
+    if (prod_k != nproc) {
+        icetRaiseError("Invalid k factors given to RadixDist.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
 
     /* First calculate the sizes and offsets as though the algorithm left the
        blocks in process order */
@@ -417,14 +428,18 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     }
 
     /* r > 0 is assumed several places throughout this function */
-    assert(r > 0);
+    if (r <= 0) {
+        icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
+    }
 
     n = k[0];
     for (i = 1; i < r; ++i) {
         n *= k[i];
     }
-    /* Sanity check that the product of all k's covers all processes */
-    assert(n == group_size);
+    if (n != group_size) {
+        icetRaiseError("Product of k's not equal to number of processes.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
   
     /* A space for uncompressing an intermediate image and then compositing it
        with another compressed image. This is used for group sizes that are 
