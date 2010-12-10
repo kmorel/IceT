@@ -61,9 +61,6 @@ struct IceTCommunicatorStruct {
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
-    void (*Gather)(struct IceTCommunicatorStruct *self,
-                   const void *sendbuf, int sendcount, int type,
-                   void *recvbuf, int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);

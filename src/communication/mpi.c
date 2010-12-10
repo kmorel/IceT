@@ -32,8 +32,6 @@ static void Sendrecv(IceTCommunicator self,
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
-static void Gather(IceTCommunicator self, const void *sendbuf, 
-                   int sendcount, int type, void *recvbuf, int root);
 static void Allgather(IceTCommunicator self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);
@@ -140,7 +138,6 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Recv = Recv;
     comm->Sendrecv = Sendrecv;
     comm->Allgather = Allgather;
-    comm->Gather = Gather;
     comm->Isend = Isend;
     comm->Irecv = Irecv;
     comm->Wait = Waitone;
@@ -223,16 +220,6 @@ static void Sendrecv(IceTCommunicator self,
     MPI_Sendrecv((void *)sendbuf, sendcount, mpisendtype, dest, sendtag,
                  recvbuf, recvcount, mpirecvtype, src, recvtag, MPI_COMM,
                  MPI_STATUS_IGNORE);
-}
-
-static void Gather(IceTCommunicator self, const void *sendbuf,
-                   int sendcount, int type, void *recvbuf, int root)
-{
-    MPI_Datatype mpitype;
-    CONVERT_DATATYPE(type, mpitype);
-
-    MPI_Gather((void *)sendbuf, sendcount, mpitype,
-               recvbuf, sendcount, mpitype, root, MPI_COMM);
 }
 
 static void Allgather(IceTCommunicator self,

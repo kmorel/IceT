@@ -63,17 +63,6 @@ void icetCommSendrecv(const void *sendbuf,
                    recvbuf, recvcount, recvtype, src, recvtag);
 }
 
-void icetCommGather(const void *sendbuf,
-                    int sendcount,
-                    int type,
-                    void *recvbuf,
-                    int root)
-{
-    IceTCommunicator comm = icetGetCommunicator();
-    icetAddSent(sendcount, type);
-    comm->Gather(comm, sendbuf, sendcount, type, recvbuf, root);
-}
-
 void icetCommAllgather(const void *sendbuf,
                        int sendcount,
                        int type,
