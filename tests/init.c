@@ -14,7 +14,9 @@
 #include <IceTGL.h>
 #endif
 
+#ifndef __USE_POSIX
 #define __USE_POSIX
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
