@@ -61,9 +61,6 @@ struct IceTCommunicatorStruct {
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
-    void (*Gather)(struct IceTCommunicatorStruct *self,
-                   const void *sendbuf, int sendcount, int type,
-                   void *recvbuf, int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
                       const void *sendbuf, int sendcount, int type,
                       void *recvbuf);
@@ -77,8 +74,6 @@ struct IceTCommunicatorStruct {
 
     void (*Wait)(struct IceTCommunicatorStruct *self, IceTCommRequest *request);
     int  (*Waitany)(struct IceTCommunicatorStruct *self,
-                    int count, IceTCommRequest *array_of_requests);
-    void (*Waitall)(struct IceTCommunicatorStruct *self,
                     int count, IceTCommRequest *array_of_requests);
 
     int  (*Comm_size)(struct IceTCommunicatorStruct *self);

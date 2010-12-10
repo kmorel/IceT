@@ -63,17 +63,6 @@ void icetCommSendrecv(const void *sendbuf,
                    recvbuf, recvcount, recvtype, src, recvtag);
 }
 
-void icetCommGather(const void *sendbuf,
-                    int sendcount,
-                    int type,
-                    void *recvbuf,
-                    int root)
-{
-    IceTCommunicator comm = icetGetCommunicator();
-    icetAddSent(sendcount, type);
-    comm->Gather(comm, sendbuf, sendcount, type, recvbuf, root);
-}
-
 void icetCommAllgather(const void *sendbuf,
                        int sendcount,
                        int type,
@@ -119,8 +108,10 @@ int icetCommWaitany(int count, IceTCommRequest *array_of_requests)
 
 void icetCommWaitall(int count, IceTCommRequest *array_of_requests)
 {
-    IceTCommunicator comm = icetGetCommunicator();
-    comm->Waitall(comm, count, array_of_requests);
+    int i;
+    for (i = 0; i < count; i++) {
+        icetCommWait(&array_of_requests[i]);
+    }
 }
 
 int icetCommSize()
