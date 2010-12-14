@@ -12,6 +12,7 @@
 #include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
+#include <IceTDevMatrix.h>
 #include <IceTDevState.h>
 #include <IceTDevStrategySelect.h>
 
@@ -19,14 +20,10 @@
 #include <string.h>
 #include <math.h>
 
-#define MI(r,c) ((c)*4+(r))
-
 #ifdef _MSC_VER
 #pragma warning(disable:4054)
 #pragma warning(disable:4055)
 #endif
-
-static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B);
 
 void icetDrawCallback(IceTDrawCallbackType func)
 {
@@ -211,8 +208,10 @@ static void find_contained_viewport(const IceTDouble projection_matrix[16],
     viewport_matrix[14] = 0.0;
     viewport_matrix[15] = 2.0;
 
-    multMatrix(tmp_matrix, projection_matrix, modelview_matrix);
-    multMatrix(total_transform, viewport_matrix, tmp_matrix);
+    icetMatrixMultiply(tmp_matrix, projection_matrix, modelview_matrix);
+    icetMatrixMultiply(total_transform,
+                       (const IceTDouble *)viewport_matrix,
+                       (const IceTDouble *)tmp_matrix);
 
   /* Set absolute mins and maxes. */
     left   = global_viewport[0] + global_viewport[2];
@@ -229,26 +228,14 @@ static void find_contained_viewport(const IceTDouble projection_matrix[16],
     transformed_verts = icetGetStateBuffer(ICET_TRANSFORMED_BOUNDS,
                                        sizeof(IceTDouble)*num_bounding_verts*4);
     for (i = 0; i < num_bounding_verts; i++) {
-        transformed_verts[4*i + 0]
-            = (  total_transform[MI(0,0)]*bound_vert[3*i+0]
-               + total_transform[MI(0,1)]*bound_vert[3*i+1]
-               + total_transform[MI(0,2)]*bound_vert[3*i+2]
-               + total_transform[MI(0,3)] );
-        transformed_verts[4*i + 1]
-            = (  total_transform[MI(1,0)]*bound_vert[3*i+0]
-               + total_transform[MI(1,1)]*bound_vert[3*i+1]
-               + total_transform[MI(1,2)]*bound_vert[3*i+2]
-               + total_transform[MI(1,3)] );
-        transformed_verts[4*i + 2]
-            = (  total_transform[MI(2,0)]*bound_vert[3*i+0]
-               + total_transform[MI(2,1)]*bound_vert[3*i+1]
-               + total_transform[MI(2,2)]*bound_vert[3*i+2]
-               + total_transform[MI(2,3)] );
-        transformed_verts[4*i + 3]
-            = (  total_transform[MI(3,0)]*bound_vert[3*i+0]
-               + total_transform[MI(3,1)]*bound_vert[3*i+1]
-               + total_transform[MI(3,2)]*bound_vert[3*i+2]
-               + total_transform[MI(3,3)] );
+        IceTDouble bound_vert_4vec[4];
+        bound_vert_4vec[0] = bound_vert[3*i+0];
+        bound_vert_4vec[1] = bound_vert[3*i+1];
+        bound_vert_4vec[2] = bound_vert[3*i+2];
+        bound_vert_4vec[3] = 1.0;
+        icetMatrixVectorMultiply(transformed_verts + 4*i,
+                                 (const IceTDouble *)total_transform,
+                                 (const IceTDouble *)bound_vert_4vec);
     }
 
   /* Now iterate over all the transformed verts and adjust the absolute mins
@@ -721,18 +708,4 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetStateSetDouble(ICET_BUFFER_WRITE_TIME, 0.0);
 
     return image;
-}
-
-static void multMatrix(IceTDouble *C, const IceTDouble *A, const IceTDouble *B)
-{
-    int i, j, k;
-
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            C[MI(i,j)] = 0.0;
-            for (k = 0; k < 4; k++) {
-                C[MI(i,j)] += A[MI(i,k)] * B[MI(k,j)];
-            }
-        }
-    }
 }
