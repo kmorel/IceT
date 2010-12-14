@@ -10,6 +10,7 @@ SET(MyTests
   BoundsBehindViewer.c
   CompressionSize.c
   DisplayNoDraw.c
+  OddImageSizes.c
   RandomTransform.c
   SimpleExample.c
   )
