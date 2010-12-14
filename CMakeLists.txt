@@ -142,6 +142,9 @@ ENDIF(NOT ICET_INSTALL_LIB_DIR)
 IF(NOT ICET_INSTALL_MAN_DIR)
   SET(ICET_INSTALL_MAN_DIR share/man)
 ENDIF(NOT ICET_INSTALL_MAN_DIR)
+IF(NOT ICET_INSTALL_EXPORT_NAME)
+  SET(ICET_INSTALL_EXPORT_NAME IceTTargets)
+ENDIF()
 
 # Shared libraries are considered both runtime and development and
 # static libraries are considered development only.  In order to
