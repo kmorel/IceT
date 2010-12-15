@@ -54,7 +54,7 @@ static void parse_arguments(int argc, char *argv[])
     g_num_tiles_x = 1;
     g_num_tiles_y = 1;
     g_num_frames = 100;
-    g_seed = time(NULL);
+    g_seed = (int)time(NULL);
     g_transparent = 0;
     g_write_image = 0;
     g_strategy = ICET_STRATEGY_REDUCE;
@@ -266,26 +266,26 @@ static void draw(const IceTDouble *projection_matrix,
                 near_plane = transformed_box.planes[near_plane_index];
                 shading = -near_plane[2]/sqrt(icetDot3(near_plane, near_plane));
 
-                color[0] = g_color[0] * shading;
-                color[1] = g_color[1] * shading;
-                color[2] = g_color[2] * shading;
+                color[0] = g_color[0] * (IceTFloat)shading;
+                color[1] = g_color[1] * (IceTFloat)shading;
+                color[2] = g_color[2] * (IceTFloat)shading;
                 color[3] = g_color[3];
-                depth = 0.5*near_distance;
+                depth = (IceTFloat)(0.5*near_distance);
                 if (g_transparent) {
                     /* Modify color by an opacity determined by thickness. */
                     IceTDouble thickness = far_distance - near_distance;
                     IceTDouble opacity = 1.0 - pow(M_E, -4.0*thickness);
-                    color[0] *= opacity;
-                    color[1] *= opacity;
-                    color[2] *= opacity;
-                    color[3] *= opacity;
+                    color[0] *= (IceTFloat)opacity;
+                    color[1] *= (IceTFloat)opacity;
+                    color[2] *= (IceTFloat)opacity;
+                    color[3] *= (IceTFloat)opacity;
                 }
             } else {
                 color[0] = background_color[0];
                 color[1] = background_color[1];
                 color[2] = background_color[2];
                 color[3] = background_color[3];
-                depth = 1.0;
+                depth = 1.0f;
             }
 
             if (g_transparent) {
@@ -325,8 +325,8 @@ static void find_region(int rank,
     int end_rank = num_proc;    /* One after the last rank. */
     region_divide current_division = NULL;
 
-    bounds_min[0] = bounds_min[1] = bounds_min[2] = -0.5;
-    bounds_max[0] = bounds_max[1] = bounds_max[2] = 0.5;
+    bounds_min[0] = bounds_min[1] = bounds_min[2] = -0.5f;
+    bounds_max[0] = bounds_max[1] = bounds_max[2] = 0.5f;
 
     *divisions = NULL;
 
@@ -461,8 +461,8 @@ static int SimpleTimingRun()
     IceTInt rank;
     IceTInt num_proc;
 
-    float aspect
-        = (float)(g_num_tiles_x*SCREEN_WIDTH)/(g_num_tiles_y*SCREEN_HEIGHT);
+    float aspect = (  (float)(g_num_tiles_x*SCREEN_WIDTH)
+                    / (float)(g_num_tiles_y*SCREEN_HEIGHT) );
     int frame;
     float bounds_min[3];
     float bounds_max[3];
@@ -506,7 +506,7 @@ static int SimpleTimingRun()
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
      * will take care of any transformation that gets passed to
      * icetDrawFrame. */
-    icetBoundingBoxf(-0.5f, 0.5f, -0.5, 0.5, -0.5, 0.5);
+    icetBoundingBoxd(-0.5f, 0.5f, -0.5, 0.5, -0.5, 0.5);
 
     /* Determine the region we want the local geometry to be in.  This will be
      * used for the modelview transformation later. */
@@ -521,8 +521,8 @@ static int SimpleTimingRun()
         display_rank = 0;
         for (y = 0; y < g_num_tiles_y; y++) {
             for (x = 0; x < g_num_tiles_x; x++) {
-                icetAddTile(x*SCREEN_WIDTH,
-                            y*SCREEN_HEIGHT,
+                icetAddTile(x*(IceTInt)SCREEN_WIDTH,
+                            y*(IceTInt)SCREEN_HEIGHT,
                             SCREEN_WIDTH,
                             SCREEN_HEIGHT,
                             display_rank);
@@ -546,10 +546,10 @@ static int SimpleTimingRun()
         g_color[0] = (float)(rank%2);
         g_color[1] = (float)((rank/2)%2);
         g_color[2] = (float)((rank/4)%2);
-        g_color[3] = 1.0;
+        g_color[3] = 1.0f;
     } else {
         g_color[0] = g_color[1] = g_color[2] = 0.5f;
-        g_color[3] = 1.0;
+        g_color[3] = 1.0f;
     }
 
     /* Initialize randomness. */
@@ -665,7 +665,7 @@ static int SimpleTimingRun()
             char filename[256];
             icetImageCopyColorub(image, buffer, ICET_IMAGE_COLOR_RGBA_UBYTE);
             sprintf(filename, "SimpleTiming%02d.ppm", rank);
-            write_ppm(filename, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+            write_ppm(filename, buffer, (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
             free(buffer);
         }
     }
