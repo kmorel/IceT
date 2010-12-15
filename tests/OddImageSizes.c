@@ -16,10 +16,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define NUM_IMAGE_SIZES 2
+#define NUM_IMAGE_SIZES 3
 static int c_image_sizes[NUM_IMAGE_SIZES][2] = {
-    { 1, 1 },
-    { 0, 0 }
+    { 1, 1 },           /* Splitting algorithms must truncate. */
+    { 509, 503 },       /* Each dimension is prime. */
+    { 997, 1 }          /* Number of pixels is prime. */
 };
 
 static void draw(const IceTDouble *projection_matrix,
