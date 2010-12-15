@@ -83,7 +83,7 @@ static int SimpleExampleRun()
    * we must take into account any transformation that happens within the
    * draw function (but IceT will take care of any transformation that
    * happens before icetDrawFrame). */
-    icetBoundingBoxf(-0.5f+rank, 0.5f+rank, -0.5, 0.5, -0.5, 0.5);
+    icetBoundingBoxd(-0.5+rank, 0.5+rank, -0.5, 0.5, -0.5, 0.5);
 
   /* Set up the tiled display.  Normally, the display will be fixed for a
    * given installation, but since this is a demo, we give two specific
@@ -112,10 +112,14 @@ static int SimpleExampleRun()
        * on top of or away from each other.
        */
         icetResetTiles();
-        icetAddTile(0,           SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
-        icetAddTile(SCREEN_WIDTH,SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
-        icetAddTile(0,           0,             SCREEN_WIDTH, SCREEN_HEIGHT, 2);
-        icetAddTile(SCREEN_WIDTH,0,             SCREEN_WIDTH, SCREEN_HEIGHT, 3);
+        icetAddTile(0, (IceTInt)SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+        icetAddTile((IceTInt)SCREEN_WIDTH,
+                    (IceTInt)SCREEN_HEIGHT,
+                    SCREEN_WIDTH,
+                    SCREEN_HEIGHT,
+                    1);
+        icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 2);
+        icetAddTile((IceTInt)SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 3);
     }
 
   /* Tell IceT what strategy to use.  The REDUCE strategy is an all-around
@@ -136,7 +140,7 @@ static int SimpleExampleRun()
         color[0] = (float)(rank%2);
         color[1] = (float)((rank/2)%2);
         color[2] = (float)((rank/4)%2);
-        color[3] = 1.0;
+        color[3] = 1.0f;
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color);
     }
 
@@ -150,9 +154,9 @@ static int SimpleExampleRun()
        * IceT. */
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        glRotatef(angle, 0.0, 1.0, 0.0);
-        glScalef(1.0f/num_proc, 1.0, 1.0);
-        glTranslatef(-(num_proc-1)/2.0f, 0.0, 0.0);
+        glRotated(angle, 0.0, 1.0, 0.0);
+        glScaled(1.0f/num_proc, 1.0, 1.0);
+        glTranslated(-(num_proc-1)/2.0, 0.0, 0.0);
 
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image

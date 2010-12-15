@@ -89,11 +89,11 @@
     _count = CT_SPACE_BOTTOM*CT_FULL_WIDTH;
 
     if ((CT_SPACE_LEFT != 0) || (CT_SPACE_RIGHT != 0)) {
-        int _line, _lastline;
+        IceTSizeType _line, _lastline;
         for (_line = CT_SPACE_BOTTOM, _lastline = CT_FULL_HEIGHT-CT_SPACE_TOP;
              _line < _lastline; _line++) {
-            int _x = CT_SPACE_LEFT;
-            int _lastx = CT_FULL_WIDTH-CT_SPACE_RIGHT;
+            IceTSizeType _x = CT_SPACE_LEFT;
+            IceTSizeType _lastx = CT_FULL_WIDTH-CT_SPACE_RIGHT;
             _count += CT_SPACE_LEFT;
             while (ICET_TRUE) {
                 IceTUInt *_runlengths;
@@ -227,7 +227,7 @@
             (  (IceTPointerArithmetic)_dest
              - (IceTPointerArithmetic)ICET_IMAGE_HEADER(CT_COMPRESSED_IMAGE));
     ICET_IMAGE_HEADER(CT_COMPRESSED_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-        = _compressed_size;
+      = (IceTInt)_compressed_size;
 }
 
 #ifdef _MSC_VER

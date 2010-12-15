@@ -54,7 +54,7 @@ double icetWallTime(void)
 }
 #endif /*WIN32*/
 
-IceTSizeType icetTypeWidth(IceTEnum type)
+IceTInt icetTypeWidth(IceTEnum type)
 {
     switch (type) {
       case ICET_BOOLEAN:

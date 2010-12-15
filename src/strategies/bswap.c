@@ -252,7 +252,7 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
       /* Now I may have some image data to send to lower group. */
         if (upper_group_rank < extra_pow2size) {
             IceTInt num_pieces = pow2size/extra_pow2size;
-            IceTUInt offset;
+            IceTSizeType offset;
             int i;
 
             BIT_REVERSE(offset, upper_group_rank, extra_pow2size);
@@ -296,7 +296,7 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
       /* I am part of the lower group.  Do the actual binary swap. */
         IceTEnum color_format, depth_format;
         int bitmask;
-        int offset;
+        IceTSizeType offset;
 
         color_format = icetImageGetColorFormat(image);
         depth_format = icetImageGetDepthFormat(image);
@@ -381,7 +381,7 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     IceTInt group_rank;
     IceTInt rank;
     IceTInt pow2size;
-    IceTUInt pixel_count;
+    IceTSizeType pixel_count;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
     IceTSizeType width, height;
@@ -428,7 +428,7 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
                                 image, pixel_count/pow2size);
     } else if (group_rank < pow2size) {
       /* Send image to destination. */
-        IceTInt sub_image_size = pixel_count/pow2size;
+        IceTSizeType sub_image_size = pixel_count/pow2size;
         IceTInt piece_num;
         BIT_REVERSE(piece_num, group_rank, pow2size);
         bswapSendFinalImage(compose_group, image_dest, image,

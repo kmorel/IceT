@@ -220,11 +220,14 @@ IceTImage icetImageAssignBuffer(IceTVoid *buffer,
     header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_IMAGE_MAGIC_NUM;
     header[ICET_IMAGE_COLOR_FORMAT_INDEX]       = color_format;
     header[ICET_IMAGE_DEPTH_FORMAT_INDEX]       = depth_format;
-    header[ICET_IMAGE_WIDTH_INDEX]              = width;
-    header[ICET_IMAGE_HEIGHT_INDEX]             = height;
-    header[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]     = width*height;
+    header[ICET_IMAGE_WIDTH_INDEX]              = (IceTInt)width;
+    header[ICET_IMAGE_HEIGHT_INDEX]             = (IceTInt)height;
+    header[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]     = (IceTInt)(width*height);
     header[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-        = icetImageBufferSizeType(color_format, depth_format, width, height);
+        = (IceTInt)icetImageBufferSizeType(color_format,
+                                           depth_format,
+                                           width,
+                                           height);
 
     return image;
 }
@@ -294,9 +297,9 @@ IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
     header[ICET_IMAGE_MAGIC_NUM_INDEX]          = ICET_SPARSE_IMAGE_MAGIC_NUM;
     header[ICET_IMAGE_COLOR_FORMAT_INDEX]       = color_format;
     header[ICET_IMAGE_DEPTH_FORMAT_INDEX]       = depth_format;
-    header[ICET_IMAGE_WIDTH_INDEX]              = width;
-    header[ICET_IMAGE_HEIGHT_INDEX]             = height;
-    header[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]     = width*height;
+    header[ICET_IMAGE_WIDTH_INDEX]              = (IceTInt)width;
+    header[ICET_IMAGE_HEIGHT_INDEX]             = (IceTInt)height;
+    header[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]     = (IceTInt)(width*height);
     header[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX] = 0;
 
   /* Make sure the runlengths are valid. */
@@ -438,12 +441,13 @@ void icetImageSetDimensions(IceTImage image,
         return;
     }
 
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = width;
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX] = height;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = (IceTInt)width;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX] = (IceTInt)height;
     ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-        = icetImageBufferSizeType(icetImageGetColorFormat(image),
-                                  icetImageGetDepthFormat(image),
-                                  width, height);
+        = (IceTInt)icetImageBufferSizeType(icetImageGetColorFormat(image),
+                                           icetImageGetDepthFormat(image),
+                                           width,
+                                           height);
 }
 
 void icetSparseImageSetDimensions(IceTSparseImage image,
@@ -465,8 +469,8 @@ void icetSparseImageSetDimensions(IceTSparseImage image,
         return;
     }
 
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = width;
-    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX] = height;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_WIDTH_INDEX] = (IceTInt)width;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_HEIGHT_INDEX] = (IceTInt)height;
 
   /* Make sure the runlengths are valid. */
     icetClearSparseImage(image);
@@ -905,24 +909,24 @@ void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
       /* Clear out bottom. */
         for (y = 0; y < region[1]; y++) {
             for (x = 0; x < width; x++) {
-                depth_buffer[y*width + x] = 1.0;
+                depth_buffer[y*width + x] = 1.0f;
             }
         }
       /* Clear out left and right. */
         if ((region[0] > 0) || (region[0]+region[2] < width)) {
             for (y = region[1]; y < region[1]+region[3]; y++) {
                 for (x = 0; x < region[0]; x++) {
-                    depth_buffer[y*width + x] = 1.0;
+                    depth_buffer[y*width + x] = 1.0f;
                 }
                 for (x = region[0]+region[2]; x < width; x++) {
-                    depth_buffer[y*width + x] = 1.0;
+                    depth_buffer[y*width + x] = 1.0f;
                 }
             }
         }
       /* Clear out top. */
         for (y = region[1]+region[3]; y < height; y++) {
             for (x = 0; x < width; x++) {
-                depth_buffer[y*width + x] = 1.0;
+                depth_buffer[y*width + x] = 1.0f;
             }
         }
     } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {
@@ -994,7 +998,7 @@ IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer)
   /* The source may have used a bigger buffer than allocated here at the
      receiver.  Record only size that holds current image. */
     ICET_IMAGE_HEADER(image)[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]
-        = icetImageGetNumPixels(image);
+        = (IceTInt)icetImageGetNumPixels(image);
 
   /* The image is valid (as far as we can tell). */
     return image;
@@ -1056,7 +1060,7 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
   /* The source may have used a bigger buffer than allocated here at the
      receiver.  Record only size that holds current image. */
     ICET_IMAGE_HEADER(image)[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]
-        = icetSparseImageGetNumPixels(image);
+        = (IceTInt)icetSparseImageGetNumPixels(image);
 
   /* The image is valid (as far as we can tell). */
     return image;
@@ -1181,7 +1185,7 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
     IceTImage raw_image;
     IceTInt *viewports;
     IceTSizeType width, height;
-    int space_left, space_right, space_bottom, space_top;
+    IceTSizeType space_left, space_right, space_bottom, space_top;
 
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
@@ -1224,9 +1228,9 @@ void icetCompressImage(const IceTImage image,
   /* This is a hack to get the width/height of the compressed image to agree
      with the original image. */
     ICET_IMAGE_HEADER(compressed_image)[ICET_IMAGE_WIDTH_INDEX]
-        = icetImageGetWidth(image);
+        = (IceTInt)icetImageGetWidth(image);
     ICET_IMAGE_HEADER(compressed_image)[ICET_IMAGE_HEIGHT_INDEX]
-        = icetImageGetHeight(image);
+        = (IceTInt)icetImageGetHeight(image);
 }
 
 void icetCompressSubImage(const IceTImage image,

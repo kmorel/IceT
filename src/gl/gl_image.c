@@ -67,7 +67,7 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         IceTDouble render_time;
         IceTDouble timer;
 
-        glPixelStorei(GL_PACK_ROW_LENGTH, icetImageGetWidth(result));
+        glPixelStorei(GL_PACK_ROW_LENGTH, (GLint)icetImageGetWidth(result));
 
       /* These pixel store parameters are not working on one of the platforms
        * I am testing on (thank you Mac).  Instead of using these, just offset
@@ -82,16 +82,22 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
 
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             IceTUInt *colorBuffer = icetImageGetColorui(result);
-            glReadPixels(x_offset, y_offset,
-                         readback_viewport[2], readback_viewport[3],
-                         GL_RGBA, GL_UNSIGNED_BYTE,
+            glReadPixels((GLint)x_offset,
+                         (GLint)y_offset,
+                         (GLsizei)readback_viewport[2],
+                         (GLsizei)readback_viewport[3],
+                         GL_RGBA,
+                         GL_UNSIGNED_BYTE,
                          colorBuffer + (  readback_viewport[0]
                                         + width*readback_viewport[1]));
         } else if (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
             IceTFloat *colorBuffer = icetImageGetColorf(result);
-            glReadPixels(x_offset, y_offset,
-                         readback_viewport[2], readback_viewport[3],
-                         GL_RGBA, GL_FLOAT,
+            glReadPixels((GLint)x_offset,
+                         (GLint)y_offset,
+                         (GLsizei)readback_viewport[2],
+                         (GLsizei)readback_viewport[3],
+                         GL_RGBA,
+                         GL_FLOAT,
                          colorBuffer + 4*(  readback_viewport[0]
                                           + width*readback_viewport[1]));
         } else if (color_format != ICET_IMAGE_COLOR_NONE) {
@@ -100,9 +106,12 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
 
         if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
             IceTFloat *depthBuffer = icetImageGetDepthf(result);;
-            glReadPixels(x_offset, y_offset,
-                         readback_viewport[2], readback_viewport[3],
-                         GL_DEPTH_COMPONENT, GL_FLOAT,
+            glReadPixels((GLint)x_offset,
+                         (GLint)y_offset,
+                         (GLsizei)readback_viewport[2],
+                         (GLsizei)readback_viewport[3],
+                         GL_DEPTH_COMPONENT,
+                         GL_FLOAT,
                          depthBuffer + (  readback_viewport[0]
                                         + width*readback_viewport[1]));
         } else if (depth_format != ICET_IMAGE_DEPTH_NONE) {

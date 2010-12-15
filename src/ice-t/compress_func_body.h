@@ -355,7 +355,7 @@
             ACTIVE_RUN_LENGTH(_out) = 0;
             _out++;
             ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-                = (IceTSizeType)
+                = (IceTInt)
                   (  (IceTPointerArithmetic)_out
                    - (IceTPointerArithmetic)ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE));
         } else {

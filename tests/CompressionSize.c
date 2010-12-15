@@ -27,7 +27,7 @@ static IceTDouble IdentityMatrix[16] = {
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0
 };
-static IceTFloat Black[4] = { 0.0, 0.0, 0.0, 1.0 };
+static IceTFloat Black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 static void InitPathologicalImage(IceTImage image)
 {
@@ -81,7 +81,7 @@ static void InitActiveImage(IceTImage image)
     IceTSizeType num_pixels;
     int seed;
 
-    seed = time(NULL);
+    seed = (int)time(NULL);
     srand(seed);
 
     num_pixels = icetImageGetNumPixels(image);

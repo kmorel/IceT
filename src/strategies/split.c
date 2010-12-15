@@ -37,7 +37,7 @@ IceTImage icetSplitCompose(void)
     int *tile_groups;
     int my_tile;
     int group_size;
-    int my_fragment_size;
+    IceTSizeType my_fragment_size;
 
     IceTInt rank;
     IceTInt num_proc;

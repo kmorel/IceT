@@ -21,10 +21,10 @@ static void draw(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
     glBegin(GL_QUADS);
-      glVertex3f(-0.5, -0.5, 0.0);
-      glVertex3f(0.5, -0.5, 0.0);
-      glVertex3f(0.5, 0.5, 0.0);
-      glVertex3f(-0.5, 0.5, 0.0);
+      glVertex3d(-0.5, -0.5, 0.0);
+      glVertex3d(0.5, -0.5, 0.0);
+      glVertex3d(0.5, 0.5, 0.0);
+      glVertex3d(-0.5, 0.5, 0.0);
     glEnd();
     printf("Leaving draw\n");
 }
@@ -51,8 +51,11 @@ static int BlankTilesDoTest(void)
               /* Modify the width and height a bit to detect bad image sizes. */
                 IceTSizeType tile_width = SCREEN_WIDTH - x;
                 IceTSizeType tile_height = SCREEN_HEIGHT - y;
-                icetAddTile(x*SCREEN_WIDTH, y*SCREEN_HEIGHT,
-                            tile_width, tile_height, tile_rank);
+                icetAddTile((IceTInt)(x*SCREEN_WIDTH),
+                            (IceTInt)(y*SCREEN_HEIGHT),
+                            tile_width,
+                            tile_height,
+                            tile_rank);
                 if (tile_rank == rank) {
                     my_width = tile_width;
                     my_height = tile_height;
@@ -103,10 +106,10 @@ static int BlankTilesRun()
     int result = TEST_PASSED;
     int strategy_index;
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
     icetGLDrawCallback(draw);
-    icetBoundingBoxf(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
+    icetBoundingBoxd(-0.5, 0.5, -0.5, 0.5, -0.5, 0.5);
 
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);

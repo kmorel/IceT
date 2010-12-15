@@ -49,7 +49,7 @@ static void draw(const IceTDouble *projection_matrix,
 
     depth_buffer = icetImageGetDepthf(result);
     for (i = 0; i < num_pixels; i++) {
-        depth_buffer[i] = 0.5;
+        depth_buffer[i] = 0.5f;
     }
 }
 
@@ -65,8 +65,8 @@ static void setup_tiles(int tile_dimensions,
     for (tile_y = 0; tile_y < tile_dimensions; tile_y++) {
         int tile_x;
         for (tile_x = 0; tile_x < tile_dimensions; tile_x++) {
-            icetAddTile(tile_x*width,
-                        tile_y*height,
+            icetAddTile((IceTInt)(tile_x*width),
+                        (IceTInt)(tile_y*height),
                         width,
                         height,
                         display_node);
@@ -106,8 +106,8 @@ static int OddImageSizesRun(void)
     identity[14] = 0.0;
     identity[15] = 1.0;
 
-    black[0] = black[1] = black[2] = 0.0;
-    black[3] = 1.0;
+    black[0] = black[1] = black[2] = 0.0f;
+    black[3] = 1.0f;
 
     for (image_size_index = 0;
          image_size_index < NUM_IMAGE_SIZES;
