@@ -14,6 +14,7 @@
 #include <IceTDevProjections.h>
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevMatrix.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -1634,8 +1635,9 @@ static IceTImage renderTile(int tile,
                                rendered_viewport[2], rendered_viewport[3],
                                viewport_project_matrix);
         icetGetDoublev(ICET_PROJECTION_MATRIX, global_projection_matrix);
-        icetMultMatrix(projection_matrix,
-                       viewport_project_matrix, global_projection_matrix);
+        icetMatrixMultiply(projection_matrix,
+                           viewport_project_matrix,
+                           global_projection_matrix);
     }
 
   /* Make sure that the current render_buffer is sized appropriately for the

@@ -7,10 +7,17 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_COMMUNICATION_H_
-#define _ICET_COMMUNICATION_H_
+#ifndef __IceTDevCommunication_h
+#define __IceTDevCommunication_h
 
 #include <IceT.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 /* All of these methods call the associated method in the communicator for
    the current context. */
@@ -51,7 +58,12 @@ ICET_EXPORT IceTCommRequest icetCommIrecv(void *buf,
                                           int tag);
 ICET_EXPORT void icetCommWait(IceTCommRequest *request);
 ICET_EXPORT int icetCommWaitany(int count, IceTCommRequest *array_of_requests);
+ICET_EXPORT void icetCommWaitall(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT int icetCommSize();
 ICET_EXPORT int icetCommRank();
 
-#endif /*_ICET_COMMUNICATION_H_*/
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__icetDevCommunication_h*/

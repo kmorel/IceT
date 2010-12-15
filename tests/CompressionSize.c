@@ -9,8 +9,6 @@
 ** exceeds the advertised maximum buffer size.
 *****************************************************************************/
 
-/*TODO: Eventually we should probably remove OpenGL dependence in this test.*/
-#include <IceTGL.h>
 #include "test_codes.h"
 #include "test-util.h"
 
@@ -139,8 +137,7 @@ static void drawCallback(const IceTDouble *projection_matrix,
 static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
                              IceTEnum composite_mode)
 {
-    GLint viewport[4];
-    int width, height;
+    IceTInt viewport[4];
     IceTSizeType pixels;
     IceTImage image;
     IceTVoid *imagebuffer;
@@ -164,20 +161,19 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     icetSetDepthFormat(depth_format);
     icetCompositeMode(composite_mode);
 
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    width = viewport[2];
-    height = viewport[3];
-    pixels = width*height;
+    pixels = SCREEN_WIDTH*SCREEN_HEIGHT;
 
-    printf("Allocating memory for %dx%x pixel image.\n", width, height);
-    imagesize = icetImageBufferSize(width, height);
+    printf("Allocating memory for %dx%d pixel image.\n",
+           (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
+    imagesize = icetImageBufferSize(SCREEN_WIDTH, SCREEN_HEIGHT);
     imagebuffer = malloc(imagesize);
-    image = icetImageAssignBuffer(imagebuffer, width, height);
+    image = icetImageAssignBuffer(imagebuffer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    compressedsize = icetSparseImageBufferSize(width, height);
+    compressedsize = icetSparseImageBufferSize(SCREEN_WIDTH, SCREEN_HEIGHT);
     compressedbuffer = malloc(compressedsize);
     compressedimage = icetSparseImageAssignBuffer(compressedbuffer,
-                                                  width, height);
+                                                  SCREEN_WIDTH,
+                                                  SCREEN_HEIGHT);
 
   /* Get the number of bytes per pixel.  This is used in checking the
      size of compressed images. */
@@ -233,10 +229,12 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
    * this scaffolding is not updated correctly. */
     printf("\nSetup for actual render.\n");
     icetResetTiles();
-    icetAddTile(viewport[0], viewport[1], viewport[2], viewport[3], 0);
+    icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     icetDrawCallback(drawCallback);
   /* Do a perfunctory draw to set other state variables. */
     icetDrawFrame(IdentityMatrix, IdentityMatrix, Black);
+    viewport[0] = viewport[1] = 0;
+    viewport[2] = SCREEN_WIDTH;  viewport[3] = SCREEN_HEIGHT;
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
     icetGetCompressedTileImage(0, compressedimage);

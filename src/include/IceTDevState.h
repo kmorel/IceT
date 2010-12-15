@@ -7,10 +7,17 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_STATE_H_
-#define _ICET_STATE_H_
+#ifndef __IceTDevState_h
+#define __IceTDevState_h
 
 #include <IceT.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 typedef IceTUnsignedInt64 IceTTimeStamp;
 
@@ -79,4 +86,8 @@ void icetStateResetTiming(void);
 
 void icetStateDump(void);
 
-#endif /* _ICET_STATE_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __IceTDevState_h */

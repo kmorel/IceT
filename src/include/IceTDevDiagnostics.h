@@ -7,11 +7,18 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_DIAGNOSTICS_H_
-#define _ICET_DIAGNOSTICS_H_
+#ifndef __IceTDevDiagnostics_h
+#define __IceTDevDiagnostics_h
 
 #include <IceT.h>
 #include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 ICET_EXPORT void icetRaiseDiagnostic(const char *msg, IceTEnum type,
 				     IceTBitField level,
@@ -56,4 +63,8 @@ ICET_EXPORT void icetRaiseDiagnostic(const char *msg, IceTEnum type,
 
 ICET_EXPORT void icetDebugBreak(void);
 
-#endif /* _ICET_DIAGNOSTICS_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __IceTDevDiagnostics_h */

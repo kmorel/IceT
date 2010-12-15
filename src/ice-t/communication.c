@@ -120,6 +120,14 @@ int icetCommWaitany(int count, IceTCommRequest *array_of_requests)
     return comm->Waitany(comm, count, array_of_requests);
 }
 
+void icetCommWaitall(int count, IceTCommRequest *array_of_requests)
+{
+    int i;
+    for (i = 0; i < count; i++) {
+        icetCommWait(&array_of_requests[i]);
+    }
+}
+
 int icetCommSize()
 {
     IceTCommunicator comm = icetGetCommunicator();

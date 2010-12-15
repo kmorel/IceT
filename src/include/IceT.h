@@ -7,8 +7,8 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_H_
-#define _ICET_H_
+#ifndef __IceT_h
+#define __IceT_h
 
 #include <IceTConfig.h>
 
@@ -171,6 +171,7 @@ ICET_EXPORT const char *icetGetStrategyName(void);
 #define ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC    (IceTEnum)0x7001
 #define ICET_SINGLE_IMAGE_STRATEGY_BSWAP        (IceTEnum)0x7002
 #define ICET_SINGLE_IMAGE_STRATEGY_TREE         (IceTEnum)0x7003
+#define ICET_SINGLE_IMAGE_STRATEGY_RADIXK       (IceTEnum)0x7004
 
 ICET_EXPORT void icetSingleImageStrategy(IceTEnum strategy);
 
@@ -372,4 +373,4 @@ ICET_EXPORT IceTEnum icetGetError(void);
 }
 #endif
 
-#endif /* _ICET_H_ */
+#endif /* __IceT_h */

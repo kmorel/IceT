@@ -10,9 +10,13 @@
 #include "test-util.h"
 #include "test_codes.h"
 
+#ifdef ICET_TESTS_USE_OPENGL
 #include <IceTGL.h>
+#endif
 
+#ifndef __USE_POSIX
 #define __USE_POSIX
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,12 +27,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef ICET_TESTS_USE_OPENGL
 #ifndef __APPLE__
 #include <GL/glut.h>
 #include <GL/gl.h>
 #else
 #include <GLUT/glut.h>
 #include <OpenGL/gl.h>
+#endif
 #endif
 
 #ifndef WIN32
@@ -43,17 +49,20 @@ IceTEnum strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
-IceTEnum single_image_strategy_list[3];
-int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 3;
+IceTEnum single_image_strategy_list[4];
+int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 4;
 /* int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 1; */
 
 IceTSizeType SCREEN_WIDTH;
 IceTSizeType SCREEN_HEIGHT;
 
+#ifdef ICET_TESTS_USE_OPENGL
 static int windowId;
 
 static int (*test_function)(void);
+#endif /* ICET_TESTS_USE_OPENGL */
 
+#ifdef ICET_TESTS_USE_OPENGL
 static void checkOglError(void)
 {
     GLenum error = glGetError();
@@ -76,6 +85,7 @@ static void checkOglError(void)
     printf("## UNKNOWN OPENGL ERROR CODE!!!!!!\n");
 #undef TRY_ERROR
 }
+#endif /* ICET_TESTS_USE_OPENGL */
 
 static void checkIceTError(void)
 {
@@ -152,8 +162,10 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     /*     while (i == 0) sleep(1); */
     /* } */
 
+#ifdef ICET_TESTS_USE_OPENGL
   /* Let Glut have first pass at the arguments to grab any that it can use. */
     glutInit(argcp, *argvp);
+#endif
 
   /* Parse my arguments. */
     for (arg = 1; arg < argc; arg++) {
@@ -199,6 +211,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
         exit(1);
     }
 
+#ifdef ICET_TESTS_USE_OPENGL
   /* Create a renderable window. */
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ALPHA);
     glutInitWindowPosition(0, 0);
@@ -209,6 +222,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
         sprintf(title, "IceT Test %d of %d", rank, num_proc);
         windowId = glutCreateWindow(title);
     }
+#endif /* ICET_TESTS_USE_OPENGL */
 
     SCREEN_WIDTH = width;
     SCREEN_HEIGHT = height;
@@ -216,7 +230,9 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
   /* Create an IceT context. */
     context = icetCreateContext(comm);
     icetDiagnostics(diag_level);
+#ifdef ICET_TESTS_USE_OPENGL
     icetGLInitialize();
+#endif
 
   /* Redirect standard output on demand. */
     if (redirect) {
@@ -246,7 +262,8 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
 
     single_image_strategy_list[0] = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
     single_image_strategy_list[1] = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
-    single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+    single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
+    single_image_strategy_list[3] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
 }
 
 IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy)
@@ -262,6 +279,8 @@ IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy)
           return ICET_TRUE;
     }
 }
+
+#ifdef ICET_TESTS_USE_OPENGL
 
 static void no_op()
 {
@@ -302,17 +321,36 @@ int run_test(int (*tf)(void))
     return TEST_NOT_PASSED;
 }
 
+#else /* ICET_TESTS_USE_OPENGL */
+
+int run_test(int (*tf)(void))
+{
+    int result;
+
+    result = tf();
+
+    finalize_test(result);
+
+    return result;
+}
+
+#endif /* ICET_TESTS_USE_OPENGL */
+
+#ifdef ICET_TESTS_USE_OPENGL
 void swap_buffers(void)
 {
     glutSwapBuffers();
 }
+#endif
 
 extern void finalize_communication(void);
 void finalize_test(int result)
 {
     IceTInt rank;
 
+#ifdef ICET_TESTS_USE_OPENGL
     checkOglError();
+#endif
     checkIceTError();
 
     icetGetIntegerv(ICET_RANK, &rank);
@@ -335,5 +373,7 @@ void finalize_test(int result)
 
     icetDestroyContext(context);
     finalize_communication();
+#ifdef ICET_TESTS_USE_OPENGL
     glutDestroyWindow(windowId);
+#endif
 }
