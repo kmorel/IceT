@@ -96,7 +96,8 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     }
 
   /* Figure out current global viewport. */
-    gvp[0] = x;  gvp[1] = y;  gvp[2] = x + width;  gvp[3] = y + height;
+    gvp[0] = x;  gvp[1] = y;
+    gvp[2] = x + (IceTInt)width;  gvp[3] = y + (IceTInt)height;
     for (i = 0; i < num_tiles; i++) {
 	gvp[0] = MIN(gvp[0], viewports[i*4+0]);
 	gvp[1] = MIN(gvp[1], viewports[i*4+1]);
@@ -109,8 +110,8 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
   /* Add new viewport to current viewports. */
     viewports[4*num_tiles+0] = x;
     viewports[4*num_tiles+1] = y;
-    viewports[4*num_tiles+2] = width;
-    viewports[4*num_tiles+3] = height;
+    viewports[4*num_tiles+2] = (IceTInt)width;
+    viewports[4*num_tiles+3] = (IceTInt)height;
 
   /* Set new state. */
     icetStateSetInteger(ICET_NUM_TILES, num_tiles+1);
@@ -119,10 +120,10 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     icetStateSetIntegerv(ICET_GLOBAL_VIEWPORT, 4, gvp);
 
     icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
-    max_width = MAX(max_width, width);
+    max_width = MAX(max_width, (IceTInt)width);
     icetStateSetInteger(ICET_TILE_MAX_WIDTH, max_width);
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
-    max_height = MAX(max_height, height);
+    max_height = MAX(max_height, (IceTInt)height);
     icetStateSetInteger(ICET_TILE_MAX_HEIGHT, max_height);
 
     icetPhysicalRenderSize(max_width, max_height);
@@ -216,5 +217,5 @@ void icetBoundingVertices(IceTInt size, IceTEnum type, IceTSizeType stride,
     }
 
     icetUnsafeStateSet(ICET_GEOMETRY_BOUNDS, count*3, ICET_DOUBLE, verts);
-    icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, count);
+    icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, (IceTInt)count);
 }

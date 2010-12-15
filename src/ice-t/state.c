@@ -90,7 +90,7 @@ void icetStateCopy(IceTState dest, const IceTState src)
     }
 }
 
-static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
+static IceTFloat black[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 void icetStateSetDefaults(void)
 {

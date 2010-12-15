@@ -137,7 +137,7 @@
                                     IceTSizeType __i;                   \
                                     for (__i = 0; __i < count; __i++) { \
                                         *(_color++) = _background_color;\
-                                        *(_depth++) = 1.0;              \
+                                        *(_depth++) = 1.0f;             \
                                     }                                   \
                                 }
 #endif
@@ -190,7 +190,7 @@
                                         _color[2] =_background_color[2];\
                                         _color[3] =_background_color[3];\
                                         _color += 4;                    \
-                                        *(_depth++) = 1.0;              \
+                                        *(_depth++) = 1.0f;             \
                                     }                                   \
                                 }
 #endif
@@ -219,7 +219,7 @@
                                 {                                       \
                                     IceTSizeType __i;                   \
                                     for (__i = 0; __i < count; __i++) { \
-                                        *(_depth++) = 1.0;              \
+                                        *(_depth++) = 1.0f;             \
                                     }                                   \
                                 }
 #endif

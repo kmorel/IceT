@@ -20,10 +20,10 @@ static void draw(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glBegin(GL_QUADS);
-      glVertex3f(-1.0, -1.0, 0.0);
-      glVertex3f(1.0, -1.0, 0.0);
-      glVertex3f(1.0, 1.0, 0.0);
-      glVertex3f(-1.0, 1.0, 0.0);
+      glVertex3d(-1.0, -1.0, 0.0);
+      glVertex3d(1.0, -1.0, 0.0);
+      glVertex3d(1.0, 1.0, 0.0);
+      glVertex3d(-1.0, 1.0, 0.0);
     glEnd();
 }
 
@@ -52,7 +52,7 @@ static int BoundsBehindViewerRun()
     icetGLDrawCallback(draw);
     icetStrategy(ICET_STRATEGY_REDUCE);
 
-    icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);
+    icetBoundingBoxd(-1.0, 1.0, -1.0, 1.0, -0.0, 0.0);
 
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
@@ -67,9 +67,9 @@ static int BoundsBehindViewerRun()
      of course, is wrong). */
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0.0, 0.0, -1.5);
-    glRotatef(10.0, 0.0, 1.0, 0.0);
-    glScalef(10.0, 10.0, 10.0);
+    glTranslated(0.0, 0.0, -1.5);
+    glRotated(10.0, 0.0, 1.0, 0.0);
+    glScaled(10.0, 10.0, 10.0);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -85,7 +85,7 @@ static int BoundsBehindViewerRun()
   /* Other normal OpenGL setup. */
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
-    glColor3f(1.0, 1.0, 1.0);
+    glColor3d(1.0, 1.0, 1.0);
 
   /* All the processes have the same data.  Go ahead and tell IceT. */
     icetDataReplicationGroupColor(0);

@@ -363,7 +363,7 @@ static void determine_contained_tiles(const IceTInt contained_viewport[4],
     }
 }
 
-static IceTFloat black[] = {0.0, 0.0, 0.0, 0.0};
+static IceTFloat black[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
                         const IceTDouble *modelview_matrix,

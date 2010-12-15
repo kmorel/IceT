@@ -23,36 +23,36 @@ extern "C" {
    the current context. */
 ICET_EXPORT IceTCommunicator icetCommDuplicate();
 ICET_EXPORT void icetCommSend(const void *buf,
-                              int count,
+                              IceTSizeType count,
                               IceTEnum datatype,
                               int dest,
                               int tag);
 ICET_EXPORT void icetCommRecv(void *buf,
-                              int count,
+                              IceTSizeType count,
                               IceTEnum datatype,
                               int src,
                               int tag);
 ICET_EXPORT void icetCommSendrecv(const void *sendbuf,
-                                  int sendcount,
+                                  IceTSizeType sendcount,
                                   IceTEnum sendtype,
                                   int dest,
                                   int sendtag,
                                   void *recvbuf,
-                                  int recvcount,
+                                  IceTSizeType recvcount,
                                   IceTEnum recvtype,
                                   int src,
                                   int recvtag);
 ICET_EXPORT void icetCommAllgather(const void *sendbuf,
-                                   int sendcount,
+                                   IceTSizeType sendcount,
                                    int type,
                                    void *recvbuf);
 ICET_EXPORT IceTCommRequest icetCommIsend(const void *buf,
-                                          int count,
+                                          IceTSizeType count,
                                           IceTEnum datatype,
                                           int dest,
                                           int tag);
 ICET_EXPORT IceTCommRequest icetCommIrecv(void *buf,
-                                          int count,
+                                          IceTSizeType count,
                                           IceTEnum datatype,
                                           int src,
                                           int tag);

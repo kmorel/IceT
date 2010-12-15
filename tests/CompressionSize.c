@@ -25,7 +25,7 @@ static IceTDouble IdentityMatrix[16] = {
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0
 };
-static IceTFloat Black[4] = { 0.0, 0.0, 0.0, 1.0 };
+static IceTFloat Black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 static void InitPathologicalImage(IceTImage image)
 {
@@ -79,7 +79,7 @@ static void InitActiveImage(IceTImage image)
     IceTSizeType num_pixels;
     int seed;
 
-    seed = time(NULL);
+    seed = (int)time(NULL);
     srand(seed);
 
     num_pixels = icetImageGetNumPixels(image);
@@ -234,7 +234,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
   /* Do a perfunctory draw to set other state variables. */
     icetDrawFrame(IdentityMatrix, IdentityMatrix, Black);
     viewport[0] = viewport[1] = 0;
-    viewport[2] = SCREEN_WIDTH;  viewport[3] = SCREEN_HEIGHT;
+    viewport[2] = (IceTInt)SCREEN_WIDTH;  viewport[3] = (IceTInt)SCREEN_HEIGHT;
     icetStateSetIntegerv(ICET_CONTAINED_VIEWPORT, 4, viewport);
     printf("Now render and get compressed image.\n");
     icetGetCompressedTileImage(0, compressedimage);

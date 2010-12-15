@@ -29,10 +29,10 @@ static void draw(void)
     printf("In draw\n");
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glBegin(GL_QUADS);
-      glVertex3f(-1.0, -1.0, 0.0);
-      glVertex3f(1.0, -1.0, 0.0);
-      glVertex3f(1.0, 1.0, 0.0);
-      glVertex3f(-1.0, 1.0, 0.0);
+      glVertex3d(-1.0, -1.0, 0.0);
+      glVertex3d(1.0, -1.0, 0.0);
+      glVertex3d(1.0, 1.0, 0.0);
+      glVertex3d(-1.0, 1.0, 0.0);
     glEnd();
     printf("Leaving draw\n");
 }
@@ -114,9 +114,9 @@ static int compare_color_buffers(IceTSizeType local_width,
         printf("Too many bad pixels!!!!!!\n");
       /* Write current images. */
         sprintf(filename, "ref%03d.ppm", rank);
-        write_ppm(filename, refcbuf, SCREEN_WIDTH, SCREEN_HEIGHT);
+        write_ppm(filename, refcbuf, (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
         sprintf(filename, "bad%03d.ppm", rank);
-        write_ppm(filename, cb, local_width, local_height);
+        write_ppm(filename, cb, (int)local_width, (int)local_height);
       /* Write difference image. */
         for (y = 0; y < local_height; y++) {
             for (x = 0; x < local_width; x++) {
@@ -140,7 +140,7 @@ static int compare_color_buffers(IceTSizeType local_width,
             }
         }
         sprintf(filename, "diff%03d.ppm", rank);
-        write_ppm(filename, cb, local_width, local_height);
+        write_ppm(filename, cb, (int)local_width, (int)local_height);
         return 0;
     }
 #undef CBR
@@ -229,7 +229,7 @@ static int compare_depth_buffers(IceTSizeType local_width,
         }
         sprintf(filename, "depth_error%03d.ppm", rank);
         write_ppm(filename, (IceTUByte *)db,
-                  local_width, local_height);
+                  (int)local_width, (int)local_height);
 
         free(errbuf);
 
@@ -289,7 +289,7 @@ static int RandomTransformRun()
   /* Decide on an image order and data replication group size. */
     image_order = malloc(num_proc * sizeof(IceTInt));
     if (rank == 0) {
-        seed = time(NULL);
+        seed = (int)time(NULL);
         printf("Base seed = %u\n", seed);
         srand(seed);
         for (i = 0; i < num_proc; i++) image_order[i] = i;
@@ -336,12 +336,12 @@ static int RandomTransformRun()
 
   /* Set up IceT. */
     icetGLDrawCallback(draw);
-    icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -0.125, 0.125);
+    icetBoundingBoxd(-1.0, 1.0, -1.0, 1.0, -0.125, 0.125);
     icetEnable(ICET_CORRECT_COLORED_BACKGROUND);
 
   /* Set up OpenGL. */
     glClearColor(background_color[0], background_color[1],
-                 background_color[2], 1.0);
+                 background_color[2], 1.0f);
     glDisable(GL_LIGHTING);
 
     glMatrixMode(GL_PROJECTION);
@@ -369,7 +369,7 @@ static int RandomTransformRun()
     printf("My data replication group: %d\n", i);
     icetDataReplicationGroupColor(i);
     if ((i&0x07) == 0) {
-        color[0] = 0.5;  color[1] = 0.5;  color[2] = 0.5;
+        color[0] = 0.5f;  color[1] = 0.5f;  color[2] = 0.5f;
     } else {
         color[0] = 1.0f*((i&0x01) == 0x01);
         color[1] = 1.0f*((i&0x02) == 0x02);
@@ -393,7 +393,7 @@ static int RandomTransformRun()
     printf("    %f %f %f %f\n", mat[3], mat[7], mat[11], mat[15]);
 
   /* Let everyone get a base image for comparison. */
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
     icetStrategy(ICET_STRATEGY_SEQUENTIAL);
     icetResetTiles();
     for (i = 0; i < num_proc; i++) {
@@ -405,7 +405,7 @@ static int RandomTransformRun()
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     icetDisable(ICET_COMPOSITE_ONE_BUFFER);
-    glColor4f(color[0], color[1], color[2], 1.0);
+    glColor4f(color[0], color[1], color[2], 1.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(mat);
     image = icetGLDrawFrame();
@@ -422,7 +422,7 @@ static int RandomTransformRun()
     icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
     icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
     icetEnable(ICET_ORDERED_COMPOSITE);
-    glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
+    glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
     image = icetGLDrawFrame();
     swap_buffers();
 
@@ -432,7 +432,7 @@ static int RandomTransformRun()
                                       icetImageGetHeight(image));
     icetImageCopyPixels(image, 0, refimage2, 0, icetImageGetNumPixels(image));
 
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
 
     for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
         IceTBoolean test_ordering;
@@ -454,8 +454,11 @@ static int RandomTransformRun()
             icetResetTiles();
             for (y = 0; y < tile_dim; y++) {
                 for (x = 0; x < tile_dim; x++) {
-                    icetAddTile(x*local_width, y*local_height,
-                                local_width, local_height, y*tile_dim + x);
+                    icetAddTile((IceTInt)(x*local_width),
+                                (IceTInt)(y*local_height),
+                                local_width,
+                                local_height,
+                                y*tile_dim + x);
                 }
             }
 
@@ -472,8 +475,8 @@ static int RandomTransformRun()
                 viewport_offset_y = rand()%(SCREEN_HEIGHT-viewport_height);
             }
             
-            glViewport(viewport_offset_x, viewport_offset_y,
-                       viewport_width, viewport_height);
+            glViewport((GLint)viewport_offset_x, (GLint)viewport_offset_y,
+                       (GLsizei)viewport_width, (GLsizei)viewport_height);
 /*          glViewport(0, 0, local_width, local_height); */
 
             printf("\nDoing color buffer.\n");
@@ -484,12 +487,14 @@ static int RandomTransformRun()
             icetDisable(ICET_ORDERED_COMPOSITE);
 
             printf("Rendering frame.\n");
-            glColor4f(color[0], color[1], color[2], 1.0);
+            glColor4f(color[0], color[1], color[2], 1.0f);
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
-            glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
-                    -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
-                    -1, 1);
+            glOrtho(-1.0f,
+                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
+                    -1.0f,
+                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
+                    -1.0f, 1.0f);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(mat);
             image = icetGLDrawFrame();
@@ -513,12 +518,14 @@ static int RandomTransformRun()
             icetDisable(ICET_ORDERED_COMPOSITE);
 
             printf("Rendering frame.\n");
-            glColor4f(color[0], color[1], color[2], 1.0);
+            glColor4f(color[0], color[1], color[2], 1.0f);
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
-            glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
-                    -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
-                    -1, 1);
+            glOrtho(-1.0f,
+                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
+                    -1.0f,
+                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
+                    -1.0f, 1.0f);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(mat);
             image = icetGLDrawFrame();
@@ -543,9 +550,11 @@ static int RandomTransformRun()
             printf("Rendering frame.\n");
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
-            glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
-                    -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
-                    -1, 1);
+            glOrtho(-1.0f,
+                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
+                    -1.0f,
+                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
+                    -1.0f, 1.0f);
             glMatrixMode(GL_MODELVIEW);
             glLoadMatrixf(mat);
             image = icetGLDrawFrame();
@@ -569,12 +578,16 @@ static int RandomTransformRun()
                 icetEnable(ICET_ORDERED_COMPOSITE);
 
                 printf("Rendering frame.\n");
-                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
+                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
                 glMatrixMode(GL_PROJECTION);
                 glLoadIdentity();
-                glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
-                        -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
-                        -1, 1);
+                glOrtho(
+                       -1.0f,
+                       (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
+                       -1.0f,
+                       (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
+                       -1.0f,
+                       1.0f);
                 glMatrixMode(GL_MODELVIEW);
                 glLoadMatrixf(mat);
                 image = icetGLDrawFrame();
@@ -597,12 +610,16 @@ static int RandomTransformRun()
                 icetEnable(ICET_ORDERED_COMPOSITE);
 
                 printf("Rendering frame.\n");
-                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5);
+                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
                 glMatrixMode(GL_PROJECTION);
                 glLoadIdentity();
-                glOrtho(-1, (float)(2*local_width*tile_dim)/SCREEN_WIDTH-1,
-                        -1, (float)(2*local_height*tile_dim)/SCREEN_HEIGHT-1,
-                        -1, 1);
+                glOrtho(
+                       -1.0f,
+                       (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
+                       -1.0f,
+                       (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
+                       -1.0f,
+                       1.0f);
                 glMatrixMode(GL_MODELVIEW);
                 glLoadMatrixf(mat);
                 image = icetGLDrawFrame();
@@ -627,7 +644,7 @@ static int RandomTransformRun()
     free(image_order);
     free(refbuf);
     free(refbuf2);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
 
     return result;
 }

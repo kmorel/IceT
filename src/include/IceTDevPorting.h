@@ -21,7 +21,7 @@ extern "C" {
 
 /* Returns the size of the type given by the identifier (ICET_INT, ICET_FLOAT,
    etc.)  in bytes. */
-ICET_EXPORT IceTSizeType icetTypeWidth(IceTEnum type);
+ICET_EXPORT IceTInt icetTypeWidth(IceTEnum type);
 
 #ifdef __cplusplus
 }

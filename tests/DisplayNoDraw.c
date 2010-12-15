@@ -36,10 +36,10 @@ static void draw(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (global_rank != global_iteration) {
         glBegin(GL_QUADS);
-          glVertex3f(-1.0, -1.0, 0.0);
-          glVertex3f(1.0, -1.0, 0.0);
-          glVertex3f(1.0, 1.0, 0.0);
-          glVertex3f(-1.0, 1.0, 0.0);
+          glVertex3d(-1.0, -1.0, 0.0);
+          glVertex3d(1.0, -1.0, 0.0);
+          glVertex3d(1.0, 1.0, 0.0);
+          glVertex3d(-1.0, 1.0, 0.0);
         glEnd();
     }
     printf("Leaving draw\n");
@@ -57,9 +57,9 @@ static void DisplayNoDrawInit(void)
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
     if (global_rank == 0) {
-        icetBoundingBoxf(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
+        icetBoundingBoxd(100.0, 101.0, 100.0, 101.0, 100.0, 101.0);
     } else {
-        icetBoundingBoxf(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+        icetBoundingBoxd(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
     }
 
     glMatrixMode(GL_PROJECTION);
@@ -70,7 +70,7 @@ static void DisplayNoDrawInit(void)
     glLoadIdentity();
 
     glDisable(GL_LIGHTING);
-    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glColor4d(1.0, 1.0, 1.0, 1.0);
 }
 
 static void DisplayNoDrawDoTest(void)
@@ -111,7 +111,7 @@ static void DisplayNoDrawDoTest(void)
                         icetGetStrategyName(), icetGetSingleImageStrategyName(),
                         global_iteration);
                 write_ppm(filename, color_buffer,
-                          SCREEN_WIDTH, SCREEN_HEIGHT);
+                          (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
                 break;
             }
         }

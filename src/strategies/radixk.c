@@ -272,7 +272,8 @@ static void GetPartners(int *k, int cur_r, int rc, int rank, int *partners)
 
 static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
                                    IceTInt group_size, IceTInt image_dest,
-                                   int offset, int size, IceTImage image)
+                                   IceTSizeType offset, IceTSizeType size,
+                                   IceTImage image)
 {
     int i;
     IceTEnum color_format;
@@ -294,7 +295,7 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
     /* Find out the sizes of each process. */
     all_sizes = malloc(sizeof(int) * group_size);
     if (group_rank == image_dest) {
-        all_sizes[group_rank] = size;
+        all_sizes[group_rank] = (int)size;
         for (i = 0; i < group_size; i++) {
             if (i != group_rank) {
                 requests[i] = icetCommIrecv(&(all_sizes[i]), 1, ICET_INT,
@@ -412,9 +413,9 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
 
 void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                        IceTInt image_dest, IceTImage image) {
-    IceTUInt size = icetImageGetNumPixels(image);
-    IceTUInt width = icetImageGetWidth(image);
-    IceTUInt height = icetImageGetHeight(image);
+    IceTSizeType size = icetImageGetNumPixels(image);
+    IceTSizeType width = icetImageGetWidth(image);
+    IceTSizeType height = icetImageGetHeight(image);
     int r; /* Number of rounds. */
     int* k = radixkGetK(group_size, &r); /* Communication sizes per round. */
 
@@ -427,15 +428,15 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     int done[MAX_K]; /* Message from this group member has been composited */
     int dests[MAX_K]; /*Destinations within my group indexed by request number*/
     int dest; /* One send destination within my group */
-    int ofsts[MAX_K]; /* Image subregion offset */
+    IceTSizeType ofsts[MAX_K]; /* Image subregion offset */
     int max_k; /* Max value of k in all the rounds */
-    int my_ofst; /* Offset of my subimage */
+    IceTSizeType my_ofst; /* Offset of my subimage */
     int rv[MAX_R]; /* My round vector [round 0 pos, round 1 pos, ...] */
     int arr; /* Index of arrived message */
     int b; /* Distance from destination to start of already composited region */
     int i, j, n;
-    int my_size = -1;
-    int *sizes = NULL;
+    IceTSizeType my_size = -1;
+    IceTSizeType *sizes = NULL;
     /* This array holds the partners in a compositing group. It is used as an
        index into the actual ordered array of ranks that is passed to this
        function. */
@@ -443,7 +444,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
 
     IceTVoid* intermediate_compose_buf;
     IceTImage intermediate_compose_img;
-    int max_sparse_img_size;
+    IceTSizeType max_sparse_img_size;
 
     /* Find your rank in your group. */
     IceTInt rank = 0;
@@ -509,7 +510,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
        calculate the current round's peer sizes based on our current size and
        the k[i] info. */
     my_size = size;
-    sizes = malloc(max_k * sizeof(int));
+    sizes = malloc(max_k * sizeof(IceTSizeType));
     for (i = 0; i < max_k; ++i) {
         sizes[i] = -3; /* Defensive */
         ofsts[i] = -5; /* Defensive */

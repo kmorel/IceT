@@ -291,7 +291,7 @@ static void glut_draw()
     int result;
 
     glEnable(GL_DEPTH_TEST);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
     glClear(GL_COLOR_BUFFER_BIT);
     swap_buffers();
 

@@ -105,7 +105,7 @@ ENDIF (ICET_USE_MPI)
 # Add extra warnings when possible.  The IceT build should be clean.  I expect
 # no warnings when bulding this code.
 IF (CMAKE_COMPILER_IS_GNUCC)
-  SET(ICET_C_FLAGS_WARN "-ansi -Wall -Wno-long-long -Wcast-align -Wextra -Wformat-security -Wshadow -Wunused -Wreturn-type -Wpointer-arith -Wdeclaration-after-statement")
+  SET(ICET_C_FLAGS_WARN "-ansi -Wall -Wno-long-long -Wcast-align -Wextra -Wformat-security -Wshadow -Wunused -Wreturn-type -Wpointer-arith -Wdeclaration-after-statement -Wshorten-64-to-32")
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ICET_C_FLAGS_WARN}")
 ENDIF (CMAKE_COMPILER_IS_GNUCC)
 

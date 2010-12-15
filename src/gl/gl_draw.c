@@ -272,7 +272,11 @@ static void inflateBuffer(IceTUByte *buffer,
 
     if ((display_width <= width) && (display_height <= height)) {
       /* No need to inflate image. */
-        glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+        glDrawPixels((GLsizei)width,
+                     (GLsizei)height,
+                     GL_RGBA,
+                     GL_UNSIGNED_BYTE,
+                     buffer);
     } else {
         IceTSizeType x, y;
         IceTSizeType x_div, y_div;
