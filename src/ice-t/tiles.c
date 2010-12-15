@@ -52,6 +52,12 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     char msg[256];
     int i;
 
+    if ((width < 1) || (height < 1)) {
+        icetRaiseError("Attempted to create a tile with no pixels.",
+                       ICET_INVALID_VALUE);
+        return -1;
+    }
+
   /* Get current number of tiles and viewports. */
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     viewports = malloc((num_tiles+1)*4*sizeof(IceTInt));

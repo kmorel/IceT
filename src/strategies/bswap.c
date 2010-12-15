@@ -33,11 +33,62 @@
     }                                                                         \
 }
 
+/* Checks to make sure that the region requested by offset and pixels does
+ * not run off the end of the image (which can happen when non-power-of-two
+ * images are divided up).  When that happens, the requested region is
+ * truncated. */
+static void bswapSafeCompressSubImage(const IceTImage image,
+                                      IceTSizeType offset,
+                                      IceTSizeType pixels,
+                                      IceTSparseImage compressed_image)
+{
+    IceTSizeType num_total_pixels = icetImageGetNumPixels(image);
+
+    if ((offset + pixels) > num_total_pixels) {
+        if (offset >= num_total_pixels) {
+            pixels = 0;
+        } else {
+            pixels = num_total_pixels - offset;
+        }
+    }
+
+    icetCompressSubImage(image, offset, pixels, compressed_image);
+}
+
+/* Checks to make sure that the region requested by offset and pixels does
+ * not run off the end of the image (which can happen when non-power-of-two
+ * images are divided up).  When that happens, the requested region is
+ * truncated. */
+static void bswapSafeCompressedSubComposite(IceTImage destBuffer,
+                                            IceTSizeType offset,
+                                            const IceTSparseImage srcBuffer,
+                                            int srcOnTop)
+{
+    IceTSizeType num_sub_pixels = icetSparseImageGetNumPixels(srcBuffer);
+    IceTSizeType num_total_pixels = icetImageGetNumPixels(destBuffer);
+
+    if (num_sub_pixels == 0) {
+        /* If there are no pixels in the incoming image, then the entire
+         * sub image must be past the end.  In this case it is OK for the
+         * offset to be too large; we just do nothing no matter what. */
+        return;
+    }
+
+    if ((offset + num_sub_pixels) > num_total_pixels) {
+        icetRaiseError("Received a sub image that extends past the end"
+                       " of the full image.",
+                       ICET_SANITY_CHECK_FAIL);
+    } else {
+        icetCompressedSubComposite(destBuffer, offset, srcBuffer, srcOnTop);
+    }
+}
+
 static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
                                     IceTInt group_rank, IceTImage image,
                                     IceTSizeType pixel_count)
 {
     IceTEnum color_format, depth_format;
+    IceTSizeType num_pixels;
     IceTCommRequest *requests;
     int i;
 
@@ -49,6 +100,7 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
    * is group_rank*offset. */
     color_format = icetImageGetColorFormat(image);
     depth_format = icetImageGetDepthFormat(image);
+    num_pixels = icetImageGetNumPixels(image);
     requests = malloc((group_size)*sizeof(IceTCommRequest));
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
@@ -59,11 +111,21 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
         icetRaiseDebug("Collecting image data.");
         for (i = 0; i < group_size; i++) {
             IceTInt src;
-          /* Actual piece is located at the bit reversal of i. */
+            IceTSizeType offset;
+            IceTBoolean receive_from_src;
+
+            /* Actual piece is located at the bit reversal of i. */
             BIT_REVERSE(src, i, group_size);
-            if (src != group_rank) {
+
+            offset = pixel_count*i;
+
+            receive_from_src = ICET_TRUE;
+            if (src == group_rank) receive_from_src = ICET_FALSE;
+            if (offset >= num_pixels) receive_from_src = ICET_FALSE;
+
+            if (receive_from_src) {
                 requests[i] =
-                    icetCommIrecv(colorBuffer + pixel_size*pixel_count*i,
+                    icetCommIrecv(colorBuffer + pixel_size*offset,
                                   pixel_size*pixel_count, ICET_BYTE,
                                   compose_group[src], SWAP_IMAGE_DATA);
             } else {
@@ -83,11 +145,21 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
         icetRaiseDebug("Collecting depth data.");
         for (i = 0; i < group_size; i++) {
             IceTInt src;
-          /* Actual peice is located at the bit reversal of i. */
+            IceTSizeType offset;
+            IceTBoolean receive_from_src;
+
+            /* Actual peice is located at the bit reversal of i. */
             BIT_REVERSE(src, i, group_size);
-            if (src != group_rank) {
+
+            offset = pixel_count*i;
+
+            receive_from_src = ICET_TRUE;
+            if (src == group_rank) receive_from_src = ICET_FALSE;
+            if (offset >= num_pixels) receive_from_src = ICET_FALSE;
+
+            if (receive_from_src) {
                 requests[i] =
-                    icetCommIrecv(depthBuffer + pixel_size*pixel_count*i,
+                    icetCommIrecv(depthBuffer + pixel_size*offset,
                                   pixel_size*pixel_count, ICET_BYTE,
                                   compose_group[src], SWAP_DEPTH_DATA);
             } else {
@@ -106,6 +178,7 @@ static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
                                 IceTSizeType pixel_count, IceTSizeType offset)
 {
     IceTEnum color_format, depth_format;
+    IceTSizeType num_pixels;
 
   /* Adjust image for output as some buffers, such as depth, might be
      dropped. */
@@ -113,9 +186,15 @@ static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
 
     color_format = icetImageGetColorFormat(image);
     depth_format = icetImageGetDepthFormat(image);
+    num_pixels = icetImageGetNumPixels(image);
+
+    if (offset >= num_pixels) {
+        icetRaiseDebug("No pixels to send to bswap collection.");
+        return;
+    }
 
   /* Correct for last piece that may overrun image size. */
-    pixel_count = MIN(pixel_count, icetImageGetNumPixels(image) - offset);
+    pixel_count = MIN(pixel_count, num_pixels - offset);
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
       /* Use IceTByte for byte-based pointer arithmetic. */
@@ -193,21 +272,16 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                 IceTVoid *package_buffer;
                 IceTSizeType package_size;
                 IceTInt dest_rank;
-                IceTSizeType pixel_start;
-                IceTSizeType pixels_sending;
 
                 BIT_REVERSE(dest_rank, i, num_pieces);
                 dest_rank = dest_rank*extra_pow2size + upper_group_rank;
                 icetRaiseDebug2("Sending piece %d to %d", i, (int)dest_rank);
 
-              /* Make sure we don't send pixels past the end of the buffer. */
-                pixel_start = offset + i*pixel_count;
-                pixels_sending
-                    = MIN(pixel_count,icetImageGetNumPixels(image)-pixel_start);
-
               /* Is compression the right thing?  It's currently easier. */
-                icetCompressSubImage(image, pixel_start, pixels_sending,
-                                     outSparseImage);
+                bswapSafeCompressSubImage(image,
+                                          offset + i*pixel_count,
+                                          pixel_count,
+                                          outSparseImage);
                 icetSparseImagePackageForSend(outSparseImage,
                                               &package_buffer, &package_size);
               /* Send to processor in lower "half" that has same part of
@@ -239,26 +313,22 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
             IceTSizeType package_size;
             IceTSizeType incoming_size;
             IceTSparseImage inSparseImage;
-            IceTSizeType truncated_pixel_count;
 
             pair = group_rank ^ bitmask;
 
             pixel_count /= 2;
 
-          /* Pieces grabbed at the bottom of the image may be truncated if the
-             pixel count does not divide evently.  Check for that. */
-            truncated_pixel_count
-                = MIN(pixel_count,
-                      icetImageGetNumPixels(image)-offset-pixel_count);
-
             if (group_rank < pair) {
-                icetCompressSubImage(image, offset + pixel_count,
-                                     truncated_pixel_count,
-                                     outSparseImage);
+                bswapSafeCompressSubImage(image,
+                                          offset + pixel_count,
+                                          pixel_count,
+                                          outSparseImage);
                 inOnTop = 0;
             } else {
-                icetCompressSubImage(image, offset, pixel_count,
-                                     outSparseImage);
+                bswapSafeCompressSubImage(image,
+                                          offset,
+                                          pixel_count,
+                                          outSparseImage);
                 inOnTop = 1;
                 offset += pixel_count;
             }
@@ -275,7 +345,10 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
 
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
-            icetCompressedSubComposite(image, offset, inSparseImage, inOnTop);
+            bswapSafeCompressedSubComposite(image,
+                                            offset,
+                                            inSparseImage,
+                                            inOnTop);
         }
 
       /* Now absorb any image that was part of extra stuff. */
@@ -296,7 +369,7 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
                          ICET_BYTE, compose_group[src], SWAP_IMAGE_DATA);
             inSparseImage
                 = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
-            icetCompressedSubComposite(image, offset, inSparseImage, 0);
+            bswapSafeCompressedSubComposite(image, offset, inSparseImage, 0);
         }
     }
 }

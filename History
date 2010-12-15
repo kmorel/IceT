@@ -39,7 +39,8 @@ Revision 2.0: A major restructuring of the IceT code comprising the
 	  IceT acronym.  (It used to be ICE-T.)
 
 	Patch 1: Fixed minor compile issues.  Fixed a common case where the
-	time to compare/blend was not measured.
+	time to compare/blend was not measured.  Fixed a corner case where
+	binary swap had negative sized image partitions.
 
 Revision 1.0: Basically the same as 0.5.4, which has been stable for years
 	now, with the addition of official documentation.

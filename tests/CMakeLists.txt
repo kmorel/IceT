@@ -18,6 +18,7 @@ ENDIF (NOT ICET_TESTS_USE_OPENGL)
 
 SET(MyTests
   CompressionSize.c
+  OddImageSizes.c
   SimpleTiming.c
   )
 

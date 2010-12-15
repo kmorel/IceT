@@ -83,6 +83,8 @@ ICET_EXPORT IceTEnum icetSparseImageGetColorFormat(const IceTSparseImage image);
 ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageGetWidth(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageGetHeight(const IceTSparseImage image);
+ICET_EXPORT IceTSizeType icetSparseImageGetNumPixels(
+                                                   const IceTSparseImage image);
 ICET_EXPORT void icetSparseImageSetDimensions(IceTSparseImage image,
                                               IceTSizeType width,
                                               IceTSizeType height);
