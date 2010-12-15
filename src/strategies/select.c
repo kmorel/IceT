@@ -30,6 +30,9 @@ extern void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
 extern void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
                             IceTImage image);
+extern void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
+                              IceTInt image_dest,
+                              IceTImage image);
 
 /*==================================================================*/
 
@@ -112,6 +115,7 @@ IceTBoolean icetSingleImageStrategyValid(IceTEnum strategy)
       case ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC:
       case ICET_SINGLE_IMAGE_STRATEGY_BSWAP:
       case ICET_SINGLE_IMAGE_STRATEGY_TREE:
+      case ICET_SINGLE_IMAGE_STRATEGY_RADIXK:
           return ICET_TRUE;
       default:
           return ICET_FALSE;
@@ -124,6 +128,7 @@ const char *icetSingleImageStrategyNameFromEnum(IceTEnum strategy)
       case ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC:        return "Automatic";
       case ICET_SINGLE_IMAGE_STRATEGY_BSWAP:            return "Binary Swap";
       case ICET_SINGLE_IMAGE_STRATEGY_TREE:             return "Binary Tree";
+      case ICET_SINGLE_IMAGE_STRATEGY_RADIXK:           return "Radix-k";
       default:
           icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);
           return "<Invalid>";
@@ -145,6 +150,9 @@ void icetInvokeSingleImageStrategy(IceTEnum strategy,
           break;
       case ICET_SINGLE_IMAGE_STRATEGY_TREE:
           icetTreeCompose(compose_group, group_size, image_dest, image);
+          break;
+      case ICET_SINGLE_IMAGE_STRATEGY_RADIXK:
+          icetRadixkCompose(compose_group, group_size, image_dest, image);
           break;
       default:
           icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);

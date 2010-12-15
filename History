@@ -10,6 +10,8 @@
 **
 *****************************************************************************
 
+Revision 2.1: Added the Radix-k as a single-image strategy.
+
 Revision 2.0: A major restructuring of the IceT code comprising the
 	following changes:
 

@@ -5,19 +5,44 @@
 ## This source code is released under the New BSD License.
 #
 
+IF (ICET_USE_OPENGL)
+  FIND_PACKAGE(GLUT)
+  IF (GLUT_FOUND)
+    SET(ICET_TESTS_USE_OPENGL 1)
+  ENDIF (GLUT_FOUND)
+ENDIF (ICET_USE_OPENGL)
+
+IF (NOT ICET_TESTS_USE_OPENGL)
+  MESSAGE(STATUS "Most tests require ICET_USE_OPENGL and Glut.  Those tests are disabled.")
+ENDIF (NOT ICET_TESTS_USE_OPENGL)
+
 SET(MyTests
-  BlankTiles.c
-  BoundsBehindViewer.c
   CompressionSize.c
-  DisplayNoDraw.c
   OddImageSizes.c
-  RandomTransform.c
-  SimpleExample.c
+  SimpleTiming.c
   )
+
+IF (ICET_TESTS_USE_OPENGL)
+  SET(MyTests ${MyTests}
+    BlankTiles.c
+    BoundsBehindViewer.c
+    DisplayNoDraw.c
+    RandomTransform.c
+    SimpleExample.c
+    )
+ENDIF (ICET_TESTS_USE_OPENGL)
 
 SET(UTIL_SRCS init.c ppm.c)
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+CONFIGURE_FILE(
+  ${CMAKE_CURRENT_SOURCE_DIR}/test-config.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/test-config.h
+  )
+
+INCLUDE_DIRECTORIES(
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  )
 
 CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
   EXTRA_INCLUDE mpi_comm.h
@@ -26,11 +51,15 @@ CREATE_TEST_SOURCELIST(Tests icetTests_mpi.c ${MyTests}
 ADD_EXECUTABLE(icetTests_mpi ${Tests} ${UTIL_SRCS})
 TARGET_LINK_LIBRARIES(icetTests_mpi
   IceTCore
-  IceTGL
   IceTMPI
-  ${OPENGL_glu_LIBRARY}
-  ${GLUT_LIBRARIES}
   )
+IF (ICET_TESTS_USE_OPENGL)
+  TARGET_LINK_LIBRARIES(icetTests_mpi
+    IceTGL
+    ${OPENGL_glu_LIBRARY}
+    ${GLUT_LIBRARIES}
+    )
+ENDIF (ICET_TESTS_USE_OPENGL)
 
 IF (ICET_MPIRUN_EXE)
   SET(PRE_TEST_FLAGS ${ICET_MPIRUN_EXE} ${ICET_MPI_NUMPROC_FLAG} ${ICET_MPI_MAX_NUMPROCS} ${ICET_MPI_PREFLAGS})

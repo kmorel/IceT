@@ -7,13 +7,24 @@
  * This source code is released under the New BSD License.
  */
 
-#ifndef _ICET_PORTING_H_
-#define _ICET_PORTING_H_
+#ifndef __IceTDevPorting_h
+#define __IceTDevPorting_h
 
 #include <IceT.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
 
 /* Returns the size of the type given by the identifier (ICET_INT, ICET_FLOAT,
    etc.)  in bytes. */
 ICET_EXPORT IceTSizeType icetTypeWidth(IceTEnum type);
 
-#endif /*_ICET_PORTING_H_*/
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__IceTDevPorting_h*/

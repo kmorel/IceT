@@ -12,6 +12,13 @@
 
 #include <IceT.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
+
 #define ICET_STRATEGY_UNDEFINED (IceTEnum)-1
 
 ICET_STRATEGY_EXPORT IceTBoolean icetStrategyValid(IceTEnum strategy);
@@ -34,5 +41,9 @@ ICET_STRATEGY_EXPORT void icetInvokeSingleImageStrategy(IceTEnum strategy,
                                                         IceTInt group_size,
                                                         IceTInt image_dest,
                                                         IceTImage image);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*__IceTDevStrategySelect_h*/
