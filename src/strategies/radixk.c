@@ -37,13 +37,27 @@
 #define MAX_K 256 /* Maximum k value */
 #define MAX_R 128 /* Maximum number of rounds */
 
+#define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
+#define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
+#define RADIXK_INTERMEDIATE_COMPOSE_BUFFER      ICET_SI_STRATEGY_BUFFER_2
+#define RADIXK_REQUEST_BUFFER                   ICET_SI_STRATEGY_BUFFER_3
+#define RADIXK_SIZES_BUFFER                     ICET_SI_STRATEGY_BUFFER_4
+#define RADIXK_OFFSETS_BUFFER                   ICET_SI_STRATEGY_BUFFER_5
+#define RADIXK_FACTORS_ARRAY                    ICET_SI_STRATEGY_BUFFER_6
+
 static int* radixkGetK(int world_size, int* r)
 {
     /* Divide the world size into groups that are closest to the magic k
        value. */
-    int* k = NULL;
+    int* k;
+    int max_num_k;
     int num_groups = 0;
     int next_divide = world_size;
+
+    /* The maximum number of factors possible is the floor of log base 2. */
+    max_num_k = (int)(floor(log10(world_size)/log10(2)));
+    k = icetGetStateBuffer(RADIXK_FACTORS_ARRAY, sizeof(int) * max_num_k);
+
     while (next_divide > 1) {
         int next_k = -1;
 
@@ -99,10 +113,14 @@ static int* radixkGetK(int world_size, int* r)
         }
 
         /* Set the k value in the array. */
-        k = realloc(k, sizeof(int) * (num_groups + 1));
         k[num_groups] = next_k;
         next_divide /= next_k;
         num_groups++;
+
+        if (num_groups > max_num_k) {
+            icetRaiseError("Somehow we got more factors than possible.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
     }
 
     *r = num_groups;
@@ -289,11 +307,13 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
 
     color_format = icetImageGetColorFormat(image);
     depth_format = icetImageGetDepthFormat(image);
-    requests =  malloc((group_size) * sizeof(IceTCommRequest));
+    requests = icetGetStateBuffer(RADIXK_REQUEST_BUFFER,
+                                  group_size * sizeof(IceTCommRequest));
 
     /* TODO: Compute the sizes instead of communicate them. */ 
     /* Find out the sizes of each process. */
-    all_sizes = malloc(sizeof(int) * group_size);
+    all_sizes = icetGetStateBuffer(RADIXK_SIZES_BUFFER,
+                                   sizeof(int) * group_size);
     if (group_rank == image_dest) {
         all_sizes[group_rank] = (int)size;
         for (i = 0; i < group_size; i++) {
@@ -313,7 +333,8 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
     }
 
     /* Compute all the offsets. */
-    all_offsets = malloc(sizeof(int) * group_size);
+    all_offsets = icetGetStateBuffer(RADIXK_OFFSETS_BUFFER,
+                                     sizeof(int) * group_size);
     all_offsets[0] = 0;
     for (i = 1; i < group_size; i++) {
         all_offsets[i] = all_offsets[i - 1] + all_sizes[i - 1];
@@ -375,9 +396,6 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
         }
     }
 
-    free(requests);
-    free(all_offsets);
-    free(all_sizes);
     /* This will not work for multi-tile compositing most likely because IceT
        does not create separate communicators for each compositing group. */
     /* TODO use Gatherv since processes might not contain equal portions. */
@@ -421,6 +439,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
 
     IceTCommRequest r_reqs[MAX_K]; /* Receive requests */
     IceTCommRequest s_reqs[MAX_K]; /* Send requests */
+    IceTVoid *recv_buf_pool;
+    IceTVoid *send_buf_pool;
     IceTVoid *recv_bufs[MAX_K]; /* Receive buffers */
     IceTVoid *send_bufs[MAX_K]; /* Send buffers */
     IceTSparseImage send_img_bufs[MAX_K]; /* Sparse images that use send_bufs */
@@ -442,7 +462,6 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
        function. */
     int partners[MAX_K];
 
-    IceTVoid* intermediate_compose_buf;
     IceTImage intermediate_compose_img;
     IceTSizeType max_sparse_img_size;
 
@@ -481,9 +500,9 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     /* A space for uncompressing an intermediate image and then compositing it
        with another compressed image. This is used for group sizes that are 
        greater than two for compositing intermediate results. */
-    intermediate_compose_buf = malloc(icetImageBufferSize(width, height));
     intermediate_compose_img
-        = icetImageAssignBuffer(intermediate_compose_buf, width, height);
+        = icetGetStateBufferImage(RADIXK_INTERMEDIATE_COMPOSE_BUFFER,
+                                  width, height);
 
     /* Allocate buffers */
     max_sparse_img_size = icetSparseImageBufferSize(width, height);
@@ -494,9 +513,13 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     /* TODO: If high k-values only appear later in the algorithm then we don't
        need max_k bufs of size/k[0] length. We can allocate smaller buffers for
        the later rounds. */
+    recv_buf_pool = icetGetStateBuffer(RADIXK_RECEIVE_BUFFER,
+                                       max_sparse_img_size * max_k);
+    send_buf_pool = icetGetStateBuffer(RADIXK_SEND_BUFFER,
+                                       max_sparse_img_size * max_k);
     for (i = 0; i < max_k - 1; i++) {
-        recv_bufs[i] = malloc(max_sparse_img_size);
-        send_bufs[i] = malloc(max_sparse_img_size);
+        recv_bufs[i] = ((IceTByte*)recv_buf_pool + i*max_sparse_img_size);
+        send_bufs[i] = ((IceTByte*)send_buf_pool + i*max_sparse_img_size);
         send_img_bufs[i] = icetSparseImageAssignBuffer(send_bufs[i],
                                                        width, height);
     }
@@ -510,7 +533,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
        calculate the current round's peer sizes based on our current size and
        the k[i] info. */
     my_size = size;
-    sizes = malloc(max_k * sizeof(IceTSizeType));
+    sizes = icetGetStateBuffer(RADIXK_SIZES_BUFFER,
+                               max_k * sizeof(IceTSizeType));
     for (i = 0; i < max_k; ++i) {
         sizes[i] = -3; /* Defensive */
         ofsts[i] = -5; /* Defensive */
@@ -758,15 +782,6 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     } /* for all rounds */
 
 #undef MAP_BUF
-
-    free(intermediate_compose_buf);
-    free(sizes);
-    free(k);
-    for (i = 0; i < max_k - 1; i++)
-    {
-        free(recv_bufs[i]);
-        free(send_bufs[i]);
-    }
 
     radixkGatherFinalImage(compose_group, rank, group_size, image_dest,
                            my_ofst, my_size, image);
