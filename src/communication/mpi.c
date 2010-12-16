@@ -22,6 +22,7 @@
 
 static IceTCommunicator Duplicate(IceTCommunicator self);
 static void Destroy(IceTCommunicator self);
+static void Barrier(IceTCommunicator self);
 static void Send(IceTCommunicator self,
                  const void *buf, int count, IceTEnum datatype, int dest,
                  int tag);
@@ -134,6 +135,7 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
 
     comm->Duplicate = Duplicate;
     comm->Destroy = Destroy;
+    comm->Barrier = Barrier;
     comm->Send = Send;
     comm->Recv = Recv;
     comm->Sendrecv = Sendrecv;
@@ -174,6 +176,11 @@ static void Destroy(IceTCommunicator self)
     MPI_Comm_free((MPI_Comm *)self->data);
     free(self->data);
     free(self);
+}
+
+static void Barrier(IceTCommunicator self)
+{
+    MPI_Barrier(MPI_COMM);
 }
 
 #define CONVERT_DATATYPE(icet_type, mpi_type)                                \

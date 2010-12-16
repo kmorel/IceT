@@ -50,6 +50,7 @@ struct IceTCommunicatorStruct {
     struct IceTCommunicatorStruct *
          (*Duplicate)(struct IceTCommunicatorStruct *self);
     void (*Destroy)(struct IceTCommunicatorStruct *self);
+    void (*Barrier)(struct IceTCommunicatorStruct *self);
     void (*Send)(struct IceTCommunicatorStruct *self,
                  const void *buf, int count, IceTEnum datatype, int dest,
                  int tag);
