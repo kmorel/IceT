@@ -45,18 +45,18 @@
 #define RADIXK_OFFSETS_BUFFER                   ICET_SI_STRATEGY_BUFFER_5
 #define RADIXK_FACTORS_ARRAY                    ICET_SI_STRATEGY_BUFFER_6
 
-static int* radixkGetK(int world_size, int* r)
+static int* radixkGetK(int world_size, int* num_rounds_p)
 {
     /* Divide the world size into groups that are closest to the magic k
        value. */
-    int* k;
+    int* k_array;
     int max_num_k;
     int num_groups = 0;
     int next_divide = world_size;
 
     /* The maximum number of factors possible is the floor of log base 2. */
     max_num_k = (int)(floor(log10(world_size)/log10(2)));
-    k = icetGetStateBuffer(RADIXK_FACTORS_ARRAY, sizeof(int) * max_num_k);
+    k_array = icetGetStateBuffer(RADIXK_FACTORS_ARRAY, sizeof(int) * max_num_k);
 
     while (next_divide > 1) {
         int next_k = -1;
@@ -113,7 +113,7 @@ static int* radixkGetK(int world_size, int* r)
         }
 
         /* Set the k value in the array. */
-        k[num_groups] = next_k;
+        k_array[num_groups] = next_k;
         next_divide /= next_k;
         num_groups++;
 
@@ -123,8 +123,8 @@ static int* radixkGetK(int world_size, int* r)
         }
     }
 
-    *r = num_groups;
-    return k;
+    *num_rounds_p = num_groups;
+    return k_array;
 }
 
 #if 0
@@ -231,31 +231,33 @@ static void RadixDist(int size,
 }
 #endif
 
-/* radixkGetRndVec
+/* radixkGetPartitionIndices
 
-   Computes my round vector coordinates
-   my position in each round forms an r-dimensional vector
-   [round 0 pos, round 1 pos, ... round r-1 pos]
+   my position in each round forms an num_rounds-dimensional vector
+   [round 0 pos, round 1 pos, ... round num_rounds-1 pos]
    where pos is my position in the group of partners within that round
 
    inputs:
-     r: number of rounds
-     k: vector of k values
+     num_rounds: number of rounds
+     k_array: vector of k values
      rank: my MPI rank
 
    outputs:
-     rv: round vector coordinates
+     partition_indices: index of my partition for each round.
 */
-static void radixkGetRndVec(int r, int *k, int rank, int *rv)
+static void radixkGetPartitionIndices(int num_rounds,
+                                      const int *k_array,
+                                      int rank,
+                                      int *partition_indices)
 {
 
     int step; /* step size in rank for a lattice direction */
     int i;
 
     step = 1;
-    for (i = 0; i < r; i++) {
-        rv[i] = rank / step % k[i];
-        step *= k[i];
+    for (i = 0; i < num_rounds; i++) {
+        partition_indices[i] = (rank / step) % k_array[i];
+        step *= k_array[i];
     }
 
 }
@@ -264,27 +266,33 @@ static void radixkGetRndVec(int r, int *k, int rank, int *rv)
    gets the ranks of my trading partners
 
    inputs:
-    k: vector of k values
-    cur_r: current round number (0 to r - 1)
-    rc: current round vector coordinate (0 to cur_r - 1)
+    k_array: vector of k values
+    current_round: current round number (0 to num_rounds - 1)
+    partition_index: image partition to collect (0 to k[current_round] - 1)
     rank: my MPI rank
 
    output:
     partners: MPI ranks of the partners in my group, including myself
 */
-static void GetPartners(int *k, int cur_r, int rc, int rank, int *partners)
+static void GetPartners(const int *k_array,
+                        int current_round,
+                        int partition_index,
+                        int rank,
+                        int *partners)
 {
 
     int step; /* ranks jump by this much in the current round */
     int i;
 
     step = 1;
-    for (i = 0; i < cur_r; i++)
-        step *= k[i];
+    for (i = 0; i < current_round; i++) {
+        step *= k_array[i];
+    }
 
-    partners[0] = rank - rc * step;
-    for (i = 1; i < k[cur_r]; i++)
+    partners[0] = rank - partition_index * step;
+    for (i = 1; i < k_array[current_round]; i++) {
         partners[i] = partners[i - 1] + step;
+    }
 
 }
 
@@ -434,8 +442,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     IceTSizeType size = icetImageGetNumPixels(image);
     IceTSizeType width = icetImageGetWidth(image);
     IceTSizeType height = icetImageGetHeight(image);
-    int r; /* Number of rounds. */
-    int* k = radixkGetK(group_size, &r); /* Communication sizes per round. */
+    int num_rounds;
+    int* k_array = radixkGetK(group_size, &num_rounds);
 
     IceTCommRequest r_reqs[MAX_K]; /* Receive requests */
     IceTCommRequest s_reqs[MAX_K]; /* Send requests */
@@ -451,7 +459,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     IceTSizeType ofsts[MAX_K]; /* Image subregion offset */
     int max_k; /* Max value of k in all the rounds */
     IceTSizeType my_ofst; /* Offset of my subimage */
-    int rv[MAX_R]; /* My round vector [round 0 pos, round 1 pos, ...] */
+    int partition_indices[MAX_R]; /* My round vector [round 0 pos, round 1 pos, ...] */
     int arr; /* Index of arrived message */
     int b; /* Distance from destination to start of already composited region */
     int i, j, n;
@@ -483,14 +491,14 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
         return;
     }
 
-    /* r > 0 is assumed several places throughout this function */
-    if (r <= 0) {
+    /* num_rounds > 0 is assumed several places throughout this function */
+    if (num_rounds <= 0) {
         icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
     }
 
-    n = k[0];
-    for (i = 1; i < r; ++i) {
-        n *= k[i];
+    n = k_array[0];
+    for (i = 1; i < num_rounds; ++i) {
+        n *= k_array[i];
     }
     if (n != group_size) {
         icetRaiseError("Product of k's not equal to number of processes.",
@@ -507,8 +515,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     /* Allocate buffers */
     max_sparse_img_size = icetSparseImageBufferSize(width, height);
     max_k = 0;
-    for (i = 0; i < r; i++) {
-        max_k = k[i] > max_k ? k[i] : max_k;
+    for (i = 0; i < num_rounds; i++) {
+        max_k = k_array[i] > max_k ? k_array[i] : max_k;
     }
     /* TODO: If high k-values only appear later in the algorithm then we don't
        need max_k bufs of size/k[0] length. We can allocate smaller buffers for
@@ -525,13 +533,13 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     }
 
     /* initialize size, my round vector, my offset */
-    radixkGetRndVec(r, k, rank, rv);
+    radixkGetPartitionIndices(num_rounds, k_array, rank, partition_indices);
     my_ofst = 0;
 
     /* Any peer we communicate with in round i starts that round with a block of
        the same size as ours prior to splitting for sends/recvs.  So we can
        calculate the current round's peer sizes based on our current size and
-       the k[i] info. */
+       the k_array[i] info. */
     my_size = size;
     sizes = icetGetStateBuffer(RADIXK_SIZES_BUFFER,
                                max_k * sizeof(IceTSizeType));
@@ -540,17 +548,17 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
         ofsts[i] = -5; /* Defensive */
     }
 
-    /* Assumes rv[i] is valid and corresponds to our rank in the round i. */
-#define MAP_BUF(k_rank_) ((k_rank_) - ((k_rank_) > rv[i] ? 1 : 0))
+    /* Assumes partition_indices[i] is valid and corresponds to our rank in the round i. */
+#define MAP_BUF(k_rank_) ((k_rank_) - ((k_rank_) > partition_indices[i] ? 1 : 0))
 
-    for (i = 0; i < r; i++){
-        GetPartners(k, i, rv[i], rank, partners);
+    for (i = 0; i < num_rounds; i++){
+        GetPartners(k_array, i, partition_indices[i], rank, partners);
 
         ofsts[0] = my_ofst;
-        for (j = 0; j < k[i]; ++j) {
+        for (j = 0; j < k_array[i]; ++j) {
             /* Distribute any remainder 1 element at a time from 0..(rem-1) */
-            int remain = (j < (my_size % k[i])) ? 1 : 0;
-            sizes[j] = (my_size / k[i]) + remain;
+            int remain = (j < (my_size % k_array[i])) ? 1 : 0;
+            sizes[j] = (my_size / k_array[i]) + remain;
 
             /* My offset this round is last round's my_ofst plus the sum of the
                sizes of the partners that come before me in the k-ordering */
@@ -558,14 +566,14 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                 ofsts[j] = ofsts[j - 1] + sizes[j - 1];
             }
         }
-        my_size = sizes[rv[i]];
-        my_ofst = ofsts[rv[i]];
+        my_size = sizes[partition_indices[i]];
+        my_ofst = ofsts[partition_indices[i]];
 
         /* Post receives starting with nearest neighbors and working outwards */
         n = 0;
-        for (j = 1; j < k[i]; j++) {
-            dest = rv[i] + j; /* Toward higher group members */
-            if (dest < k[i]) {
+        for (j = 1; j < k_array[i]; j++) {
+            dest = partition_indices[i] + j; /* Toward higher group members */
+            if (dest < k_array[i]) {
                 r_reqs[n] = icetCommIrecv(recv_bufs[MAP_BUF(dest)],
                                           max_sparse_img_size,
                                           ICET_BYTE,
@@ -573,7 +581,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                                           0);
                 dests[n++] = dest;
             }
-            dest = rv[i] - j; /* Toward lower group members */
+            dest = partition_indices[i] - j; /* Toward lower group members */
             if (dest >= 0) {
                 r_reqs[n] = icetCommIrecv(recv_bufs[MAP_BUF(dest)],
                                           max_sparse_img_size,
@@ -586,9 +594,9 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
 
         /* Compress subimages and post sends in the same order */
         n = 0;
-        for (j = 1; j < k[i]; j++) {
-            dest = rv[i] + j; /* Toward higher group members */
-            if (dest < k[i]) {
+        for (j = 1; j < k_array[i]; j++) {
+            dest = partition_indices[i] + j; /* Toward higher group members */
+            if (dest < k_array[i]) {
                 IceTVoid* package_buffer;
                 IceTSizeType package_size;
                 icetCompressSubImage(image, ofsts[dest], sizes[dest],
@@ -601,7 +609,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                                             compose_group[partners[dest]],
                                             0);
             }
-            dest = rv[i] - j; /* Toward lower group members */
+            dest = partition_indices[i] - j; /* Toward lower group members */
             if (dest >= 0) {
                 IceTVoid* package_buffer;
                 IceTSizeType package_size;
@@ -618,24 +626,24 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
         }
 
         /* clear here and done arrays, mark my own position as here and done */
-        for (j = 0; j < k[i]; j++) {
+        for (j = 0; j < k_array[i]; j++) {
             here[j] = done[j] = 0;
         }
-        done[rv[i]] = 1;
-        here[rv[i]] = 1;
+        done[partition_indices[i]] = 1;
+        here[partition_indices[i]] = 1;
 
         /* For all messages plus one to composite leftovers. */
-        for(n = 0; n < k[i]; n++) {
+        for(n = 0; n < k_array[i]; n++) {
             /* Get the next message and mark it as here. */
-            if (n < k[i] - 1) {
-                arr = icetCommWaitany(k[i] - 1, r_reqs);
+            if (n < k_array[i] - 1) {
+                arr = icetCommWaitany(k_array[i] - 1, r_reqs);
                 here[dests[arr]] = 1;
             }
 
             /* scan the group members from me in both directions */
-            for (j = 1; j < k[i]; j++) {
+            for (j = 1; j < k_array[i]; j++) {
                 /* --------  up direction ----------- */
-                if ((dest = rv[i] + j) < k[i]) {
+                if ((dest = partition_indices[i] + j) < k_array[i]) {
                     /* distance from dest to start of already composited
                        region */
                     b = 1;
@@ -664,7 +672,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                     }
 
                     /* composite another adjacent pair */
-                    if (dest - b > rv[i] && here[dest] && here[dest - b] &&
+                    if (dest - b > partition_indices[i] && here[dest] && here[dest - b] &&
                         !done[dest] && !done[dest - b]) {
                         /* Unpackage and uncompress one of the images. This is
                            for making use of IceT's compressed compositing
@@ -706,11 +714,11 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                 }
 
                 /* --------  down direction ----------- */
-                if ((dest = rv[i] - j) >= 0) {
+                if ((dest = partition_indices[i] - j) >= 0) {
                     /* distance from dest to start of already composited
                        region */
                     b = 1;
-                    while (dest + b < k[i] && done[dest + b] && !here[dest + b])
+                    while (dest + b < k_array[i] && done[dest + b] && !here[dest + b])
                         b++;
 
                     /* composite my image with the previous image in order */
@@ -729,13 +737,13 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                     /* distance from dest to start of already composited
                        region */
                     b = 1;
-                    while (dest + b < k[i] && done[dest + b] && !here[dest + b])
+                    while (dest + b < k_array[i] && done[dest + b] && !here[dest + b])
                     {
                         b++;
                     }
 
                     /* composite another adjacent pair */
-                    if (dest + b < rv[i] && here[dest] && here[dest + b] &&
+                    if (dest + b < partition_indices[i] && here[dest] && here[dest + b] &&
                         !done[dest] && !done[dest + b]) {
                         /* Unpackage and uncompress one of the images. This is
                            for making use of IceT's compressed compositing
@@ -778,7 +786,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
             } /* scan the group members */
         }
         /* wait for the send requests */
-        icetCommWaitall(k[i] - 1, s_reqs);
+        icetCommWaitall(k_array[i] - 1, s_reqs);
     } /* for all rounds */
 
 #undef MAP_BUF
