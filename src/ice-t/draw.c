@@ -793,7 +793,21 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
 
     drawProjectBounds();
 
-    drawCollectTileInformation();
+    {
+        IceTEnum strategy;
+        icetGetEnumv(ICET_STRATEGY, &strategy);
+
+        /* drawCollectTileInformation does an allgather to get information
+         * about the tiles in other processes.  These variables are
+         * ICET_ALL_CONTAINED_TILES_MASKS, ICET_TILE_CONTRIB_COUNTS, and
+         * ICET_TOTAL_IMAGE_COUNT.  However, the sequential strategy ignores
+         * this information and just uses all processes for all tiles.  When
+         * compositing a single tile, this is a fine strategy and we can save
+         * a significant proportion of frame time by skipping this step. */
+        if (strategy != ICET_STRATEGY_SEQUENTIAL) {
+            drawCollectTileInformation();
+        }
+    }
 
     image = drawInvokeStrategy();
 
