@@ -62,6 +62,16 @@ ICET_EXPORT void icetCommWaitall(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT int icetCommSize();
 ICET_EXPORT int icetCommRank();
 
+/* These are convenience methods for finding a particular rank in a group (array
+ * of process ids).  This is a common operation as IceT frequently uses an array
+ * of process ids to represent a lightweight group.  If the specified rank is
+ * not in the group, -1 is returned. */
+ICET_EXPORT int icetFindRankInGroup(const int *group,
+                                    IceTSizeType group_size,
+                                    int rank_to_find);
+ICET_EXPORT int icetFindMyRankInGroup(const int *group,
+                                      IceTSizeType group_size);
+
 #ifdef __cplusplus
 }
 #endif
