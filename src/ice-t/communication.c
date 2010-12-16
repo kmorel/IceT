@@ -139,3 +139,27 @@ int icetCommRank()
     IceTCommunicator comm = icetGetCommunicator();
     return comm->Comm_rank(comm);
 }
+
+
+int icetFindRankInGroup(const int *group,
+                        IceTSizeType group_size,
+                        int rank_to_find)
+{
+    IceTSizeType i;
+    for (i = 0; i < group_size; i++) {
+        if (group[i] == rank_to_find) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int icetFindMyRankInGroup(const int *group,
+                          IceTSizeType group_size)
+{
+    IceTInt rank;
+
+    icetGetIntegerv(ICET_RANK, &rank);
+    return icetFindRankInGroup(group, group_size, rank);
+}
