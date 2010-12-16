@@ -351,7 +351,7 @@
                 _out++;
                 _runlength -= 0xFFFF;
             }
-            INACTIVE_RUN_LENGTH(_out) = _runlength;
+            INACTIVE_RUN_LENGTH(_out) = (IceTUShort)_runlength;
             ACTIVE_RUN_LENGTH(_out) = 0;
             _out++;
             ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
