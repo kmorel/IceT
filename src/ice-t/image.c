@@ -1090,7 +1090,7 @@ void icetClearSparseImage(IceTSparseImage image)
         p -= 0xFFFF;
     }
 
-    INACTIVE_RUN_LENGTH(data) = p;
+    INACTIVE_RUN_LENGTH(data) = (IceTUShort)p;
     ACTIVE_RUN_LENGTH(data) = 0;
 }
 
