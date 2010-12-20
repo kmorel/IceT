@@ -22,7 +22,11 @@
 #include <time.h>
 #include <string.h>
 
-static int tile_dim;
+static int g_tile_dim;
+static float g_color[3];
+static IceTFloat g_modelview[16];
+static IceTImage g_refimage_opaque;
+static IceTImage g_refimage_transparent;
 
 static void draw(void)
 {
@@ -42,16 +46,18 @@ static void draw(void)
 static int compare_color_buffers(IceTSizeType local_width,
                                  IceTSizeType local_height,
                                  IceTImage refimage,
-                                 IceTImage testimage,
-                                 int rank)
+                                 IceTImage testimage)
 {
     IceTSizeType ref_off_x, ref_off_y;
     IceTSizeType bad_pixel_count;
     IceTSizeType x, y;
     char filename[FILENAME_MAX];
     IceTUByte *refcbuf, *cb;
+    IceTInt rank;
 
     printf("Checking returned image.\n");
+
+    icetGetIntegerv(ICET_RANK, &rank);
 
     if (    (local_width != icetImageGetWidth(testimage))
          || (local_height != icetImageGetHeight(testimage)) ) {
@@ -69,8 +75,8 @@ static int compare_color_buffers(IceTSizeType local_width,
     cb = malloc(icetImageGetNumPixels(testimage)*4);
     icetImageCopyColorub(testimage, cb, ICET_IMAGE_COLOR_RGBA_UBYTE);
 
-    ref_off_x = (rank%tile_dim) * local_width;
-    ref_off_y = (rank/tile_dim) * local_height;
+    ref_off_x = (rank%g_tile_dim) * local_width;
+    ref_off_y = (rank/g_tile_dim) * local_height;
     bad_pixel_count = 0;
 #define CBR(x, y) (cb[(y)*local_width*4 + (x)*4 + 0])
 #define CBG(x, y) (cb[(y)*local_width*4 + (x)*4 + 1])
@@ -163,8 +169,7 @@ static int compare_color_buffers(IceTSizeType local_width,
 static int compare_depth_buffers(IceTSizeType local_width,
                                  IceTSizeType local_height,
                                  IceTImage refimage,
-                                 IceTImage testimage,
-                                 int rank)
+                                 IceTImage testimage)
 {
     IceTSizeType ref_off_x, ref_off_y;
     IceTSizeType bad_pixel_count;
@@ -172,12 +177,16 @@ static int compare_depth_buffers(IceTSizeType local_width,
     char filename[FILENAME_MAX];
     IceTFloat *refdbuf;
     IceTFloat *db;
+    IceTInt rank;
 
     printf("Checking returned image.\n");
+
+    icetGetIntegerv(ICET_RANK, &rank);
+
     refdbuf = icetImageGetDepthf(refimage);
     db = icetImageGetDepthf(testimage);
-    ref_off_x = (rank%tile_dim) * local_width;
-    ref_off_y = (rank/tile_dim) * local_height;
+    ref_off_x = (rank%g_tile_dim) * local_width;
+    ref_off_y = (rank/g_tile_dim) * local_height;
     bad_pixel_count = 0;
 
     for (y = 0; y < local_height; y++) {
@@ -265,23 +274,163 @@ static void check_results(int result)
     }
 }
 
+static void RandomTransformDoRender(IceTBoolean transparent,
+                                    IceTSizeType local_width,
+                                    IceTSizeType local_height)
+{
+    IceTImage image;
+    IceTInt rank;
+    int result = TEST_PASSED;
+
+    icetGetIntegerv(ICET_RANK, &rank);
+
+    printf("Rendering frame.\n");
+    if (transparent) {
+        glColor4f(0.5f*g_color[0], 0.5f*g_color[1], 0.5f*g_color[2], 0.5f);
+    } else {
+        glColor4f(g_color[0], g_color[1], g_color[2], 1.0f);
+    }
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-1.0f,
+            (GLfloat)((2.0*local_width*g_tile_dim)/SCREEN_WIDTH-1.0),
+            -1.0f,
+            (GLfloat)((2.0*local_height*g_tile_dim)/SCREEN_HEIGHT-1.0),
+            -1.0f, 1.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixf(g_modelview);
+    image = icetGLDrawFrame();
+    swap_buffers();
+
+    if (rank < g_tile_dim*g_tile_dim) {
+        if (transparent) {
+            if (!compare_color_buffers(local_width, local_height,
+                                       g_refimage_transparent, image)) {
+                result = TEST_FAILED;
+            }
+        } else {
+            if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_NONE) {
+                if (!compare_color_buffers(local_width, local_height,
+                                           g_refimage_opaque, image)) {
+                    result = TEST_FAILED;
+                }
+            }
+            if (icetImageGetDepthFormat(image) != ICET_IMAGE_DEPTH_NONE) {
+                if (!compare_depth_buffers(local_width, local_height,
+                                           g_refimage_opaque, image)) {
+                    result = TEST_FAILED;
+                }
+            }
+        }
+    } else {
+        printf("Not a display node.  Not testing image.\n");
+    }
+    check_results(result);
+}
+
+static void RandomTransformTryStrategy()
+{
+    IceTSizeType local_width = SCREEN_WIDTH/g_tile_dim;
+    IceTSizeType local_height = SCREEN_HEIGHT/g_tile_dim;
+    IceTSizeType viewport_width = SCREEN_WIDTH;
+    IceTSizeType viewport_height = SCREEN_HEIGHT;
+    IceTSizeType viewport_offset_x = 0;
+    IceTSizeType viewport_offset_y = 0;
+    IceTBoolean test_ordering;
+    int x, y;
+
+    icetGetBooleanv(ICET_STRATEGY_SUPPORTS_ORDERING, &test_ordering);
+
+    printf("\nRunning on a %d x %d display.\n", g_tile_dim, g_tile_dim);
+    icetResetTiles();
+    for (y = 0; y < g_tile_dim; y++) {
+        for (x = 0; x < g_tile_dim; x++) {
+            icetAddTile((IceTInt)(x*local_width),
+                        (IceTInt)(y*local_height),
+                        local_width,
+                        local_height,
+                        y*g_tile_dim + x);
+        }
+    }
+
+    if (g_tile_dim > 1) {
+        viewport_width
+            = rand()%(SCREEN_WIDTH-local_width) + local_width;
+        viewport_height
+            = rand()%(SCREEN_HEIGHT-local_height) + local_height;
+    }
+    if (viewport_width < SCREEN_WIDTH) {
+        viewport_offset_x = rand()%(SCREEN_WIDTH-viewport_width);
+    }
+    if (viewport_width < SCREEN_HEIGHT) {
+        viewport_offset_y = rand()%(SCREEN_HEIGHT-viewport_height);
+    }
+            
+    glViewport((GLint)viewport_offset_x, (GLint)viewport_offset_y,
+               (GLsizei)viewport_width, (GLsizei)viewport_height);
+    /* glViewport(0, 0, local_width, local_height); */
+
+    printf("\nDoing color buffer.\n");
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+    icetDisable(ICET_COMPOSITE_ONE_BUFFER);
+    icetDisable(ICET_ORDERED_COMPOSITE);
+
+    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+
+    printf("\nDoing float color buffer.\n");
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+    icetEnable(ICET_COMPOSITE_ONE_BUFFER);
+    icetDisable(ICET_ORDERED_COMPOSITE);
+
+    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+
+    printf("\nDoing depth buffer.\n");
+    icetSetColorFormat(ICET_IMAGE_COLOR_NONE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+    icetDisable(ICET_ORDERED_COMPOSITE);
+
+    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+
+    if (test_ordering) {
+        printf("\nDoing blended color buffer.\n");
+        icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+        icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+        icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
+        icetEnable(ICET_ORDERED_COMPOSITE);
+
+        RandomTransformDoRender(ICET_TRUE, local_width, local_height);
+
+        printf("\nDoing blended float color buffer.\n");
+        icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
+        icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+        icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
+        icetEnable(ICET_ORDERED_COMPOSITE);
+
+        RandomTransformDoRender(ICET_TRUE, local_width, local_height);
+    } else {
+        printf("\nStrategy does not support ordering, skipping.\n");
+    }
+}
+
 static int RandomTransformRun()
 {
-    int i, x, y;
+    int i;
     IceTImage image;
-    IceTImage refimage;
     IceTVoid *refbuf;
-    IceTImage refimage2;
     IceTVoid *refbuf2;
     int result = TEST_PASSED;
-    IceTFloat mat[16];
     int rank, num_proc;
     IceTInt *image_order;
     IceTInt rep_group_size;
     IceTInt *rep_group;
-    IceTFloat color[3];
     IceTFloat background_color[3];
     unsigned int seed;
+    int strategy_idx;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -359,7 +508,7 @@ static int RandomTransformRun()
     glScalef((float)(1.0/sqrt(num_proc) - 1.0)*(float)rand()/RAND_MAX + 1.0f,
              (float)(1.0/sqrt(num_proc) - 1.0)*(float)rand()/RAND_MAX + 1.0f,
              1.0f);
-    glGetFloatv(GL_MODELVIEW_MATRIX, mat);
+    glGetFloatv(GL_MODELVIEW_MATRIX, g_modelview);
 
   /* Set up data replication groups and ensure that they all share the same
    * transformation. */
@@ -369,28 +518,32 @@ static int RandomTransformRun()
     printf("My data replication group: %d\n", i);
     icetDataReplicationGroupColor(i);
     if ((i&0x07) == 0) {
-        color[0] = 0.5f;  color[1] = 0.5f;  color[2] = 0.5f;
+        g_color[0] = 0.5f;  g_color[1] = 0.5f;  g_color[2] = 0.5f;
     } else {
-        color[0] = 1.0f*((i&0x01) == 0x01);
-        color[1] = 1.0f*((i&0x02) == 0x02);
-        color[2] = 1.0f*((i&0x04) == 0x04);
+        g_color[0] = 1.0f*((i&0x01) == 0x01);
+        g_color[1] = 1.0f*((i&0x02) == 0x02);
+        g_color[2] = 1.0f*((i&0x04) == 0x04);
     }
   /* Get the true group size. */
     icetGetIntegerv(ICET_DATA_REPLICATION_GROUP_SIZE, &rep_group_size);
     rep_group = icetUnsafeStateGetInteger(ICET_DATA_REPLICATION_GROUP);
     if (rep_group[0] == rank) {
         for (i = 1; i < rep_group_size; i++) {
-            icetCommSend(mat, 16, ICET_FLOAT, rep_group[i], 40);
+            icetCommSend(g_modelview, 16, ICET_FLOAT, rep_group[i], 40);
         }
     } else {
-        icetCommRecv(mat, 16, ICET_FLOAT, rep_group[0], 40);
+        icetCommRecv(g_modelview, 16, ICET_FLOAT, rep_group[0], 40);
     }
 
     printf("Transformation:\n");
-    printf("    %f %f %f %f\n", mat[0], mat[4], mat[8], mat[12]);
-    printf("    %f %f %f %f\n", mat[1], mat[5], mat[9], mat[13]);
-    printf("    %f %f %f %f\n", mat[2], mat[6], mat[10], mat[14]);
-    printf("    %f %f %f %f\n", mat[3], mat[7], mat[11], mat[15]);
+    printf("    %f %f %f %f\n",
+           g_modelview[0], g_modelview[4], g_modelview[8], g_modelview[12]);
+    printf("    %f %f %f %f\n",
+           g_modelview[1], g_modelview[5], g_modelview[9], g_modelview[13]);
+    printf("    %f %f %f %f\n",
+           g_modelview[2], g_modelview[6], g_modelview[10], g_modelview[14]);
+    printf("    %f %f %f %f\n",
+           g_modelview[3], g_modelview[7], g_modelview[11], g_modelview[15]);
 
   /* Let everyone get a base image for comparison. */
     glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
@@ -405,237 +558,73 @@ static int RandomTransformRun()
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     icetDisable(ICET_COMPOSITE_ONE_BUFFER);
-    glColor4f(color[0], color[1], color[2], 1.0f);
+    glColor4f(g_color[0], g_color[1], g_color[2], 1.0f);
     glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixf(mat);
+    glLoadMatrixf(g_modelview);
     image = icetGLDrawFrame();
     swap_buffers();
 
     refbuf = malloc(icetImageBufferSize(icetImageGetWidth(image),
                                         icetImageGetHeight(image)));
-    refimage = icetImageAssignBuffer(refbuf, icetImageGetWidth(image),
-                                     icetImageGetHeight(image));
-    icetImageCopyPixels(image, 0, refimage, 0, icetImageGetNumPixels(image));
+    g_refimage_opaque = icetImageAssignBuffer(refbuf, icetImageGetWidth(image),
+                                              icetImageGetHeight(image));
+    icetImageCopyPixels(image,
+                        0,
+                        g_refimage_opaque,
+                        0,
+                        icetImageGetNumPixels(image));
 
     printf("Getting base image for color blend.\n");
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
     icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
     icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
     icetEnable(ICET_ORDERED_COMPOSITE);
-    glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
+    glColor4f(0.5f*g_color[0], 0.5f*g_color[1], 0.5f*g_color[2], 0.5f);
     image = icetGLDrawFrame();
     swap_buffers();
 
     refbuf2 = malloc(icetImageBufferSize(icetImageGetWidth(image),
                                          icetImageGetHeight(image)));
-    refimage2 = icetImageAssignBuffer(refbuf2, icetImageGetWidth(image),
-                                      icetImageGetHeight(image));
-    icetImageCopyPixels(image, 0, refimage2, 0, icetImageGetNumPixels(image));
+    g_refimage_transparent = icetImageAssignBuffer(refbuf2,
+                                                   icetImageGetWidth(image),
+                                                   icetImageGetHeight(image));
+    icetImageCopyPixels(image,
+                        0,
+                        g_refimage_transparent,
+                        0,
+                        icetImageGetNumPixels(image));
 
     glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
 
-    for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        IceTBoolean test_ordering;
+    for (strategy_idx = 0; strategy_idx < STRATEGY_LIST_SIZE; strategy_idx++) {
+        IceTEnum strategy = strategy_list[strategy_idx];
+        int si_strategy_idx;
+        int num_single_image_strategy;
 
-        icetStrategy(strategy_list[i]);
+        icetStrategy(strategy);
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
 
-        icetGetBooleanv(ICET_STRATEGY_SUPPORTS_ORDERING, &test_ordering);
+        if (strategy_uses_single_image_strategy(strategy)) {
+            num_single_image_strategy = SINGLE_IMAGE_STRATEGY_LIST_SIZE;
+        } else {
+          /* Set to one since single image strategy does not matter. */
+            num_single_image_strategy = 1;
+        }
 
-        for (tile_dim = 1; tile_dim*tile_dim <= num_proc; tile_dim++) {
-            IceTSizeType local_width = SCREEN_WIDTH/tile_dim;
-            IceTSizeType local_height = SCREEN_HEIGHT/tile_dim;
-            IceTSizeType viewport_width = SCREEN_WIDTH;
-            IceTSizeType viewport_height = SCREEN_HEIGHT;
-            IceTSizeType viewport_offset_x = 0;
-            IceTSizeType viewport_offset_y = 0;
+        for (si_strategy_idx = 0;
+             si_strategy_idx < num_single_image_strategy;
+             si_strategy_idx++) {
+            IceTEnum single_image_strategy
+                = single_image_strategy_list[si_strategy_idx];
 
-            printf("\nRunning on a %d x %d display.\n", tile_dim, tile_dim);
-            icetResetTiles();
-            for (y = 0; y < tile_dim; y++) {
-                for (x = 0; x < tile_dim; x++) {
-                    icetAddTile((IceTInt)(x*local_width),
-                                (IceTInt)(y*local_height),
-                                local_width,
-                                local_height,
-                                y*tile_dim + x);
-                }
-            }
+            icetSingleImageStrategy(single_image_strategy);
+            printf("\nUsing %s single image sub-strategy.\n",
+                   icetGetSingleImageStrategyName());
 
-            if (tile_dim > 1) {
-                viewport_width
-                    = rand()%(SCREEN_WIDTH-local_width) + local_width;
-                viewport_height
-                    = rand()%(SCREEN_HEIGHT-local_height) + local_height;
-            }
-            if (viewport_width < SCREEN_WIDTH) {
-                viewport_offset_x = rand()%(SCREEN_WIDTH-viewport_width);
-            }
-            if (viewport_width < SCREEN_HEIGHT) {
-                viewport_offset_y = rand()%(SCREEN_HEIGHT-viewport_height);
-            }
-            
-            glViewport((GLint)viewport_offset_x, (GLint)viewport_offset_y,
-                       (GLsizei)viewport_width, (GLsizei)viewport_height);
-/*          glViewport(0, 0, local_width, local_height); */
-
-            printf("\nDoing color buffer.\n");
-            icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-            icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-            icetDisable(ICET_COMPOSITE_ONE_BUFFER);
-            icetDisable(ICET_ORDERED_COMPOSITE);
-
-            printf("Rendering frame.\n");
-            glColor4f(color[0], color[1], color[2], 1.0f);
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glOrtho(-1.0f,
-                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
-                    -1.0f,
-                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
-                    -1.0f, 1.0f);
-            glMatrixMode(GL_MODELVIEW);
-            glLoadMatrixf(mat);
-            image = icetGLDrawFrame();
-            swap_buffers();
-
-            if (rank < tile_dim*tile_dim) {
-                if (!compare_color_buffers(local_width, local_height,
-                                           refimage, image, rank)) {
-                    result = TEST_FAILED;
-                }
-            } else {
-                printf("Not a display node.  Not testing image.\n");
-            }
-            check_results(result);
-
-            printf("\nDoing float color buffer.\n");
-            icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
-            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-            icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-            icetEnable(ICET_COMPOSITE_ONE_BUFFER);
-            icetDisable(ICET_ORDERED_COMPOSITE);
-
-            printf("Rendering frame.\n");
-            glColor4f(color[0], color[1], color[2], 1.0f);
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glOrtho(-1.0f,
-                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
-                    -1.0f,
-                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
-                    -1.0f, 1.0f);
-            glMatrixMode(GL_MODELVIEW);
-            glLoadMatrixf(mat);
-            image = icetGLDrawFrame();
-            swap_buffers();
-
-            if (rank < tile_dim*tile_dim) {
-                if (!compare_color_buffers(local_width, local_height,
-                                           refimage, image, rank)) {
-                    result = TEST_FAILED;
-                }
-            } else {
-                printf("Not a display node.  Not testing image.\n");
-            }
-            check_results(result);
-
-            printf("\nDoing depth buffer.\n");
-            icetSetColorFormat(ICET_IMAGE_COLOR_NONE);
-            icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-            icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-            icetDisable(ICET_ORDERED_COMPOSITE);
-
-            printf("Rendering frame.\n");
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glOrtho(-1.0f,
-                    (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
-                    -1.0f,
-                    (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
-                    -1.0f, 1.0f);
-            glMatrixMode(GL_MODELVIEW);
-            glLoadMatrixf(mat);
-            image = icetGLDrawFrame();
-            swap_buffers();
-
-            if (rank < tile_dim*tile_dim) {
-                if (!compare_depth_buffers(local_width, local_height,
-                                           refimage, image, rank)) {
-                    result = TEST_FAILED;
-                }
-            } else {
-                printf("Not a display node.  Not testing image.\n");
-            }
-            check_results(result);
-
-            if (test_ordering) {
-                printf("\nDoing blended color buffer.\n");
-                icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-                icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
-                icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
-                icetEnable(ICET_ORDERED_COMPOSITE);
-
-                printf("Rendering frame.\n");
-                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
-                glMatrixMode(GL_PROJECTION);
-                glLoadIdentity();
-                glOrtho(
-                       -1.0f,
-                       (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
-                       -1.0f,
-                       (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
-                       -1.0f,
-                       1.0f);
-                glMatrixMode(GL_MODELVIEW);
-                glLoadMatrixf(mat);
-                image = icetGLDrawFrame();
-                swap_buffers();
-
-                if (rank < tile_dim*tile_dim) {
-                    if (!compare_color_buffers(local_width, local_height,
-                                               refimage2, image, rank)) {
-                        result = TEST_FAILED;
-                    }
-                } else {
-                    printf("Not a display node.  Not testing image.\n");
-                }
-                check_results(result);
-
-                printf("\nDoing blended float color buffer.\n");
-                icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
-                icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
-                icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
-                icetEnable(ICET_ORDERED_COMPOSITE);
-
-                printf("Rendering frame.\n");
-                glColor4f(0.5f*color[0], 0.5f*color[1], 0.5f*color[2], 0.5f);
-                glMatrixMode(GL_PROJECTION);
-                glLoadIdentity();
-                glOrtho(
-                       -1.0f,
-                       (GLfloat)((2.0*local_width*tile_dim)/SCREEN_WIDTH-1.0),
-                       -1.0f,
-                       (GLfloat)((2.0*local_height*tile_dim)/SCREEN_HEIGHT-1.0),
-                       -1.0f,
-                       1.0f);
-                glMatrixMode(GL_MODELVIEW);
-                glLoadMatrixf(mat);
-                image = icetGLDrawFrame();
-                swap_buffers();
-
-                if (rank < tile_dim*tile_dim) {
-                    if (!compare_color_buffers(local_width, local_height,
-                                               refimage2, image, rank)) {
-                        result = TEST_FAILED;
-                    }
-                } else {
-                    printf("Not a display node.  Not testing image.\n");
-                }
-                check_results(result);
-            } else {
-                printf("\nStrategy does not support ordering, skipping.\n");
+            for (g_tile_dim = 1;
+                 g_tile_dim*g_tile_dim <= num_proc;
+                 g_tile_dim++) {
+                RandomTransformTryStrategy();
             }
         }
     }
