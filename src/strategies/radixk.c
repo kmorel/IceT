@@ -357,13 +357,37 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
     return send_requests;
 }
 
+/* If the image for the given partner has been received and not already
+   composited, composite it.  Return true if the image has been composited
+   (either by this call or a previous call), false otherwise. */
+static IceTBoolean radixkTryCompositeBuffer(radixkPartnerInfo *partner,
+                                            IceTImage image,
+                                            const radixkPartnerInfo *me,
+                                            int srcOnTop)
+{
+    if (partner->hasArrived && !partner->isComposited) {
+        IceTSparseImage inSparseImage
+            = icetSparseImageUnpackageFromReceive(partner->receiveBuffer);
+        if (icetSparseImageGetNumPixels(inSparseImage) != me->size) {
+            icetRaiseError("Radix-k received image with wrong size.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+        icetCompressedSubComposite(image,
+                                   me->offset,
+                                   inSparseImage,
+                                   srcOnTop);
+        partner->isComposited = ICET_TRUE;
+    }
+    return (partner->hasArrived && partner->isComposited);
+}
+
 static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                                           IceTCommRequest *receive_requests,
                                           int current_k,
                                           int current_partition_index,
                                           IceTImage image)
 {
-    radixkPartnerInfo *me = &partners[current_partition_index];
+    const radixkPartnerInfo *me = &partners[current_partition_index];
     IceTBoolean ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
     IceTBoolean done = ICET_FALSE;
 
@@ -382,49 +406,27 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
         for (partner_idx = current_partition_index - 1;
              partner_idx >= 0;
              partner_idx--) {
-            radixkPartnerInfo *p = &partners[partner_idx];
-            if (p->hasArrived && !p->isComposited) {
-                IceTSparseImage inSparseImage
-                    = icetSparseImageUnpackageFromReceive(p->receiveBuffer);
-                if (icetSparseImageGetNumPixels(inSparseImage) != me->size) {
-                    icetRaiseError("Radix-k received image with wrong size.",
-                                   ICET_SANITY_CHECK_FAIL);
-                }
-                icetCompressedSubComposite(image,
-                                           me->offset,
-                                           inSparseImage,
-                                           ICET_SRC_ON_TOP);
-                p->isComposited = ICET_TRUE;
-            }
-            if (!p->hasArrived || !p->isComposited) {
+            IceTBoolean composited =
+                radixkTryCompositeBuffer(&partners[partner_idx],
+                                         image,
+                                         me,
+                                         ICET_SRC_ON_TOP);
+            if (!composited) {
                 done = ICET_FALSE;
-                if (ordered_composite) {
-                    break;
-                }
+                if (ordered_composite) break;
             }
         }
         for (partner_idx = current_partition_index + 1;
              partner_idx < current_k;
              partner_idx++) {
-            radixkPartnerInfo *p = &partners[partner_idx];
-            if (p->hasArrived && !p->isComposited) {
-                IceTSparseImage inSparseImage
-                    = icetSparseImageUnpackageFromReceive(p->receiveBuffer);
-                if (icetSparseImageGetNumPixels(inSparseImage) != me->size) {
-                    icetRaiseError("Radix-k received image with wrong size.",
-                                   ICET_SANITY_CHECK_FAIL);
-                }
-                icetCompressedSubComposite(image,
-                                           me->offset,
-                                           inSparseImage,
-                                           ICET_DEST_ON_TOP);
-                p->isComposited = ICET_TRUE;
-            }
-            if (!p->hasArrived || !p->isComposited) {
+            IceTBoolean composited =
+                radixkTryCompositeBuffer(&partners[partner_idx],
+                                         image,
+                                         me,
+                                         ICET_DEST_ON_TOP);
+            if (!composited) {
                 done = ICET_FALSE;
-                if (ordered_composite) {
-                    break;
-                }
+                if (ordered_composite) break;
             }
         }
     }
