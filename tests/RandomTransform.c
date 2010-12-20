@@ -430,6 +430,7 @@ static int RandomTransformRun()
     IceTInt *rep_group;
     IceTFloat background_color[3];
     unsigned int seed;
+    int strategy_idx;
 
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
@@ -595,12 +596,36 @@ static int RandomTransformRun()
 
     glViewport(0, 0, (GLsizei)SCREEN_WIDTH, (GLsizei)SCREEN_HEIGHT);
 
-    for (i = 0; i < STRATEGY_LIST_SIZE; i++) {
-        icetStrategy(strategy_list[i]);
+    for (strategy_idx = 0; strategy_idx < STRATEGY_LIST_SIZE; strategy_idx++) {
+        IceTEnum strategy = strategy_list[strategy_idx];
+        int si_strategy_idx;
+        int num_single_image_strategy;
+
+        icetStrategy(strategy);
         printf("\n\nUsing %s strategy.\n", icetGetStrategyName());
 
-        for (g_tile_dim = 1; g_tile_dim*g_tile_dim <= num_proc; g_tile_dim++) {
-            RandomTransformTryStrategy();
+        if (strategy_uses_single_image_strategy(strategy)) {
+            num_single_image_strategy = SINGLE_IMAGE_STRATEGY_LIST_SIZE;
+        } else {
+          /* Set to one since single image strategy does not matter. */
+            num_single_image_strategy = 1;
+        }
+
+        for (si_strategy_idx = 0;
+             si_strategy_idx < num_single_image_strategy;
+             si_strategy_idx++) {
+            IceTEnum single_image_strategy
+                = single_image_strategy_list[si_strategy_idx];
+
+            icetSingleImageStrategy(single_image_strategy);
+            printf("\nUsing %s single image sub-strategy.\n",
+                   icetGetSingleImageStrategyName());
+
+            for (g_tile_dim = 1;
+                 g_tile_dim*g_tile_dim <= num_proc;
+                 g_tile_dim++) {
+                RandomTransformTryStrategy();
+            }
         }
     }
 
