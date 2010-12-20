@@ -417,7 +417,7 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                 icetCompressedSubComposite(image,
                                            me->offset,
                                            inSparseImage,
-                                           ICET_SRC_ON_TOP);
+                                           ICET_DEST_ON_TOP);
                 p->isComposited = ICET_TRUE;
             }
             if (!p->hasArrived || !p->isComposited) {
