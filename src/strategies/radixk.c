@@ -575,7 +575,7 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                        IceTInt image_dest, IceTImage image) {
     IceTSizeType size = icetImageGetNumPixels(image);
     int num_rounds;
-    int* k_array = radixkGetK(group_size, &num_rounds);
+    int* k_array;
 
     IceTSizeType my_offset; /* Offset of my subimage */
     IceTSizeType my_size; /* Size of my subimage */
@@ -595,6 +595,8 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
          * Just return and the image will be complete. */
         return;
     }
+
+    k_array = radixkGetK(group_size, &num_rounds);
 
     /* num_rounds > 0 is assumed several places throughout this function */
     if (num_rounds <= 0) {
