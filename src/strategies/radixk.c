@@ -56,6 +56,30 @@ typedef struct {
     IceTBoolean isComposited; /* True when received image is composited. */
 } radixkPartnerInfo;
 
+/* BEGIN_PIVOT_FOR(loop_var, low, pivot, high)...END_PIVOT_FOR() provides a
+   special looping mechanism that iterates over the numbers pivot, pivot-1,
+   pivot+1, pivot-2, pivot-3,... until all numbers between low (inclusive0 and
+   high (exclusive) are visited.  Any numbers outside [low,high) are skipped. */
+#define BEGIN_PIVOT_FOR(loop_var, low, pivot, high) \
+    { \
+        int loop_var##_true_iter; \
+        int loop_var##_max = 2*(  ((pivot) < ((high)+(low))/2) \
+                                  ? ((high)-(pivot)) : ((pivot)-(low)+1) ); \
+        for (loop_var##_true_iter = 1; \
+             loop_var##_true_iter < loop_var##_max; \
+             loop_var##_true_iter ++) { \
+            if ((loop_var##_true_iter % 2) == 0) { \
+                loop_var = (pivot) - loop_var##_true_iter/2; \
+                if (loop_var < (low)) continue; \
+            } else { \
+                loop_var = (pivot) + loop_var##_true_iter/2; \
+                if ((high) <= loop_var) continue; \
+            }
+
+#define END_PIVOT_FOR() \
+        } \
+    }
+
 static int* radixkGetK(int world_size, int* num_rounds_p)
 {
     /* Divide the world size into groups that are closest to the magic k
@@ -80,19 +104,13 @@ static int* radixkGetK(int world_size, int* num_rounds_p)
 
         /* If that does not work, look for a factor near the magic_k. */
         if (next_k == -1) {
-            int magic_k_distance;
-            for (magic_k_distance = 1;
-                 magic_k_distance <= MAGIC_K-2;
-                 magic_k_distance++) {
-                if ((next_divide % (MAGIC_K-magic_k_distance)) == 0) {
-                    next_k = MAGIC_K-magic_k_distance;
+            int try_k;
+            BEGIN_PIVOT_FOR(try_k, 2, MAGIC_K, 2*MAGIC_K-0) {
+                if ((next_divide % try_k) == 0) {
+                    next_k = try_k;
                     break;
                 }
-                if ((next_divide % (MAGIC_K+magic_k_distance)) == 0) {
-                    next_k = MAGIC_K+magic_k_distance;
-                    break;
-                }
-            }
+            } END_PIVOT_FOR()
         }
 
         /* If you STILL don't have a good factor, progress upwards to find the
@@ -328,9 +346,11 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
 
     tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
 
-    /* TODO: post these in a different order so that images that can be
-       composited first will show up first on each process. */
-    for (i = 0; i < current_k; i++) {
+    /* The pivot for loop arranges the sends to happen in an order such that
+       those to be composited first in their destinations will be sent first.
+       The idea is that a process will hopefully receive images that they can
+       composite first. */
+    BEGIN_PIVOT_FOR(i, 0, current_partition_index, current_k) {
         radixkPartnerInfo *p = &partners[i];
         if (i != current_partition_index) {
             IceTSparseImage compressed_image;
@@ -352,7 +372,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
             /* No need to send to myself. */
             send_requests[i] = ICET_COMM_REQUEST_NULL;
         }
-    }
+    } END_PIVOT_FOR();
 
     return send_requests;
 }
