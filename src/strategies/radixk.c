@@ -30,20 +30,69 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
 
+#define RADIXK_SWAP_IMAGE_TAG_START     2200
 #define SWAP_IMAGE_DATA 21
 #define SWAP_DEPTH_DATA 22
 
 #define MAGIC_K 8 /* K value that is attempted to be used each round */
-#define MAX_K 256 /* Maximum k value */
-#define MAX_R 128 /* Maximum number of rounds */
 
-static int* radixkGetK(int world_size, int* r)
+#define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
+#define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
+#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_2
+#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_3
+#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_4
+#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_5
+#define RADIXK_SIZES_BUFFER                     ICET_SI_STRATEGY_BUFFER_6
+#define RADIXK_OFFSETS_BUFFER                   ICET_SI_STRATEGY_BUFFER_7
+#define RADIXK_FACTORS_ARRAY                    ICET_SI_STRATEGY_BUFFER_8
+
+typedef struct {
+    int rank; /* Rank of partner. */
+    IceTSizeType offset; /* Offset of partner's partition in image. */
+    IceTSizeType size; /* Size of partner's partition. */
+    IceTVoid *receiveBuffer; /* A buffer for receiving data from partner. */
+    IceTVoid *sendBuffer; /* A buffer to hold data being sent to partner. */
+    IceTBoolean hasArrived; /* True when message arrives. */
+    IceTBoolean isComposited; /* True when received image is composited. */
+} radixkPartnerInfo;
+
+/* BEGIN_PIVOT_FOR(loop_var, low, pivot, high)...END_PIVOT_FOR() provides a
+   special looping mechanism that iterates over the numbers pivot, pivot-1,
+   pivot+1, pivot-2, pivot-3,... until all numbers between low (inclusive0 and
+   high (exclusive) are visited.  Any numbers outside [low,high) are skipped. */
+#define BEGIN_PIVOT_FOR(loop_var, low, pivot, high) \
+    { \
+        int loop_var##_true_iter; \
+        int loop_var##_max = 2*(  ((pivot) < ((high)+(low))/2) \
+                                  ? ((high)-(pivot)) : ((pivot)-(low)+1) ); \
+        for (loop_var##_true_iter = 1; \
+             loop_var##_true_iter < loop_var##_max; \
+             loop_var##_true_iter ++) { \
+            if ((loop_var##_true_iter % 2) == 0) { \
+                loop_var = (pivot) - loop_var##_true_iter/2; \
+                if (loop_var < (low)) continue; \
+            } else { \
+                loop_var = (pivot) + loop_var##_true_iter/2; \
+                if ((high) <= loop_var) continue; \
+            }
+
+#define END_PIVOT_FOR() \
+        } \
+    }
+
+static int* radixkGetK(int world_size, int* num_rounds_p)
 {
     /* Divide the world size into groups that are closest to the magic k
        value. */
-    int* k = NULL;
+    int* k_array;
+    int max_num_k;
     int num_groups = 0;
     int next_divide = world_size;
+
+    /* The maximum number of factors possible is the floor of log base 2. */
+    max_num_k = (int)(floor(log10(world_size)/log10(2)));
+    k_array = icetGetStateBuffer(RADIXK_FACTORS_ARRAY, sizeof(int) * max_num_k);
+
     while (next_divide > 1) {
         int next_k = -1;
 
@@ -55,19 +104,13 @@ static int* radixkGetK(int world_size, int* r)
 
         /* If that does not work, look for a factor near the magic_k. */
         if (next_k == -1) {
-            int magic_k_distance;
-            for (magic_k_distance = 1;
-                 magic_k_distance <= MAGIC_K-2;
-                 magic_k_distance++) {
-                if ((next_divide % (MAGIC_K-magic_k_distance)) == 0) {
-                    next_k = MAGIC_K-magic_k_distance;
+            int try_k;
+            BEGIN_PIVOT_FOR(try_k, 2, MAGIC_K, 2*MAGIC_K-0) {
+                if ((next_divide % try_k) == 0) {
+                    next_k = try_k;
                     break;
                 }
-                if ((next_divide % (MAGIC_K+magic_k_distance)) == 0) {
-                    next_k = MAGIC_K+magic_k_distance;
-                    break;
-                }
-            }
+            } END_PIVOT_FOR()
         }
 
         /* If you STILL don't have a good factor, progress upwards to find the
@@ -99,175 +142,314 @@ static int* radixkGetK(int world_size, int* r)
         }
 
         /* Set the k value in the array. */
-        k = realloc(k, sizeof(int) * (num_groups + 1));
-        k[num_groups] = next_k;
+        k_array[num_groups] = next_k;
         next_divide /= next_k;
         num_groups++;
-    }
 
-    *r = num_groups;
-    return k;
-}
-
-#if 0
-radixkMirrorPermuation and RadixDist do not seem to be used.
-
-/* computes the generalized mirror permutation of rank in k-space */
-static int radixkMirrorPermutation(int r, const int *k, int rank)
-{
-    int *digits = malloc(r * sizeof(int));
-    int suffix_base;
-    int quot;
-    int new_rank;
-    int i;
-
-    /* decompose into digits */
-    quot = rank;
-    for (i = 0; i < r; ++i) {
-        digits[r-i-1] = quot % k[r-i-1]; /* remainder is the current digit */
-        quot = quot / k[r-i-1];
-    }
-    if (quot != 0) {
-        icetRaiseError("Rank not completely decomposed into digits.",
-                       ICET_SANITY_CHECK_FAIL);
-    }
-
-    /* mirror and calculate the new rank at the same time */
-    suffix_base = 1;
-    new_rank = 0;
-    for (i = 0; i < r; ++i) {
-        new_rank += suffix_base * digits[i];
-        suffix_base *= k[i];
-    }
-
-    free(digits);
-    return new_rank;
-}
-
-/* RadixDist
-
-   computes radix distribution of results
-
-   inputs:
-     size: image size (pixels)
-     nprocs: number of processes taking part in radix algorithm
-     r: number of rounds
-     k: k values
-
-   outputs:
-     ofsts: offsets of resulting image portions for each process
-     sizes: sizes of resulting image portions for each process
-
-   ofsts and sizes need to be allocated large enough hold nprocs elements
-*/
-static void RadixDist(int size,
-                      int nprocs,
-                      int r,
-                      const int *k,
-                      int *ofsts,
-                      int *sizes)
-{
-    int prod_k;
-    int *classes = malloc(nprocs * sizeof(int));
-    int rank;
-    int i;
-
-    if (r <= 0) {
-        icetRaiseError("Invalid number of rounds passed to RadixDist.",
-                       ICET_SANITY_CHECK_FAIL);
-    }
-    prod_k = k[0];
-    for (i = 1; i < r; ++i) {
-        prod_k *= k[i];
-    }
-    if (prod_k != nproc) {
-        icetRaiseError("Invalid k factors given to RadixDist.",
-                       ICET_SANITY_CHECK_FAIL);
-    }
-
-    /* First calculate the sizes and offsets as though the algorithm left the
-       blocks in process order */
-    for (rank = 0; rank < nprocs; ++rank) {
-        sizes[rank] = size;
-        classes[rank] = rank;
-    }
-
-    for (rank = 0; rank < nprocs; ++rank) {
-        /* distribute any remainder 1 element at a time from 0..(rem-1) */
-        int remain = (rank < (size % nprocs)) ? 1 : 0;
-        sizes[rank] = (size / nprocs) + remain;
-    }
-
-    /* now permute the calculated values into their actual locations */
-    {
-        int ofst_total = 0;
-        for (rank = 0; rank < nprocs; ++rank) {
-            int mirror_rank = radixkMirrorPermutation(r, k, rank);
-            ofsts[mirror_rank] = ofst_total;
-            ofst_total += sizes[mirror_rank];
+        if (num_groups > max_num_k) {
+            icetRaiseError("Somehow we got more factors than possible.",
+                           ICET_SANITY_CHECK_FAIL);
         }
     }
 
-    free(classes);
+    /* Sanity check to make sure that the k's actually multiply to the number
+     * of processes. */
+    {
+        int product = k_array[0];
+        int i;
+        for (i = 1; i < num_groups; ++i) {
+            product *= k_array[i];
+        }
+        if (product != world_size) {
+            icetRaiseError("Product of k's not equal to number of processes.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+    }
 
+    *num_rounds_p = num_groups;
+    return k_array;
 }
-#endif
 
-/* radixkGetRndVec
+/* radixkGetPartitionIndices
 
-   Computes my round vector coordinates
-   my position in each round forms an r-dimensional vector
-   [round 0 pos, round 1 pos, ... round r-1 pos]
+   my position in each round forms an num_rounds-dimensional vector
+   [round 0 pos, round 1 pos, ... round num_rounds-1 pos]
    where pos is my position in the group of partners within that round
 
    inputs:
-     r: number of rounds
-     k: vector of k values
-     rank: my MPI rank
+     num_rounds: number of rounds
+     k_array: vector of k values
+     group_rank: my rank in composite order (compose_group in icetRadixkCompose)
 
    outputs:
-     rv: round vector coordinates
+     partition_indices: index of my partition for each round.
 */
-static void radixkGetRndVec(int r, int *k, int rank, int *rv)
+static void radixkGetPartitionIndices(int num_rounds,
+                                      const int *k_array,
+                                      int group_rank,
+                                      int *partition_indices)
 {
 
     int step; /* step size in rank for a lattice direction */
     int i;
 
     step = 1;
-    for (i = 0; i < r; i++) {
-        rv[i] = rank / step % k[i];
-        step *= k[i];
+    for (i = 0; i < num_rounds; i++) {
+        partition_indices[i] = (group_rank / step) % k_array[i];
+        step *= k_array[i];
     }
 
 }
 
-/* GetPartners
+/* radixkGetPartners
    gets the ranks of my trading partners
 
    inputs:
-    k: vector of k values
-    cur_r: current round number (0 to r - 1)
-    rc: current round vector coordinate (0 to cur_r - 1)
-    rank: my MPI rank
+    k_array: vector of k values
+    current_round: current round number (0 to num_rounds - 1)
+    partition_index: image partition to collect (0 to k[current_round] - 1)
+    compose_group: array of world ranks representing the group of processes
+        participating in compositing (passed into icetRadixkCompose)
+    group_rank: Index in compose_group that represents me
+    start_offset: Start of partition that is being divided in current_round
+    start_size: Size of partition that is being divided in current_round
 
    output:
-    partners: MPI ranks of the partners in my group, including myself
+    partners: Array of radixkPartnerInfo describing all the processes
+        participating in this round.
 */
-static void GetPartners(int *k, int cur_r, int rc, int rank, int *partners)
+static radixkPartnerInfo *radixkGetPartners(const int *k_array,
+                                            int current_round,
+                                            int partition_index,
+                                            const int *compose_group,
+                                            int group_rank,
+                                            IceTSizeType start_offset,
+                                            IceTSizeType start_size)
 {
-
+    int current_k = k_array[current_round];
+    radixkPartnerInfo *partners
+        = icetGetStateBuffer(RADIXK_PARTITION_INFO_BUFFER,
+                             sizeof(radixkPartnerInfo) * current_k);
     int step; /* ranks jump by this much in the current round */
+    IceTVoid *recv_buf_pool;
+    IceTVoid *send_buf_pool;
+    IceTSizeType sparse_image_size;
+    int first_partner_group_rank;
+    IceTSizeType next_offset;
     int i;
 
     step = 1;
-    for (i = 0; i < cur_r; i++)
-        step *= k[i];
+    for (i = 0; i < current_round; i++) {
+        step *= k_array[i];
+    }
 
-    partners[0] = rank - rc * step;
-    for (i = 1; i < k[cur_r]; i++)
-        partners[i] = partners[i - 1] + step;
+    /* Allocate arrays that can be used as send/receive buffers. */
+    sparse_image_size = icetSparseImageBufferSize(start_size/current_k + 1, 1);
+    recv_buf_pool = icetGetStateBuffer(RADIXK_RECEIVE_BUFFER,
+                                       sparse_image_size * current_k);
+    send_buf_pool = icetGetStateBuffer(RADIXK_SEND_BUFFER,
+                                       sparse_image_size * current_k);
 
+#ifdef DEBUG
+    /* Defensive */
+    memset(partners, 0xDC, sizeof(radixkPartnerInfo) * current_k);
+    memset(recv_buf_pool, 0xDC, sparse_image_size * current_k);
+    memset(send_buf_pool, 0xDC, sparse_image_size * current_k);
+#endif
+
+    first_partner_group_rank = group_rank - partition_index * step;
+    next_offset = start_offset;
+    for (i = 0; i < current_k; i++) {
+        radixkPartnerInfo *p = &partners[i];
+        int partner_group_rank = first_partner_group_rank + i*step;
+        int remain;
+
+        p->rank = compose_group[partner_group_rank];
+
+        /* Distribute any remainder 1 element at a time from 0..(rem-1) */
+        remain = (i < (start_size % current_k)) ? 1 : 0;
+        p->offset = next_offset;
+        p->size = (start_size/current_k) + remain;
+        next_offset += p->size;
+
+        p->receiveBuffer = ((IceTByte*)recv_buf_pool + i*sparse_image_size);
+        p->sendBuffer = ((IceTByte*)send_buf_pool + i*sparse_image_size);
+
+        p->hasArrived = ICET_FALSE;
+        p->isComposited = ICET_FALSE;
+    }
+
+    return partners;
+}
+
+/* As applicable, posts an asynchronous receive for each process from which
+   we are receiving an image piece. */
+static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
+                                           int current_k,
+                                           int current_round,
+                                           int current_partition_index)
+{
+    IceTCommRequest *receive_requests;
+    radixkPartnerInfo *me;
+    IceTSizeType sparse_image_size;
+    int tag;
+    int i;
+
+    me = &partners[current_partition_index];
+
+    receive_requests = icetGetStateBuffer(RADIXK_RECEIVE_REQUEST_BUFFER,
+                                          current_k * sizeof(IceTCommRequest));
+
+    sparse_image_size = icetSparseImageBufferSize(me->size, 1);
+
+    tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
+
+    for (i = 0; i < current_k; i++) {
+        radixkPartnerInfo *p = &partners[i];
+        if (i != current_partition_index) {
+            receive_requests[i] = icetCommIrecv(p->receiveBuffer,
+                                                sparse_image_size,
+                                                ICET_BYTE,
+                                                p->rank,
+                                                tag);
+            p->hasArrived = ICET_FALSE;
+            p->isComposited = ICET_FALSE;
+        } else {
+            /* No need to send to myself. */
+            receive_requests[i] = ICET_COMM_REQUEST_NULL;
+            p->hasArrived = ICET_TRUE;
+            p->isComposited = ICET_TRUE;
+        }
+    }
+
+    return receive_requests;
+}
+
+/* As applicable, posts an asynchronous send for each process to which we are
+   sending an image piece. */
+static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
+                                        int current_k,
+                                        int current_round,
+                                        int current_partition_index,
+                                        const IceTImage image)
+{
+    IceTCommRequest *send_requests;
+    radixkPartnerInfo *me;
+    int tag;
+    int i;
+
+    me = &partners[current_partition_index];
+
+    send_requests = icetGetStateBuffer(RADIXK_SEND_REQUEST_BUFFER,
+                                       current_k * sizeof(IceTCommRequest));
+
+
+    tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
+
+    /* The pivot for loop arranges the sends to happen in an order such that
+       those to be composited first in their destinations will be sent first.
+       The idea is that a process will hopefully receive images that they can
+       composite first. */
+    BEGIN_PIVOT_FOR(i, 0, current_partition_index, current_k) {
+        radixkPartnerInfo *p = &partners[i];
+        if (i != current_partition_index) {
+            IceTSparseImage compressed_image;
+            IceTVoid *package_buffer;
+            IceTSizeType package_size;
+
+            compressed_image = icetSparseImageAssignBuffer(p->sendBuffer,
+                                                           p->size, 1);
+            icetCompressSubImage(image, p->offset, p->size, compressed_image);
+            icetSparseImagePackageForSend(compressed_image,
+                                          &package_buffer, &package_size);
+
+            send_requests[i] = icetCommIsend(package_buffer,
+                                             package_size,
+                                             ICET_BYTE,
+                                             p->rank,
+                                             tag);
+        } else {
+            /* No need to send to myself. */
+            send_requests[i] = ICET_COMM_REQUEST_NULL;
+        }
+    } END_PIVOT_FOR();
+
+    return send_requests;
+}
+
+/* If the image for the given partner has been received and not already
+   composited, composite it.  Return true if the image has been composited
+   (either by this call or a previous call), false otherwise. */
+static IceTBoolean radixkTryCompositeBuffer(radixkPartnerInfo *partner,
+                                            IceTImage image,
+                                            const radixkPartnerInfo *me,
+                                            int srcOnTop)
+{
+    if (partner->hasArrived && !partner->isComposited) {
+        IceTSparseImage inSparseImage
+            = icetSparseImageUnpackageFromReceive(partner->receiveBuffer);
+        if (icetSparseImageGetNumPixels(inSparseImage) != me->size) {
+            icetRaiseError("Radix-k received image with wrong size.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+        icetCompressedSubComposite(image,
+                                   me->offset,
+                                   inSparseImage,
+                                   srcOnTop);
+        partner->isComposited = ICET_TRUE;
+    }
+    return (partner->hasArrived && partner->isComposited);
+}
+
+static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
+                                          IceTCommRequest *receive_requests,
+                                          int current_k,
+                                          int current_partition_index,
+                                          IceTImage image)
+{
+    const radixkPartnerInfo *me = &partners[current_partition_index];
+    IceTBoolean ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
+    IceTBoolean done = ICET_FALSE;
+
+    while (!done) {
+        int receive_idx;
+        int partner_idx;
+
+        /* Wait for an image to come in. */
+        receive_idx = icetCommWaitany(current_k, receive_requests);
+        partners[receive_idx].hasArrived = ICET_TRUE;
+
+        /* Check all images to see if anything is ready for compositing.  When
+           doing an ordered composite, we can only composite images adjacent
+           our rank or adjacent to one already composited. */
+        done = ICET_TRUE;
+        for (partner_idx = current_partition_index - 1;
+             partner_idx >= 0;
+             partner_idx--) {
+            IceTBoolean composited =
+                radixkTryCompositeBuffer(&partners[partner_idx],
+                                         image,
+                                         me,
+                                         ICET_SRC_ON_TOP);
+            if (!composited) {
+                done = ICET_FALSE;
+                if (ordered_composite) break;
+            }
+        }
+        for (partner_idx = current_partition_index + 1;
+             partner_idx < current_k;
+             partner_idx++) {
+            IceTBoolean composited =
+                radixkTryCompositeBuffer(&partners[partner_idx],
+                                         image,
+                                         me,
+                                         ICET_DEST_ON_TOP);
+            if (!composited) {
+                done = ICET_FALSE;
+                if (ordered_composite) break;
+            }
+        }
+    }
 }
 
 static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
@@ -289,11 +471,13 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
 
     color_format = icetImageGetColorFormat(image);
     depth_format = icetImageGetDepthFormat(image);
-    requests =  malloc((group_size) * sizeof(IceTCommRequest));
+    requests = icetGetStateBuffer(RADIXK_RECEIVE_REQUEST_BUFFER,
+                                  group_size * sizeof(IceTCommRequest));
 
     /* TODO: Compute the sizes instead of communicate them. */ 
     /* Find out the sizes of each process. */
-    all_sizes = malloc(sizeof(int) * group_size);
+    all_sizes = icetGetStateBuffer(RADIXK_SIZES_BUFFER,
+                                   sizeof(int) * group_size);
     if (group_rank == image_dest) {
         all_sizes[group_rank] = (int)size;
         for (i = 0; i < group_size; i++) {
@@ -313,7 +497,8 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
     }
 
     /* Compute all the offsets. */
-    all_offsets = malloc(sizeof(int) * group_size);
+    all_offsets = icetGetStateBuffer(RADIXK_OFFSETS_BUFFER,
+                                     sizeof(int) * group_size);
     all_offsets[0] = 0;
     for (i = 1; i < group_size; i++) {
         all_offsets[i] = all_offsets[i - 1] + all_sizes[i - 1];
@@ -375,9 +560,6 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
         }
     }
 
-    free(requests);
-    free(all_offsets);
-    free(all_sizes);
     /* This will not work for multi-tile compositing most likely because IceT
        does not create separate communicators for each compositing group. */
     /* TODO use Gatherv since processes might not contain equal portions. */
@@ -414,45 +596,17 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
 void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
                        IceTInt image_dest, IceTImage image) {
     IceTSizeType size = icetImageGetNumPixels(image);
-    IceTSizeType width = icetImageGetWidth(image);
-    IceTSizeType height = icetImageGetHeight(image);
-    int r; /* Number of rounds. */
-    int* k = radixkGetK(group_size, &r); /* Communication sizes per round. */
+    int num_rounds;
+    int* k_array;
 
-    IceTCommRequest r_reqs[MAX_K]; /* Receive requests */
-    IceTCommRequest s_reqs[MAX_K]; /* Send requests */
-    IceTVoid *recv_bufs[MAX_K]; /* Receive buffers */
-    IceTVoid *send_bufs[MAX_K]; /* Send buffers */
-    IceTSparseImage send_img_bufs[MAX_K]; /* Sparse images that use send_bufs */
-    int here[MAX_K]; /* Message from this group member has arrived */
-    int done[MAX_K]; /* Message from this group member has been composited */
-    int dests[MAX_K]; /*Destinations within my group indexed by request number*/
-    int dest; /* One send destination within my group */
-    IceTSizeType ofsts[MAX_K]; /* Image subregion offset */
-    int max_k; /* Max value of k in all the rounds */
-    IceTSizeType my_ofst; /* Offset of my subimage */
-    int rv[MAX_R]; /* My round vector [round 0 pos, round 1 pos, ...] */
-    int arr; /* Index of arrived message */
-    int b; /* Distance from destination to start of already composited region */
-    int i, j, n;
-    IceTSizeType my_size = -1;
-    IceTSizeType *sizes = NULL;
-    /* This array holds the partners in a compositing group. It is used as an
-       index into the actual ordered array of ranks that is passed to this
-       function. */
-    int partners[MAX_K];
-
-    IceTVoid* intermediate_compose_buf;
-    IceTImage intermediate_compose_img;
-    IceTSizeType max_sparse_img_size;
+    IceTSizeType my_offset; /* Offset of my subimage */
+    IceTSizeType my_size; /* Size of my subimage */
+    int *partition_indices; /* My round vector [round0 pos, round1 pos, ...] */
+    int current_round;
 
     /* Find your rank in your group. */
-    IceTInt rank = 0;
-    IceTInt world_rank = icetCommRank();
-    while ((rank < group_size) && (compose_group[rank] != world_rank)) {
-        rank++;
-    }
-    if (rank >= group_size) {
+    IceTInt group_rank = icetFindMyRankInGroup(compose_group, group_size);
+    if (group_rank < 0) {
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
         return;
@@ -464,312 +618,67 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
         return;
     }
 
-    /* r > 0 is assumed several places throughout this function */
-    if (r <= 0) {
+    k_array = radixkGetK(group_size, &num_rounds);
+
+    /* num_rounds > 0 is assumed several places throughout this function */
+    if (num_rounds <= 0) {
         icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
     }
 
-    n = k[0];
-    for (i = 1; i < r; ++i) {
-        n *= k[i];
-    }
-    if (n != group_size) {
-        icetRaiseError("Product of k's not equal to number of processes.",
-                       ICET_SANITY_CHECK_FAIL);
-    }
-  
-    /* A space for uncompressing an intermediate image and then compositing it
-       with another compressed image. This is used for group sizes that are 
-       greater than two for compositing intermediate results. */
-    intermediate_compose_buf = malloc(icetImageBufferSize(width, height));
-    intermediate_compose_img
-        = icetImageAssignBuffer(intermediate_compose_buf, width, height);
-
-    /* Allocate buffers */
-    max_sparse_img_size = icetSparseImageBufferSize(width, height);
-    max_k = 0;
-    for (i = 0; i < r; i++) {
-        max_k = k[i] > max_k ? k[i] : max_k;
-    }
-    /* TODO: If high k-values only appear later in the algorithm then we don't
-       need max_k bufs of size/k[0] length. We can allocate smaller buffers for
-       the later rounds. */
-    for (i = 0; i < max_k - 1; i++) {
-        recv_bufs[i] = malloc(max_sparse_img_size);
-        send_bufs[i] = malloc(max_sparse_img_size);
-        send_img_bufs[i] = icetSparseImageAssignBuffer(send_bufs[i],
-                                                       width, height);
-    }
-
     /* initialize size, my round vector, my offset */
-    radixkGetRndVec(r, k, rank, rv);
-    my_ofst = 0;
+    partition_indices = icetGetStateBuffer(RADIXK_PARTITION_INDICES_BUFFER,
+                                           sizeof(int) * num_rounds);
+    radixkGetPartitionIndices(num_rounds,
+                              k_array,
+                              group_rank,
+                              partition_indices);
 
     /* Any peer we communicate with in round i starts that round with a block of
        the same size as ours prior to splitting for sends/recvs.  So we can
        calculate the current round's peer sizes based on our current size and
-       the k[i] info. */
+       the k_array[i] info. */
+    my_offset = 0;
     my_size = size;
-    sizes = malloc(max_k * sizeof(IceTSizeType));
-    for (i = 0; i < max_k; ++i) {
-        sizes[i] = -3; /* Defensive */
-        ofsts[i] = -5; /* Defensive */
-    }
 
-    /* Assumes rv[i] is valid and corresponds to our rank in the round i. */
-#define MAP_BUF(k_rank_) ((k_rank_) - ((k_rank_) > rv[i] ? 1 : 0))
+    for (current_round = 0; current_round < num_rounds; current_round++) {
+        int current_k = k_array[current_round];
+        int current_partition_index = partition_indices[current_round];
+        radixkPartnerInfo *partners
+            = radixkGetPartners(k_array,
+                                current_round,
+                                current_partition_index,
+                                compose_group,
+                                group_rank,
+                                my_offset,
+                                my_size);
+        IceTCommRequest *receive_requests;
+        IceTCommRequest *send_requests;
 
-    for (i = 0; i < r; i++){
-        GetPartners(k, i, rv[i], rank, partners);
+        my_offset = partners[current_partition_index].offset;
+        my_size = partners[current_partition_index].size;
 
-        ofsts[0] = my_ofst;
-        for (j = 0; j < k[i]; ++j) {
-            /* Distribute any remainder 1 element at a time from 0..(rem-1) */
-            int remain = (j < (my_size % k[i])) ? 1 : 0;
-            sizes[j] = (my_size / k[i]) + remain;
+        receive_requests = radixkPostReceives(partners,
+                                              current_k,
+                                              current_round,
+                                              current_partition_index);
 
-            /* My offset this round is last round's my_ofst plus the sum of the
-               sizes of the partners that come before me in the k-ordering */
-            if (j > 0) {
-                ofsts[j] = ofsts[j - 1] + sizes[j - 1];
-            }
-        }
-        my_size = sizes[rv[i]];
-        my_ofst = ofsts[rv[i]];
+        send_requests = radixkPostSends(partners,
+                                        current_k,
+                                        current_round,
+                                        current_partition_index,
+                                        image);
 
-        /* Post receives starting with nearest neighbors and working outwards */
-        n = 0;
-        for (j = 1; j < k[i]; j++) {
-            dest = rv[i] + j; /* Toward higher group members */
-            if (dest < k[i]) {
-                r_reqs[n] = icetCommIrecv(recv_bufs[MAP_BUF(dest)],
-                                          max_sparse_img_size,
-                                          ICET_BYTE,
-                                          compose_group[partners[dest]],
-                                          0);
-                dests[n++] = dest;
-            }
-            dest = rv[i] - j; /* Toward lower group members */
-            if (dest >= 0) {
-                r_reqs[n] = icetCommIrecv(recv_bufs[MAP_BUF(dest)],
-                                          max_sparse_img_size,
-                                          ICET_BYTE,
-                                          compose_group[partners[dest]],
-                                          0);
-                dests[n++] = dest;
-            }
-        }
+        radixkCompositeIncomingImages(partners,
+                                      receive_requests,
+                                      current_k,
+                                      current_partition_index,
+                                      image);
 
-        /* Compress subimages and post sends in the same order */
-        n = 0;
-        for (j = 1; j < k[i]; j++) {
-            dest = rv[i] + j; /* Toward higher group members */
-            if (dest < k[i]) {
-                IceTVoid* package_buffer;
-                IceTSizeType package_size;
-                icetCompressSubImage(image, ofsts[dest], sizes[dest],
-                                     send_img_bufs[MAP_BUF(dest)]);
-                icetSparseImagePackageForSend(send_img_bufs[MAP_BUF(dest)], 
-                                              &package_buffer, &package_size);
-                s_reqs[n++] = icetCommIsend(package_buffer,
-                                            package_size,
-                                            ICET_BYTE,
-                                            compose_group[partners[dest]],
-                                            0);
-            }
-            dest = rv[i] - j; /* Toward lower group members */
-            if (dest >= 0) {
-                IceTVoid* package_buffer;
-                IceTSizeType package_size;
-                icetCompressSubImage(image, ofsts[dest], sizes[dest],
-                                     send_img_bufs[MAP_BUF(dest)]);
-                icetSparseImagePackageForSend(send_img_bufs[MAP_BUF(dest)], 
-                                              &package_buffer, &package_size);
-                s_reqs[n++] = icetCommIsend(package_buffer,
-                                            package_size,
-                                            ICET_BYTE,
-                                            compose_group[partners[dest]],
-                                            0);
-            }
-        }
-
-        /* clear here and done arrays, mark my own position as here and done */
-        for (j = 0; j < k[i]; j++) {
-            here[j] = done[j] = 0;
-        }
-        done[rv[i]] = 1;
-        here[rv[i]] = 1;
-
-        /* For all messages plus one to composite leftovers. */
-        for(n = 0; n < k[i]; n++) {
-            /* Get the next message and mark it as here. */
-            if (n < k[i] - 1) {
-                arr = icetCommWaitany(k[i] - 1, r_reqs);
-                here[dests[arr]] = 1;
-            }
-
-            /* scan the group members from me in both directions */
-            for (j = 1; j < k[i]; j++) {
-                /* --------  up direction ----------- */
-                if ((dest = rv[i] + j) < k[i]) {
-                    /* distance from dest to start of already composited
-                       region */
-                    b = 1;
-                    while (dest - b >= 0 && done[dest - b] && !here[dest - b]) {
-                        b++;
-                    }
-
-                    /* composite my image with the next image in order */
-                    if (   here[dest] && !done[dest] && here[dest - b] 
-                        && done[dest - b]) {
-                        IceTSparseImage inSparseImage
-                            = icetSparseImageUnpackageFromReceive(
-                                                      recv_bufs[MAP_BUF(dest)]);
-                        icetCompressedSubComposite(image,
-                                                   my_ofst,
-                                                   inSparseImage,
-                                                   0);
-                        done[dest] = 1;
-                    }
-
-                    /* distance from dest to start of already composited
-                       region */
-                    b = 1;
-                    while (dest - b >= 0 && done[dest - b] && !here[dest - b]) {
-                        b++;
-                    }
-
-                    /* composite another adjacent pair */
-                    if (dest - b > rv[i] && here[dest] && here[dest - b] &&
-                        !done[dest] && !done[dest - b]) {
-                        /* Unpackage and uncompress one of the images. This is
-                           for making use of IceT's compressed compositing
-                           operations. Once a function for compositing two
-                           compressed images is available, this can be
-                           changed. */
-                        IceTSparseImage firstSparseImage;
-                        IceTSparseImage secondSparseImage;
-                        IceTSizeType package_size;
-                        firstSparseImage =
-                            icetSparseImageUnpackageFromReceive(
-                                                  recv_bufs[MAP_BUF(dest - b)]);
-                        icetDecompressImage(firstSparseImage,
-                                            intermediate_compose_img);
-                        secondSparseImage =
-                            icetSparseImageUnpackageFromReceive(
-                                                      recv_bufs[MAP_BUF(dest)]);
-
-                        /* Composite. Start at offset 0 since the image we
-                           uncompressed is a subimage. */
-                        icetCompressedSubComposite(intermediate_compose_img, 0,
-                                                   secondSparseImage, 0);
-
-                        /* Compress the composited image back into the original
-                           buffer. */
-                        icetCompressSubImage(intermediate_compose_img,
-                                             0,
-                                             my_size,
-                                             firstSparseImage);
-                        icetSparseImagePackageForSend(
-                                                firstSparseImage,
-                                                &(recv_bufs[MAP_BUF(dest - b)]), 
-                                                &package_size);
-
-                        done[dest] = 1;
-                        /* Not available once absorbed by other chunk */
-                        here[dest] = 0; 
-                    }
-                }
-
-                /* --------  down direction ----------- */
-                if ((dest = rv[i] - j) >= 0) {
-                    /* distance from dest to start of already composited
-                       region */
-                    b = 1;
-                    while (dest + b < k[i] && done[dest + b] && !here[dest + b])
-                        b++;
-
-                    /* composite my image with the previous image in order */
-                    if (   here[dest] && !done[dest] && here[dest + b] 
-                        && done[dest + b]) {
-                        IceTSparseImage inSparseImage
-                            = icetSparseImageUnpackageFromReceive(
-                                                      recv_bufs[MAP_BUF(dest)]);
-                        icetCompressedSubComposite(image,
-                                                   my_ofst,
-                                                   inSparseImage,
-                                                   1);
-                        done[dest] = 1;
-                    }
-
-                    /* distance from dest to start of already composited
-                       region */
-                    b = 1;
-                    while (dest + b < k[i] && done[dest + b] && !here[dest + b])
-                    {
-                        b++;
-                    }
-
-                    /* composite another adjacent pair */
-                    if (dest + b < rv[i] && here[dest] && here[dest + b] &&
-                        !done[dest] && !done[dest + b]) {
-                        /* Unpackage and uncompress one of the images. This is
-                           for making use of IceT's compressed compositing
-                           operations. Once a function for compositing two
-                           compressed images is available, this can be
-                           changed. */
-                        IceTSparseImage firstSparseImage;
-                        IceTSparseImage secondSparseImage;
-                        IceTSizeType package_size;
-                        firstSparseImage =
-                            icetSparseImageUnpackageFromReceive(
-                                                  recv_bufs[MAP_BUF(dest + b)]);
-                        icetDecompressImage(firstSparseImage,
-                                            intermediate_compose_img);
-                        secondSparseImage =
-                            icetSparseImageUnpackageFromReceive(
-                                                      recv_bufs[MAP_BUF(dest)]);
-                        /* Start compositing at offset 0 because we just
-                           decompressed a subimage. */
-                        icetCompressedSubComposite(intermediate_compose_img, 0,
-                                                   secondSparseImage, 1);
-
-                        /* Compress the composited image back into the original
-                           buffer.  Similarly, the offset is zero is it is
-                           intially a subimage. */
-                        icetCompressSubImage(intermediate_compose_img,
-                                             0,
-                                             my_size,
-                                             firstSparseImage);
-                        icetSparseImagePackageForSend(
-                                                firstSparseImage,
-                                                &(recv_bufs[MAP_BUF(dest + b)]), 
-                                                &package_size);
-
-                        done[dest] = 1;
-                        /* not available once absorbed by other chunk */
-                        here[dest] = 0; 
-                    }
-                }
-            } /* scan the group members */
-        }
-        /* wait for the send requests */
-        icetCommWaitall(k[i] - 1, s_reqs);
+        icetCommWaitall(current_k, send_requests);
     } /* for all rounds */
 
-#undef MAP_BUF
-
-    free(intermediate_compose_buf);
-    free(sizes);
-    free(k);
-    for (i = 0; i < max_k - 1; i++)
-    {
-        free(recv_bufs[i]);
-        free(send_bufs[i]);
-    }
-
-    radixkGatherFinalImage(compose_group, rank, group_size, image_dest,
-                           my_ofst, my_size, image);
+    radixkGatherFinalImage(compose_group, group_rank, group_size, image_dest,
+                           my_offset, my_size, image);
 
     return;
 }

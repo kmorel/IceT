@@ -20,6 +20,9 @@ extern "C" {
 }
 #endif
 
+#define ICET_SRC_ON_TOP         ICET_TRUE
+#define ICET_DEST_ON_TOP        ICET_FALSE
+
 ICET_EXPORT IceTImage       icetGetStateBufferImage(IceTEnum pname,
                                                     IceTSizeType width,
                                                     IceTSizeType height);
