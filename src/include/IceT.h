@@ -33,7 +33,7 @@ typedef IceTInt8                IceTByte;
 typedef IceTUnsignedInt8        IceTUByte;
 typedef IceTUnsignedInt8        IceTBoolean;
 typedef void                    IceTVoid;
-typedef IceTPointerArithmetic   IceTSizeType;
+typedef IceTInt32               IceTSizeType;
 
 struct IceTContextStruct;
 typedef struct IceTContextStruct *IceTContext;
