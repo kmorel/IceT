@@ -32,6 +32,12 @@ IceTCommunicator icetCommDuplicate()
     return comm->Duplicate(comm);
 }
 
+void icetCommBarrier()
+{
+    IceTCommunicator comm = icetGetCommunicator();
+    comm->Barrier(comm);
+}
+
 void icetCommSend(const void *buf,
                   IceTSizeType count,
                   IceTEnum datatype,

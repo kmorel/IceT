@@ -571,9 +571,14 @@ static int SimpleTimingRun()
     }
 
     for (frame = 0; frame < g_num_frames; frame++) {
-        IceTDouble elapsed_time = icetWallTime();
+        IceTDouble elapsed_time;
         IceTDouble modelview_matrix[16];
         IceTImage image;
+
+        /* Get everyone to start at the same time. */
+        icetCommBarrier();
+
+        elapsed_time = icetWallTime();
 
         /* We can set up a modelview matrix here and IceT will factor this in
          * determining the screen projection of the geometry. */
@@ -616,6 +621,9 @@ static int SimpleTimingRun()
         image = icetDrawFrame(projection_matrix,
                               modelview_matrix,
                               background_color);
+
+        /* Let everyone catch up before finishing the frame. */
+        icetCommBarrier();
 
         elapsed_time = icetWallTime() - elapsed_time;
 

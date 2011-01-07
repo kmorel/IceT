@@ -132,9 +132,7 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
                 requests[i] = ICET_COMM_REQUEST_NULL;
             }
         }
-        for (i = 0; i < group_size; i++) {
-            icetCommWait(requests + i);
-        }
+        icetCommWaitall(group_size, requests);
     }
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
@@ -166,9 +164,7 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
                 requests[i] = ICET_COMM_REQUEST_NULL;
             }
         }
-        for (i = 0; i < group_size; i++) {
-            icetCommWait(requests + i);
-        }
+        icetCommWaitall(group_size, requests);
     }
     free(requests);
 }
