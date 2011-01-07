@@ -9,6 +9,7 @@
 
 #include <IceTMPI.h>
 
+#include <IceTDevCommunication.h>
 #include <IceTDevDiagnostics.h>
 
 #include <stdlib.h>
@@ -32,8 +33,15 @@ static void Sendrecv(IceTCommunicator self,
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
+static void Gather(IceTCommunicator self,
+                   const void *sendbuf, int sendcount, IceTEnum datatype,
+                   void *recvbuf, int root);
+static void Gatherv(IceTCommunicator self,
+                    const void *sendbuf, int sendcount, IceTEnum datatype,
+                    const int *recvcounts, const int *recvoffsets,
+                    void *recvbuf, int root);
 static void Allgather(IceTCommunicator self,
-                      const void *sendbuf, int sendcount, int type,
+                      const void *sendbuf, int sendcount, IceTEnum datatype,
                       void *recvbuf);
 static IceTCommRequest Isend(IceTCommunicator self,
                              const void *buf, int count, IceTEnum datatype,
@@ -137,6 +145,8 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Send = Send;
     comm->Recv = Recv;
     comm->Sendrecv = Sendrecv;
+    comm->Gather = Gather;
+    comm->Gatherv = Gatherv;
     comm->Allgather = Allgather;
     comm->Isend = Isend;
     comm->Irecv = Irecv;
@@ -222,12 +232,49 @@ static void Sendrecv(IceTCommunicator self,
                  MPI_STATUS_IGNORE);
 }
 
+static void Gather(IceTCommunicator self,
+                   const void *sendbuf, int sendcount, IceTEnum datatype,
+                   void *recvbuf, int root)
+{
+    MPI_Datatype mpitype;
+    CONVERT_DATATYPE(datatype, mpitype);
+
+    if (sendbuf == ICET_IN_PLACE_COLLECT) {
+        sendbuf = MPI_IN_PLACE;
+    }
+
+    MPI_Gather((void *)sendbuf, sendcount, mpitype,
+               recvbuf, sendcount, mpitype, root,
+               MPI_COMM);
+}
+
+static void Gatherv(IceTCommunicator self,
+                    const void *sendbuf, int sendcount, IceTEnum datatype,
+                    const int *recvcounts, const int *recvoffsets,
+                    void *recvbuf, int root)
+{
+    MPI_Datatype mpitype;
+    CONVERT_DATATYPE(datatype, mpitype);
+
+    if (sendbuf == ICET_IN_PLACE_COLLECT) {
+        sendbuf = MPI_IN_PLACE;
+    }
+
+    MPI_Gatherv((void *)sendbuf, sendcount, mpitype,
+                recvbuf, (int *)recvcounts, (int *)recvoffsets, mpitype,
+                root, MPI_COMM);
+}
+
 static void Allgather(IceTCommunicator self,
-                      const void *sendbuf, int sendcount, int type,
+                      const void *sendbuf, int sendcount, IceTEnum datatype,
                       void *recvbuf)
 {
     MPI_Datatype mpitype;
-    CONVERT_DATATYPE(type, mpitype);
+    CONVERT_DATATYPE(datatype, mpitype);
+
+    if (sendbuf == ICET_IN_PLACE_COLLECT) {
+        sendbuf = MPI_IN_PLACE;
+    }
 
     MPI_Allgather((void *)sendbuf, sendcount, mpitype,
                   recvbuf, sendcount, mpitype,

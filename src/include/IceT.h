@@ -61,8 +61,15 @@ struct IceTCommunicatorStruct {
                      int dest, int sendtag,
                      void *recvbuf, int recvcount, IceTEnum recvtype,
                      int src, int recvtag);
+    void (*Gather)(struct IceTCommunicatorStruct *self,
+                   const void *sendbuf, int sendcount, IceTEnum datatype,
+                   void *recvbuf, int root);
+    void (*Gatherv)(struct IceTCommunicatorStruct *self,
+                    const void *sendbuf, int sendcount, IceTEnum datatype,
+                    const int *recvcounts, const int *recvoffsets,
+                    void *recvbuf, int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
-                      const void *sendbuf, int sendcount, int type,
+                      const void *sendbuf, int sendcount, IceTEnum datatype,
                       void *recvbuf);
 
     IceTCommRequest (*Isend)(struct IceTCommunicatorStruct *self,
@@ -304,6 +311,8 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_CONTAINED_LIST_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0001)
 #define ICET_CONTAINED_MASK_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0002)
 #define ICET_DATA_REP_GROUP_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0003)
+#define ICET_COMM_COUNT_BUF     (ICET_CORE_BUFFER_START | (IceTEnum)0x0004)
+#define ICET_COMM_OFFSET_BUF    (ICET_CORE_BUFFER_START | (IceTEnum)0x0005)
 
 #define ICET_STRATEGY_BUFFER_START (ICET_STATE_BUFFER_START | (IceTEnum)0x0010)
 #define ICET_STRATEGY_BUFFER_END   (ICET_STATE_BUFFER_START | (IceTEnum)0x0020)

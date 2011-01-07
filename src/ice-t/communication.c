@@ -74,15 +74,74 @@ void icetCommSendrecv(const void *sendbuf,
                    recvbuf, (int)recvcount, recvtype, src, recvtag);
 }
 
+void icetCommGather(const void *sendbuf,
+                    IceTSizeType sendcount,
+                    IceTEnum datatype,
+                    void *recvbuf,
+                    int root)
+{
+    IceTCommunicator comm = icetGetCommunicator();
+    icetCommCheckCount(sendcount);
+    if (root != icetCommRank()) {
+        icetAddSent(sendcount, datatype);
+    }
+    comm->Gather(comm, sendbuf, sendcount, datatype, recvbuf, root);
+}
+
+void icetCommGatherv(const void *sendbuf,
+                     IceTSizeType sendcount,
+                     IceTEnum datatype,
+                     void *recvbuf,
+                     const IceTSizeType *recvcounts,
+                     const IceTSizeType *recvoffsets,
+                     int root)
+{
+    IceTCommunicator comm = icetGetCommunicator();
+    int *int_recvcounts;
+    int *int_recvoffsets;
+    icetCommCheckCount(sendcount);
+    if (root == icetCommRank()) {
+        if (sizeof(int) == sizeof(IceTSizeType)) {
+            int_recvcounts = (int *)recvcounts;
+            int_recvoffsets = (int *)recvoffsets;
+        } else {
+            int numproc = icetCommSize();
+            int proc;
+            int_recvcounts = icetGetStateBuffer(ICET_COMM_COUNT_BUF,
+                                                numproc*sizeof(int));
+            int_recvoffsets = icetGetStateBuffer(ICET_COMM_OFFSET_BUF,
+                                                 numproc*sizeof(int));
+            for (proc = 0; proc < numproc; proc++) {
+                icetCommCheckCount(recvcounts[proc]);
+                int_recvcounts[proc] = recvcounts[proc];
+                icetCommCheckCount(recvoffsets[proc]);
+                int_recvoffsets[proc] = recvoffsets[proc];
+            }
+        }
+    } else {
+        icetAddSent(sendcount, datatype);
+        int_recvcounts = NULL;
+        int_recvoffsets = NULL;
+    }
+    comm->Gatherv(comm,
+                  sendbuf,
+                  sendcount,
+                  datatype,
+                  recvbuf,
+                  int_recvcounts,
+                  int_recvoffsets,
+                  root);
+}
+
 void icetCommAllgather(const void *sendbuf,
                        IceTSizeType sendcount,
-                       int type,
+                       IceTEnum datatype,
                        void *recvbuf)
 {
     IceTCommunicator comm = icetGetCommunicator();
     icetCommCheckCount(sendcount);
-    icetAddSent(sendcount, type);
-    comm->Allgather(comm, sendbuf, (int)sendcount, type, recvbuf);
+    icetAddSent(sendcount, datatype);
+    comm->Allgather(comm, sendbuf, (int)sendcount, datatype, recvbuf);
 }
 
 IceTCommRequest icetCommIsend(const void *buf,
