@@ -195,6 +195,7 @@ static void Barrier(IceTCommunicator self)
 
 #define CONVERT_DATATYPE(icet_type, mpi_type)                                \
     switch (icet_type) {                                                     \
+      case ICET_BOOLEAN:mpi_type = MPI_BYTE;    break;                       \
       case ICET_BYTE:   mpi_type = MPI_BYTE;    break;                       \
       case ICET_SHORT:  mpi_type = MPI_SHORT;   break;                       \
       case ICET_INT:    mpi_type = MPI_INT;     break;                       \
