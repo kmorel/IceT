@@ -91,6 +91,9 @@ void icetCommGather(const void *sendbuf,
     if (root != icetCommRank()) {
         icetAddSent(sendcount, datatype);
     }
+#ifdef DEBUG
+    comm->Barrier(comm);
+#endif
     comm->Gather(comm, sendbuf, sendcount, datatype, recvbuf, root);
 }
 
@@ -129,6 +132,9 @@ void icetCommGatherv(const void *sendbuf,
         int_recvcounts = NULL;
         int_recvoffsets = NULL;
     }
+#ifdef DEBUG
+    comm->Barrier(comm);
+#endif
     comm->Gatherv(comm,
                   sendbuf,
                   sendcount,
