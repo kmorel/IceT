@@ -439,5 +439,8 @@ void icetBswapCompose(const IceTInt *compose_group,
                             sub_image_size, piece_num*sub_image_size);
         *piece_offset = 0;
         *piece_size = 0;
+    } else {
+        *piece_offset = 0;
+        *piece_size = 0;
     }
 }
