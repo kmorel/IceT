@@ -48,7 +48,7 @@ ICET_EXPORT void icetCommGather(const void *sendbuf,
                                 IceTEnum datatype,
                                 void *recvbuf,
                                 int root);
-ICET_EXPORT void icetCommGatherV(const void *sendbuf,
+ICET_EXPORT void icetCommGatherv(const void *sendbuf,
                                  IceTSizeType sendcount,
                                  IceTEnum datatype,
                                  void *recvbuf,
