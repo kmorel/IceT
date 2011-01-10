@@ -313,7 +313,9 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
 
 void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image)
+                            IceTImage image,
+                            IceTSizeType *piece_offset,
+                            IceTSizeType *piece_size)
 {
     IceTEnum strategy;
 
@@ -321,5 +323,109 @@ void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
     icetInvokeSingleImageStrategy(strategy,
                                   compose_group, group_size,
                                   image_dest,
-                                  image);
+                                  image,
+                                  piece_offset,
+                                  piece_size);
+}
+
+void icetSingleImageCollect(IceTImage image,
+                            IceTInt dest,
+                            IceTSizeType piece_offset,
+                            IceTSizeType piece_size)
+{
+    IceTSizeType *offsets;
+    IceTSizeType *sizes;
+    int rank;
+    int numproc;
+
+    IceTEnum color_format;
+    IceTEnum depth_format;
+    IceTSizeType color_size = 1;
+    IceTSizeType depth_size = 1;
+
+    rank = icetCommRank();
+    numproc = icetCommSize();
+
+    /* Collect partitions held by each process. */
+    if (rank == dest) {
+        offsets = icetGetStateBuffer(ICET_IMAGE_COLLECT_OFFSET_BUF,
+                                     sizeof(IceTSizeType)*numproc);
+        sizes = icetGetStateBuffer(ICET_IMAGE_COLLECT_SIZE_BUF,
+                                   sizeof(IceTSizeType)*numproc);
+    } else {
+        offsets = NULL;
+        sizes = NULL;
+    }
+    icetCommGather(&piece_offset, 1, ICET_SIZE_TYPE, offsets, dest);
+    icetCommGather(&piece_size, 1, ICET_SIZE_TYPE, sizes, dest);
+
+    /* Adjust image for output as some buffers, such as depth, might be
+       dropped. */
+    icetImageAdjustForOutput(image);
+
+    color_format = icetImageGetColorFormat(image);
+    depth_format = icetImageGetDepthFormat(image);
+
+    if (color_format != ICET_IMAGE_COLOR_NONE) {
+        /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *color_buffer = icetImageGetColorVoid(image, &color_size);
+        int proc;
+
+        if (rank == dest) {
+            /* Adjust sizes and offsets to sizes of pixel colors. */
+            for (proc = 0; proc < numproc; proc++) {
+                offsets[proc] *= color_size;
+                sizes[proc] *= color_size;
+            }
+            icetCommGatherv(ICET_IN_PLACE_COLLECT,
+                            sizes[rank],
+                            ICET_BYTE,
+                            color_buffer,
+                            sizes,
+                            offsets,
+                            dest);
+        } else {
+            icetCommGatherv(color_buffer + piece_offset * color_size,
+                            piece_size * color_size,
+                            ICET_BYTE,
+                            NULL,
+                            NULL,
+                            NULL,
+                            dest);
+        }
+    }
+
+    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
+        /* Use IceTByte for byte-based pointer arithmetic. */
+        IceTByte *depth_buffer = icetImageGetDepthVoid(image, &depth_size);
+        int proc;
+
+        if (rank == dest) {
+            /* Adjust sizes and offsets to sizes of pixel depths.  Also
+               adjust for any adjustments made for color. */
+            if (color_size != depth_size) {
+                for (proc = 0; proc < numproc; proc++) {
+                    offsets[proc] /= color_size;
+                    offsets[proc] *= depth_size;
+                    sizes[proc] /= color_size;
+                    sizes[proc] *= depth_size;
+                }
+            }
+            icetCommGatherv(ICET_IN_PLACE_COLLECT,
+                            sizes[rank],
+                            ICET_BYTE,
+                            depth_buffer,
+                            sizes,
+                            offsets,
+                            dest);
+        } else {
+            icetCommGatherv(depth_buffer + piece_offset * depth_size,
+                            piece_size * depth_size,
+                            ICET_BYTE,
+                            NULL,
+                            NULL,
+                            NULL,
+                            dest);
+        }
+    }
 }

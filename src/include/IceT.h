@@ -33,7 +33,7 @@ typedef IceTInt8                IceTByte;
 typedef IceTUnsignedInt8        IceTUByte;
 typedef IceTUnsignedInt8        IceTBoolean;
 typedef void                    IceTVoid;
-typedef IceTPointerArithmetic   IceTSizeType;
+typedef IceTInt32               IceTSizeType;
 
 struct IceTContextStruct;
 typedef struct IceTContextStruct *IceTContext;
@@ -52,26 +52,61 @@ struct IceTCommunicatorStruct {
     void (*Destroy)(struct IceTCommunicatorStruct *self);
     void (*Barrier)(struct IceTCommunicatorStruct *self);
     void (*Send)(struct IceTCommunicatorStruct *self,
-                 const void *buf, int count, IceTEnum datatype, int dest,
+                 const void *buf,
+                 int count,
+                 IceTEnum datatype,
+                 int dest,
                  int tag);
     void (*Recv)(struct IceTCommunicatorStruct *self,
-                 void *buf, int count, IceTEnum datatype, int src, int tag);
+                 void *buf,
+                 int count,
+                 IceTEnum datatype,
+                 int src,
+                 int tag);
 
     void (*Sendrecv)(struct IceTCommunicatorStruct *self,
-                     const void *sendbuf, int sendcount, IceTEnum sendtype,
-                     int dest, int sendtag,
-                     void *recvbuf, int recvcount, IceTEnum recvtype,
-                     int src, int recvtag);
+                     const void *sendbuf,
+                     int sendcount,
+                     IceTEnum sendtype,
+                     int dest,
+                     int sendtag,
+                     void *recvbuf,
+                     int recvcount,
+                     IceTEnum recvtype,
+                     int src,
+                     int recvtag);
+    void (*Gather)(struct IceTCommunicatorStruct *self,
+                   const void *sendbuf,
+                   int sendcount,
+                   IceTEnum datatype,
+                   void *recvbuf,
+                   int root);
+    void (*Gatherv)(struct IceTCommunicatorStruct *self,
+                    const void *sendbuf,
+                    int sendcount,
+                    IceTEnum datatype,
+                    void *recvbuf, 
+                    const int *recvcounts,
+                    const int *recvoffsets,
+                    int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
-                      const void *sendbuf, int sendcount, int type,
+                      const void *sendbuf,
+                      int sendcount,
+                      IceTEnum datatype,
                       void *recvbuf);
 
     IceTCommRequest (*Isend)(struct IceTCommunicatorStruct *self,
-                             const void *buf, int count, IceTEnum datatype,
-                             int dest, int tag);
+                             const void *buf,
+                             int count,
+                             IceTEnum datatype,
+                             int dest,
+                             int tag);
     IceTCommRequest (*Irecv)(struct IceTCommunicatorStruct *self,
-                             void *buf, int count, IceTEnum datatype,
-                             int src, int tag);
+                             void *buf,
+                             int count,
+                             IceTEnum datatype,
+                             int src,
+                             int tag);
 
     void (*Wait)(struct IceTCommunicatorStruct *self, IceTCommRequest *request);
     int  (*Waitany)(struct IceTCommunicatorStruct *self,
@@ -98,6 +133,7 @@ ICET_EXPORT void        icetCopyState(IceTContext dest, const IceTContext src);
 #define ICET_INT        (IceTEnum)0x8003
 #define ICET_FLOAT      (IceTEnum)0x8004
 #define ICET_DOUBLE     (IceTEnum)0x8005
+#define ICET_SIZE_TYPE  ICET_INT
 #define ICET_POINTER    (IceTEnum)0x8008
 #define ICET_VOID       (IceTEnum)0x800F
 #define ICET_NULL       (IceTEnum)0x0000
@@ -305,6 +341,10 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_CONTAINED_LIST_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0001)
 #define ICET_CONTAINED_MASK_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0002)
 #define ICET_DATA_REP_GROUP_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0003)
+#define ICET_COMM_COUNT_BUF     (ICET_CORE_BUFFER_START | (IceTEnum)0x0004)
+#define ICET_COMM_OFFSET_BUF    (ICET_CORE_BUFFER_START | (IceTEnum)0x0005)
+#define ICET_IMAGE_COLLECT_OFFSET_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0006)
+#define ICET_IMAGE_COLLECT_SIZE_BUF (ICET_CORE_BUFFER_START | (IceTEnum)0x0007)
 
 #define ICET_STRATEGY_BUFFER_START (ICET_STATE_BUFFER_START | (IceTEnum)0x0010)
 #define ICET_STRATEGY_BUFFER_END   (ICET_STATE_BUFFER_START | (IceTEnum)0x0020)

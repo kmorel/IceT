@@ -18,8 +18,10 @@
 
 #define TREE_IMAGE_DATA 23
 
-static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
-                                 IceTInt group_rank, IceTInt image_dest,
+static void RecursiveTreeCompose(const IceTInt *compose_group,
+                                 IceTInt group_size,
+                                 IceTInt group_rank,
+                                 IceTInt image_dest,
                                  IceTImage image,
                                  IceTVoid *inSparseImageBuffer,
                                  IceTSparseImage outSparseImage)
@@ -112,12 +114,14 @@ static void RecursiveTreeCompose(IceTInt *compose_group, IceTInt group_size,
     }
 }
 
-void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
-                        IceTInt image_dest,
-                        IceTImage image)
+void icetTreeCompose(const IceTInt *compose_group,
+                     IceTInt group_size,
+                     IceTInt image_dest,
+                     IceTImage image,
+                     IceTSizeType *piece_offset,
+                     IceTSizeType *piece_size)
 {
     IceTInt group_rank;
-    IceTInt rank;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
     IceTSizeType width, height;
@@ -133,12 +137,8 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
     outSparseImage =icetGetStateBufferSparseImage(TREE_OUT_SPARSE_IMAGE_BUFFER,
                                                   width, height);
 
-    icetGetIntegerv(ICET_RANK, &rank);
-    group_rank = 0;
-    while ((group_rank < group_size) && (compose_group[group_rank] != rank)) {
-        group_rank++;
-    }
-    if (group_rank >= group_size) {
+    group_rank = icetFindMyRankInGroup(compose_group, group_size);
+    if (group_rank < 0) {
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
         return;
@@ -146,4 +146,11 @@ void icetTreeCompose(IceTInt *compose_group, IceTInt group_size,
 
     RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
                          image, inSparseImageBuffer, outSparseImage);
+
+    *piece_offset = 0;
+    if (group_rank == image_dest) {
+        *piece_size = icetImageGetNumPixels(image);
+    } else {
+        *piece_size = 0;
+    }
 }

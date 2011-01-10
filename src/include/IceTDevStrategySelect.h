@@ -36,11 +36,14 @@ ICET_STRATEGY_EXPORT IceTBoolean icetSingleImageStrategyValid(
 ICET_STRATEGY_EXPORT const char *icetSingleImageStrategyNameFromEnum(
                                                              IceTEnum strategy);
 
-ICET_STRATEGY_EXPORT void icetInvokeSingleImageStrategy(IceTEnum strategy,
-                                                        IceTInt *compose_group,
-                                                        IceTInt group_size,
-                                                        IceTInt image_dest,
-                                                        IceTImage image);
+ICET_STRATEGY_EXPORT void icetInvokeSingleImageStrategy(
+                                                   IceTEnum strategy,
+                                                   const IceTInt *compose_group,
+                                                   IceTInt group_size,
+                                                   IceTInt image_dest,
+                                                   IceTImage image,
+                                                   IceTSizeType *piece_offset,
+                                                   IceTSizeType *piece_size);
 
 #ifdef __cplusplus
 }

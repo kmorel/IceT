@@ -43,9 +43,21 @@ ICET_EXPORT void icetCommSendrecv(const void *sendbuf,
                                   IceTEnum recvtype,
                                   int src,
                                   int recvtag);
+ICET_EXPORT void icetCommGather(const void *sendbuf,
+                                IceTSizeType sendcount,
+                                IceTEnum datatype,
+                                void *recvbuf,
+                                int root);
+ICET_EXPORT void icetCommGatherv(const void *sendbuf,
+                                 IceTSizeType sendcount,
+                                 IceTEnum datatype,
+                                 void *recvbuf,
+                                 const IceTSizeType *recvcounts,
+                                 const IceTSizeType *recvoffsets,
+                                 int root);
 ICET_EXPORT void icetCommAllgather(const void *sendbuf,
                                    IceTSizeType sendcount,
-                                   int type,
+                                   IceTEnum type,
                                    void *recvbuf);
 ICET_EXPORT IceTCommRequest icetCommIsend(const void *buf,
                                           IceTSizeType count,
@@ -62,6 +74,14 @@ ICET_EXPORT int icetCommWaitany(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT void icetCommWaitall(int count, IceTCommRequest *array_of_requests);
 ICET_EXPORT int icetCommSize();
 ICET_EXPORT int icetCommRank();
+
+/* When used in place of sendbuf in one of the gathers, then this means that
+ * the local process should skip sending to itself.  Instead, the correct
+ * data is already in the destbuf.  For icetCommGather and icetCommGatherV,
+ * using this only makes sense on the root process.  Implementations of
+ * the gather functions in an IceTCommunicatorStruct should check for
+ * the existance of this. */
+#define ICET_IN_PLACE_COLLECT   ((void *)(-1))
 
 /* These are convenience methods for finding a particular rank in a group (array
  * of process ids).  This is a common operation as IceT frequently uses an array

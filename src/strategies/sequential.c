@@ -59,6 +59,8 @@ IceTImage icetSequentialCompose(void)
         IceTImage tileImage;
 	int d_node = display_nodes[i];
 	int image_dest;
+        IceTSizeType piece_offset;
+        IceTSizeType piece_size;
 
       /* Make the image go to the display node. */
 	if (ordered_composite) {
@@ -84,7 +86,13 @@ IceTImage icetSequentialCompose(void)
 	}
 
 	icetGetTileImage(i, tileImage);
-	icetSingleImageCompose(compose_group, num_proc, image_dest, tileImage);
+	icetSingleImageCompose(compose_group,
+                               num_proc,
+                               image_dest,
+                               tileImage,
+                               &piece_offset,
+                               &piece_size);
+        icetSingleImageCollect(tileImage, d_node, piece_offset, piece_size);
 
         if (d_node == rank) {
             myImage = tileImage;

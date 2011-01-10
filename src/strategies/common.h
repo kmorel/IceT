@@ -94,10 +94,15 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTVoid *incomingBuffer,
                                IceTSizeType bufferSize);
 
-/* icetBswapCompose
+/* icetSingleImageCompose
 
-   Performs a binary swap composition amongst a subset of processors in the
-   current communicator (see context.h).
+   Performs a composition of a single image using the current
+   ICET_SINGLE_IMAGE_STRATEGY.  The composition happens in the subset of
+   processes given in compose_group (and group_size).  If ordered compositing is
+   on, the images will be composited in the order determined by ranks in
+   compose_group with the first process on top.  The resulting image is left
+   partitioned amongst processes.  Use icetSingleImageCollect to combine the
+   images.
 
    compose_group - A mapping of processors from the MPI ranks to the "group"
         ranks.  The composed image ends up in the processor with rank
@@ -106,16 +111,51 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         array should have group_size entries.
    image_dest - The location of where the final composed image should be
         placed.  It is an index into compose_group, not the actual rank
-        of the process.
-   image - The input image colors and/or depth to be used.  If this
-        processor has rank compose_group[image_dest], any output data
-        will be put in this buffer.  If the color or depth value is not to
-        be computed or this processor is not rank
-        compose_group[compose_group], the buffer has undefined partial
-        results when the function returns.
+        of the process.  This is a hint to the composite algorithm rather
+        than a determination of where data will end up.
+   image - The input image colors and/or depth to be used.  The result of the
+        composition will also be placed in this buffer.  The results may be
+        distributed amongst all the processes in the group.  That is, the final
+        image will be partitioned amongst the processes and each process will
+        have a separate piece.  Thus, in general some of the resulting pixels
+        will be valid and others will be invalid.  the following two output
+        arguments specify the valid pixels.
+   piece_offset - The offset to the start of the valid pixels will be placed
+        in this argument.
+   piece_size - The number of valid pixels in the local partition will be
+        placed in this argument.
 */
-void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
+void icetSingleImageCompose(IceTInt *compose_group,
+                            IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image);
+                            IceTImage image,
+                            IceTSizeType *piece_offset,
+                            IceTSizeType *piece_size);
+
+/* icetSingleImageCollect
+
+   Collects image partitions distributed amongst processes.  The intension is to
+   call this function after a call to icetSingleImageCompose to complete the
+   image composition.  Unlike icetSingleImageCompose, however, this function
+   must be called on all processes, not just those in a group.  Processes that
+   have no piece of the image should pass 0 for both piece_offset and
+   piece_size.
+
+   image - At input, contains the image composited image partition returned from
+        icetSingleImageCompose.  When the call returns, the process with rank
+        dest will contain the complete image.
+   dest - The rank of the process to where the image should be collected.  Be
+        aware that this is generally a different value than the image_dest
+        parameter of icetSingleImageCompose.
+   piece_offset - The offset to the start of the valid pixels will be placed
+        in this argument.  Same value as returned from icetSingleImageCompose.
+   piece_size - The number of valid pixels in the local partition will be
+        placed in this argument.  Same value as returned from
+        icetSingleImageCompose.
+*/
+void icetSingleImageCollect(IceTImage image,
+                            IceTInt dest,
+                            IceTSizeType piece_offset,
+                            IceTSizeType piece_size);
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/
