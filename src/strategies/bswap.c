@@ -83,8 +83,10 @@ static void bswapSafeCompressedSubComposite(IceTImage destBuffer,
     }
 }
 
-static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
-                                    IceTInt group_rank, IceTImage image,
+static void bswapCollectFinalImages(const IceTInt *compose_group,
+                                    IceTInt group_size,
+                                    IceTInt group_rank,
+                                    IceTImage image,
                                     IceTSizeType pixel_count)
 {
     IceTEnum color_format, depth_format;
@@ -169,9 +171,11 @@ static void bswapCollectFinalImages(IceTInt *compose_group, IceTInt group_size,
     free(requests);
 }
 
-static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
+static void bswapSendFinalImage(const IceTInt *compose_group,
+                                IceTInt image_dest,
                                 IceTImage image,
-                                IceTSizeType pixel_count, IceTSizeType offset)
+                                IceTSizeType pixel_count,
+                                IceTSizeType offset)
 {
     IceTEnum color_format, depth_format;
     IceTSizeType num_pixels;
@@ -224,8 +228,10 @@ static void bswapSendFinalImage(IceTInt *compose_group, IceTInt image_dest,
  * ordering correct).  If both color and depth buffers are inputs, both are
  * located in the uncollected images regardless of what buffers are
  * selected for outputs. */
-static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
-                                  IceTInt pow2size, IceTInt group_rank,
+static void bswapComposeNoCombine(const IceTInt *compose_group,
+                                  IceTInt group_size,
+                                  IceTInt pow2size,
+                                  IceTInt group_rank,
                                   IceTImage image,
                                   IceTSizeType pixel_count,
                                   IceTVoid *inSparseImageBuffer,
@@ -370,12 +376,14 @@ static void bswapComposeNoCombine(IceTInt *compose_group, IceTInt group_size,
     }
 }
 
-void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
+void icetBswapCompose(const IceTInt *compose_group,
+                      IceTInt group_size,
                       IceTInt image_dest,
-                      IceTImage image)
+                      IceTImage image,
+                      IceTSizeType *piece_offset,
+                      IceTSizeType *piece_size)
 {
     IceTInt group_rank;
-    IceTInt rank;
     IceTInt pow2size;
     IceTSizeType pixel_count;
     IceTVoid *inSparseImageBuffer;
@@ -387,14 +395,12 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
     width = icetImageGetWidth(image);
     height = icetImageGetHeight(image);
 
-    icetGetIntegerv(ICET_RANK, &rank);
-    group_rank = 0;
-    while ((group_rank < group_size) && (compose_group[group_rank] != rank)) {
-        group_rank++;
-    }
-    if (group_rank >= group_size) {
+    group_rank = icetFindMyRankInGroup(compose_group, group_size);
+    if (group_rank < 0) {
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
+        *piece_offset = 0;
+        *piece_size = 0;
         return;
     }
 
@@ -422,6 +428,8 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
       /* Collect image if I'm the destination. */
         bswapCollectFinalImages(compose_group, pow2size, group_rank,
                                 image, pixel_count/pow2size);
+        *piece_offset = 0;
+        *piece_size = icetImageGetNumPixels(image);
     } else if (group_rank < pow2size) {
       /* Send image to destination. */
         IceTSizeType sub_image_size = pixel_count/pow2size;
@@ -429,5 +437,7 @@ void icetBswapCompose(IceTInt *compose_group, IceTInt group_size,
         BIT_REVERSE(piece_num, group_rank, pow2size);
         bswapSendFinalImage(compose_group, image_dest, image,
                             sub_image_size, piece_num*sub_image_size);
+        *piece_offset = 0;
+        *piece_size = 0;
     }
 }

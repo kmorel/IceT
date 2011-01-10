@@ -10,7 +10,13 @@
 **
 *****************************************************************************
 
-Revision 2.1: Added the Radix-k as a single-image strategy.
+Revision 2.1:
+	 Added Radix-k as a single-image strategy.
+
+	 Changed the collection method for single image compositing to use
+	 the built-in gather functions of MPI.  The old method had memory
+	 problems with large numbers of processes and would probably be
+	 inefficient anyway.
 
 Revision 2.0: A major restructuring of the IceT code comprising the
 	following changes:

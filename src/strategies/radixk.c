@@ -452,9 +452,12 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
     }
 }
 
-static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
-                                   IceTInt group_size, IceTInt image_dest,
-                                   IceTSizeType offset, IceTSizeType size,
+static void radixkGatherFinalImage(const IceTInt* compose_group,
+                                   IceTInt group_rank,
+                                   IceTInt group_size,
+                                   IceTInt image_dest,
+                                   IceTSizeType offset,
+                                   IceTSizeType size,
                                    IceTImage image)
 {
     int i;
@@ -593,8 +596,12 @@ static void radixkGatherFinalImage(IceTInt* compose_group, IceTInt group_rank,
 #endif
 }
 
-void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
-                       IceTInt image_dest, IceTImage image) {
+void icetRadixkCompose(const IceTInt *compose_group,
+                       IceTInt group_size,
+                       IceTInt image_dest,
+                       IceTImage image,
+                       IceTSizeType *piece_offset,
+                       IceTSizeType *piece_size) {
     IceTSizeType size = icetImageGetNumPixels(image);
     int num_rounds;
     int* k_array;
@@ -609,12 +616,16 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
     if (group_rank < 0) {
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
+        *piece_offset = 0;
+        *piece_size = 0;
         return;
     }
 
     if (group_size == 1) {
         /* I am the only process in the group.  No compositing to be done.
          * Just return and the image will be complete. */
+        *piece_offset = 0;
+        *piece_size = icetImageGetNumPixels(image);
         return;
     }
 
@@ -679,6 +690,13 @@ void icetRadixkCompose(IceTInt *compose_group, IceTInt group_size,
 
     radixkGatherFinalImage(compose_group, group_rank, group_size, image_dest,
                            my_offset, my_size, image);
+
+    *piece_offset = 0;
+    if (group_rank == image_dest) {
+        *piece_size = icetImageGetNumPixels(image);
+    } else {
+        *piece_size = 0;
+    }
 
     return;
 }

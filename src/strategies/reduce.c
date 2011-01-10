@@ -50,6 +50,12 @@ IceTImage icetReduceCompose(void)
     IceTInt *tile_image_dest;
     IceTInt *compose_group, group_size, group_image_dest;
     IceTInt compose_tile;
+    IceTSizeType piece_offset, piece_size;
+
+    IceTInt *contrib_counts;
+    IceTInt *tile_display_nodes;
+    IceTInt num_tiles;
+    IceTInt tile_idx;
 
     icetRaiseDebug("In reduceCompose");
 
@@ -76,9 +82,31 @@ IceTImage icetReduceCompose(void)
 
     if (compose_tile >= 0) {
         icetSingleImageCompose(compose_group, group_size,
-                               group_image_dest, image);
+                               group_image_dest, image,
+                               &piece_offset, &piece_size);
     } else {
       /* Not assigned to compose any tile.  Do nothing. */
+    }
+
+    /* Run collect function for all tiles with data.  Unlike compose where
+       we only had to call it for the tile we participated in, with collect
+       all processes have to make a call for each tile. */
+    contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
+    tile_display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
+    icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
+    for (tile_idx = 0; tile_idx < num_tiles; tile_idx++) {
+        IceTSizeType offset, size;
+        if (tile_idx == compose_tile) {
+            offset = piece_offset;
+            size = piece_size;
+        } else {
+            offset = 0;
+            size = 0;
+        }
+        icetSingleImageCollect(image,
+                               offset,
+                               size,
+                               tile_display_nodes[tile_idx]);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
