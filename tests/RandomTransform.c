@@ -237,7 +237,7 @@ static int compare_depth_buffers(IceTSizeType local_width,
             }
         }
         sprintf(filename, "depth_error%03d.ppm", rank);
-        write_ppm(filename, (IceTUByte *)db,
+        write_ppm(filename, (IceTUByte *)errbuf,
                   (int)local_width, (int)local_height);
 
         free(errbuf);
