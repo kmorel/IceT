@@ -144,18 +144,18 @@ void icetSingleImageCompose(IceTInt *compose_group,
    image - At input, contains the image composited image partition returned from
         icetSingleImageCompose.  When the call returns, the process with rank
         dest will contain the complete image.
+   dest - The rank of the process to where the image should be collected.  Be
+        aware that this is generally a different value than the image_dest
+        parameter of icetSingleImageCompose.
    piece_offset - The offset to the start of the valid pixels will be placed
         in this argument.  Same value as returned from icetSingleImageCompose.
    piece_size - The number of valid pixels in the local partition will be
         placed in this argument.  Same value as returned from
         icetSingleImageCompose.
-   dest - The rank of the process to where the image should be collected.  Be
-        aware that this is generally a different value than the image_dest
-        parameter of icetSingleImageCompose.
 */
 void icetSingleImageCollect(IceTImage image,
+                            IceTInt dest,
                             IceTSizeType piece_offset,
-                            IceTSizeType piece_size,
-                            IceTInt dest);
+                            IceTSizeType piece_size);
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/

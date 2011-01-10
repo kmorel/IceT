@@ -104,9 +104,9 @@ IceTImage icetReduceCompose(void)
             size = 0;
         }
         icetSingleImageCollect(image,
+                               tile_display_nodes[tile_idx],
                                offset,
-                               size,
-                               tile_display_nodes[tile_idx]);
+                               size);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);

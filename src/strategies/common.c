@@ -329,9 +329,9 @@ void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
 }
 
 void icetSingleImageCollect(IceTImage image,
+                            IceTInt dest,
                             IceTSizeType piece_offset,
-                            IceTSizeType piece_size,
-                            IceTInt dest)
+                            IceTSizeType piece_size)
 {
     IceTSizeType *offsets;
     IceTSizeType *sizes;
