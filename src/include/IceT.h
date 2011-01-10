@@ -52,33 +52,61 @@ struct IceTCommunicatorStruct {
     void (*Destroy)(struct IceTCommunicatorStruct *self);
     void (*Barrier)(struct IceTCommunicatorStruct *self);
     void (*Send)(struct IceTCommunicatorStruct *self,
-                 const void *buf, int count, IceTEnum datatype, int dest,
+                 const void *buf,
+                 int count,
+                 IceTEnum datatype,
+                 int dest,
                  int tag);
     void (*Recv)(struct IceTCommunicatorStruct *self,
-                 void *buf, int count, IceTEnum datatype, int src, int tag);
+                 void *buf,
+                 int count,
+                 IceTEnum datatype,
+                 int src,
+                 int tag);
 
     void (*Sendrecv)(struct IceTCommunicatorStruct *self,
-                     const void *sendbuf, int sendcount, IceTEnum sendtype,
-                     int dest, int sendtag,
-                     void *recvbuf, int recvcount, IceTEnum recvtype,
-                     int src, int recvtag);
+                     const void *sendbuf,
+                     int sendcount,
+                     IceTEnum sendtype,
+                     int dest,
+                     int sendtag,
+                     void *recvbuf,
+                     int recvcount,
+                     IceTEnum recvtype,
+                     int src,
+                     int recvtag);
     void (*Gather)(struct IceTCommunicatorStruct *self,
-                   const void *sendbuf, int sendcount, IceTEnum datatype,
-                   void *recvbuf, int root);
+                   const void *sendbuf,
+                   int sendcount,
+                   IceTEnum datatype,
+                   void *recvbuf,
+                   int root);
     void (*Gatherv)(struct IceTCommunicatorStruct *self,
-                    const void *sendbuf, int sendcount, IceTEnum datatype,
-                    const int *recvcounts, const int *recvoffsets,
-                    void *recvbuf, int root);
+                    const void *sendbuf,
+                    int sendcount,
+                    IceTEnum datatype,
+                    void *recvbuf, 
+                    const int *recvcounts,
+                    const int *recvoffsets,
+                    int root);
     void (*Allgather)(struct IceTCommunicatorStruct *self,
-                      const void *sendbuf, int sendcount, IceTEnum datatype,
+                      const void *sendbuf,
+                      int sendcount,
+                      IceTEnum datatype,
                       void *recvbuf);
 
     IceTCommRequest (*Isend)(struct IceTCommunicatorStruct *self,
-                             const void *buf, int count, IceTEnum datatype,
-                             int dest, int tag);
+                             const void *buf,
+                             int count,
+                             IceTEnum datatype,
+                             int dest,
+                             int tag);
     IceTCommRequest (*Irecv)(struct IceTCommunicatorStruct *self,
-                             void *buf, int count, IceTEnum datatype,
-                             int src, int tag);
+                             void *buf,
+                             int count,
+                             IceTEnum datatype,
+                             int src,
+                             int tag);
 
     void (*Wait)(struct IceTCommunicatorStruct *self, IceTCommRequest *request);
     int  (*Waitany)(struct IceTCommunicatorStruct *self,
