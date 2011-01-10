@@ -42,9 +42,7 @@
 #define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_3
 #define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_4
 #define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_5
-#define RADIXK_SIZES_BUFFER                     ICET_SI_STRATEGY_BUFFER_6
-#define RADIXK_OFFSETS_BUFFER                   ICET_SI_STRATEGY_BUFFER_7
-#define RADIXK_FACTORS_ARRAY                    ICET_SI_STRATEGY_BUFFER_8
+#define RADIXK_FACTORS_ARRAY                    ICET_SI_STRATEGY_BUFFER_6
 
 typedef struct {
     int rank; /* Rank of partner. */
@@ -452,150 +450,6 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
     }
 }
 
-static void radixkGatherFinalImage(const IceTInt* compose_group,
-                                   IceTInt group_rank,
-                                   IceTInt group_size,
-                                   IceTInt image_dest,
-                                   IceTSizeType offset,
-                                   IceTSizeType size,
-                                   IceTImage image)
-{
-    int i;
-    IceTEnum color_format;
-    IceTEnum depth_format;
-    IceTCommRequest *requests;
-    int *all_sizes;
-    int* all_offsets;
-
-    icetRaiseDebug("Collecting image data.");
-    /* Adjust image for output as some buffers, such as depth, might be
-       dropped. */
-    icetImageAdjustForOutput(image);
-
-    color_format = icetImageGetColorFormat(image);
-    depth_format = icetImageGetDepthFormat(image);
-    requests = icetGetStateBuffer(RADIXK_RECEIVE_REQUEST_BUFFER,
-                                  group_size * sizeof(IceTCommRequest));
-
-    /* TODO: Compute the sizes instead of communicate them. */ 
-    /* Find out the sizes of each process. */
-    all_sizes = icetGetStateBuffer(RADIXK_SIZES_BUFFER,
-                                   sizeof(int) * group_size);
-    if (group_rank == image_dest) {
-        all_sizes[group_rank] = (int)size;
-        for (i = 0; i < group_size; i++) {
-            if (i != group_rank) {
-                requests[i] = icetCommIrecv(&(all_sizes[i]), 1, ICET_INT,
-                                            compose_group[i], SWAP_IMAGE_DATA);
-            } else {
-                requests[i] = ICET_COMM_REQUEST_NULL;
-            }
-        }
-        for (i = 0; i < group_size; i++) {
-            icetCommWait(requests + i);
-        }
-    } else {
-        icetCommSend(&size, 1, ICET_INT, compose_group[image_dest],
-                     SWAP_IMAGE_DATA);
-    }
-
-    /* Compute all the offsets. */
-    all_offsets = icetGetStateBuffer(RADIXK_OFFSETS_BUFFER,
-                                     sizeof(int) * group_size);
-    all_offsets[0] = 0;
-    for (i = 1; i < group_size; i++) {
-        all_offsets[i] = all_offsets[i - 1] + all_sizes[i - 1];
-    }
-
-    /* Exchange color and depth data. */
-    if (color_format != ICET_IMAGE_COLOR_NONE) {
-        IceTSizeType pixel_size;
-        IceTVoid* color_buf = icetImageGetColorVoid(image, &pixel_size);
-        if (group_rank == image_dest) {
-            for (i = 0; i < group_size; i++) {
-                if (i != group_rank) {
-                    requests[i] = icetCommIrecv((IceTByte*)color_buf
-                                                + pixel_size * all_offsets[i],
-                                                pixel_size * all_sizes[i],
-                                                ICET_BYTE,
-                                                compose_group[i],
-                                                SWAP_IMAGE_DATA);
-                } else {
-                    requests[i] = ICET_COMM_REQUEST_NULL;
-                }
-            }
-            for (i = 0; i < group_size; i++) {
-                icetCommWait(requests + i);
-            }
-        } else {
-            icetCommSend((IceTByte*)color_buf + pixel_size * offset,
-                         pixel_size * size,
-                         ICET_BYTE,
-                         compose_group[image_dest],
-                         SWAP_IMAGE_DATA);
-        }
-    }
-    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        IceTSizeType pixel_size;
-        IceTVoid* depth_buf = icetImageGetDepthVoid(image, &pixel_size);
-        if (group_rank == image_dest) {
-            for (i = 0; i < group_size; i++) {
-                if (i != group_rank) {
-                    requests[i] = icetCommIrecv((IceTByte*)depth_buf
-                                                + pixel_size * all_offsets[i],
-                                                pixel_size * all_sizes[i],
-                                                ICET_BYTE,
-                                                compose_group[i],
-                                                SWAP_IMAGE_DATA);
-                } else {
-                    requests[i] = ICET_COMM_REQUEST_NULL;
-                }
-            }
-            for (i = 0; i < group_size; i++) {
-                icetCommWait(requests + i);
-            }
-        } else {
-            icetCommSend((IceTByte*)depth_buf + pixel_size * offset,
-                         pixel_size * size,
-                         ICET_BYTE,
-                         compose_group[image_dest],
-                         SWAP_IMAGE_DATA);
-        }
-    }
-
-    /* This will not work for multi-tile compositing most likely because IceT
-       does not create separate communicators for each compositing group. */
-    /* TODO use Gatherv since processes might not contain equal portions. */
-#if 0
-    if (color_format != ICET_IMAGE_COLOR_NONE) {
-        IceTSizeType pixel_size;
-        IceTVoid* color_buf = icetImageGetColorVoid(image, &pixel_size);
-        if (group_rank == image_dest) {
-            icetCommGather(MPI_IN_PLACE, size * pixel_size,
-                           ICET_BYTE, color_buf + pixel_size * offset,
-                           compose_group[image_dest]);
-        } else {
-            icetCommGather(color_buf + pixel_size * offset, size * pixel_size,
-                           ICET_BYTE, color_buf + pixel_size * offset,
-                           compose_group[image_dest]);
-        }
-    }
-    if (depth_format != ICET_IMAGE_DEPTH_NONE) {
-        IceTSizeType pixel_size;
-        IceTVoid* depth_buf = icetImageGetDepthVoid(image, &pixel_size);
-        if (group_rank == image_dest) {
-            icetCommGather(MPI_IN_PLACE, size * pixel_size,
-                           ICET_BYTE, depth_buf + pixel_size * offset,
-                           compose_group[image_dest]);
-        } else {
-            icetCommGather(depth_buf + pixel_size * offset, size * pixel_size,
-                           ICET_BYTE, depth_buf + pixel_size * offset,
-                           compose_group[image_dest]);
-        }
-    }
-#endif
-}
-
 void icetRadixkCompose(const IceTInt *compose_group,
                        IceTInt group_size,
                        IceTInt image_dest,
@@ -620,6 +474,10 @@ void icetRadixkCompose(const IceTInt *compose_group,
         *piece_size = 0;
         return;
     }
+
+    /* Remove warning about unused parameter.  Radix-k leaves images evenly
+     * partitioned, so we have no use of the image_dest parameter. */
+    (void)image_dest;
 
     if (group_size == 1) {
         /* I am the only process in the group.  No compositing to be done.
@@ -688,15 +546,8 @@ void icetRadixkCompose(const IceTInt *compose_group,
         icetCommWaitall(current_k, send_requests);
     } /* for all rounds */
 
-    radixkGatherFinalImage(compose_group, group_rank, group_size, image_dest,
-                           my_offset, my_size, image);
-
-    *piece_offset = 0;
-    if (group_rank == image_dest) {
-        *piece_size = icetImageGetNumPixels(image);
-    } else {
-        *piece_size = 0;
-    }
+    *piece_offset = my_offset;
+    *piece_size = my_size;
 
     return;
 }

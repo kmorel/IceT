@@ -19,8 +19,6 @@
 #define SWAP_IMAGE_DATA 21
 #define SWAP_DEPTH_DATA 22
 
-#define MIN(x,y) ((x) <= (y) ? (x) : (y))
-
 #define BIT_REVERSE(result, x, max_val_plus_one)                              \
 {                                                                             \
     int placeholder;                                                          \
@@ -31,6 +29,21 @@
         (result) += input & 0x0001;                                           \
         input >>= 1;                                                          \
     }                                                                         \
+}
+
+/* Adjusts the number of pixels for a region of a given offset and size within
+ * an image of a given size. */
+static void bswapAdjustRegionPixels(IceTSizeType num_total_pixels,
+                                    IceTSizeType offset,
+                                    IceTSizeType *num_pixels_p)
+{
+    if ((offset + *num_pixels_p) > num_total_pixels) {
+        if (offset >= num_total_pixels) {
+            *num_pixels_p = 0;
+        } else {
+            *num_pixels_p = num_total_pixels - offset;
+        }
+    }
 }
 
 /* Checks to make sure that the region requested by offset and pixels does
@@ -44,13 +57,7 @@ static void bswapSafeCompressSubImage(const IceTImage image,
 {
     IceTSizeType num_total_pixels = icetImageGetNumPixels(image);
 
-    if ((offset + pixels) > num_total_pixels) {
-        if (offset >= num_total_pixels) {
-            pixels = 0;
-        } else {
-            pixels = num_total_pixels - offset;
-        }
-    }
+    bswapAdjustRegionPixels(num_total_pixels, offset, &pixels);
 
     icetCompressSubImage(image, offset, pixels, compressed_image);
 }
@@ -82,6 +89,11 @@ static void bswapSafeCompressedSubComposite(IceTImage destBuffer,
         icetCompressedSubComposite(destBuffer, offset, srcBuffer, srcOnTop);
     }
 }
+
+#if 0
+These collection functions are no longer used, but I am keeping them in
+the source code because they contain a good example of determining the
+size/offset of each partition without communication.
 
 static void bswapCollectFinalImages(const IceTInt *compose_group,
                                     IceTInt group_size,
@@ -194,7 +206,7 @@ static void bswapSendFinalImage(const IceTInt *compose_group,
     }
 
   /* Correct for last piece that may overrun image size. */
-    pixel_count = MIN(pixel_count, num_pixels - offset);
+    bswapAdjustRegionPixels(num_pixels, offset, &pixel_count);
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
       /* Use IceTByte for byte-based pointer arithmetic. */
@@ -218,6 +230,7 @@ static void bswapSendFinalImage(const IceTInt *compose_group,
                      compose_group[image_dest], SWAP_DEPTH_DATA);
     }
 }
+#endif
 
 /* Does binary swap, but does not combine the images in the end.  Instead,
  * the image is broken into pow2size pieces and stored in the first set of
@@ -392,6 +405,10 @@ void icetBswapCompose(const IceTInt *compose_group,
 
     icetRaiseDebug("In bswapCompose");
 
+    /* Remove warning about unused parameter.  Binary swap leaves images evenly
+     * partitioned, so we have no use of the image_dest parameter. */
+    (void)image_dest;
+
     width = icetImageGetWidth(image);
     height = icetImageGetHeight(image);
 
@@ -424,21 +441,17 @@ void icetBswapCompose(const IceTInt *compose_group,
                           image, pixel_count,
                           inSparseImageBuffer, outSparseImage);
 
-    if (group_rank == image_dest) {
-      /* Collect image if I'm the destination. */
-        bswapCollectFinalImages(compose_group, pow2size, group_rank,
-                                image, pixel_count/pow2size);
-        *piece_offset = 0;
-        *piece_size = icetImageGetNumPixels(image);
-    } else if (group_rank < pow2size) {
-      /* Send image to destination. */
+    if (group_rank < pow2size) {
         IceTSizeType sub_image_size = pixel_count/pow2size;
         IceTInt piece_num;
         BIT_REVERSE(piece_num, group_rank, pow2size);
-        bswapSendFinalImage(compose_group, image_dest, image,
-                            sub_image_size, piece_num*sub_image_size);
-        *piece_offset = 0;
-        *piece_size = 0;
+
+        *piece_offset = piece_num*sub_image_size;
+        *piece_size = sub_image_size;
+
+        bswapAdjustRegionPixels(icetImageGetNumPixels(image),
+                                *piece_offset,
+                                piece_size);
     } else {
         *piece_offset = 0;
         *piece_size = 0;
