@@ -35,6 +35,18 @@ struct region_divide_struct {
 
 typedef struct region_divide_struct *region_divide;
 
+typedef struct {
+    IceTDouble render_time;
+    IceTDouble buffer_read_time;
+    IceTDouble buffer_write_time;
+    IceTDouble compress_time;
+    IceTDouble blend_time;
+    IceTDouble draw_time;
+    IceTDouble composite_time;
+    IceTInt bytes_sent;
+    IceTDouble frame_time;
+} timings_type;
+
 /* Program arguments. */
 static int g_num_tiles_x;
 static int g_num_tiles_y;
@@ -471,6 +483,8 @@ static int SimpleTimingRun()
     IceTDouble projection_matrix[16];
     IceTFloat background_color[4];
 
+    timings_type *timing_array;
+
     /* Normally, the first thing that you do is set up your communication and
      * then create at least one IceT context.  This has already been done in the
      * calling function (i.e. icetTests_mpi.c).  See the init_mpi_comm in
@@ -565,10 +579,7 @@ static int SimpleTimingRun()
 
     srand(g_seed);
 
-    /* Print logging header. */
-    if (rank == 0) {
-        printf("HEADER,num processes,tiles x,tiles y,frame,rank,render time,buffer read time,buffer write time,compress time,blend time,draw time,composite time,bytes sent,frame time\n");
-    }
+    timing_array = malloc(g_num_frames * sizeof(timings_type));
 
     for (frame = 0; frame < g_num_frames; frame++) {
         IceTDouble elapsed_time;
@@ -628,41 +639,23 @@ static int SimpleTimingRun()
         elapsed_time = icetWallTime() - elapsed_time;
 
         /* Print timings to logging. */
-        {
-            IceTDouble render_time;
-            IceTDouble buffer_read_time;
-            IceTDouble buffer_write_time;
-            IceTDouble compress_time;
-            IceTDouble blend_time;
-            IceTDouble draw_time;
-            IceTDouble composite_time;
-            IceTInt bytes_sent;
-
-            icetGetDoublev(ICET_RENDER_TIME, &render_time);
-            icetGetDoublev(ICET_BUFFER_READ_TIME, &buffer_read_time);
-            icetGetDoublev(ICET_BUFFER_WRITE_TIME, &buffer_write_time);
-            icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
-            icetGetDoublev(ICET_BLEND_TIME, &blend_time);
-            icetGetDoublev(ICET_TOTAL_DRAW_TIME, &draw_time);
-            icetGetDoublev(ICET_COMPOSITE_TIME, &composite_time);
-            icetGetIntegerv(ICET_BYTES_SENT, &bytes_sent);
-
-            printf("LOG,%d,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%lf\n",
-                   num_proc,
-                   g_num_tiles_x,
-                   g_num_tiles_y,
-                   frame,
-                   rank,
-                   render_time,
-                   buffer_read_time,
-                   buffer_write_time,
-                   compress_time,
-                   blend_time,
-                   draw_time,
-                   composite_time,
-                   bytes_sent,
-                   elapsed_time);
-        }
+        icetGetDoublev(ICET_RENDER_TIME,
+                       &timing_array[frame].render_time);
+        icetGetDoublev(ICET_BUFFER_READ_TIME,
+                       &timing_array[frame].buffer_read_time);
+        icetGetDoublev(ICET_BUFFER_WRITE_TIME,
+                       &timing_array[frame].buffer_write_time);
+        icetGetDoublev(ICET_COMPRESS_TIME,
+                       &timing_array[frame].compress_time);
+        icetGetDoublev(ICET_BLEND_TIME,
+                       &timing_array[frame].blend_time);
+        icetGetDoublev(ICET_TOTAL_DRAW_TIME,
+                       &timing_array[frame].draw_time);
+        icetGetDoublev(ICET_COMPOSITE_TIME,
+                       &timing_array[frame].composite_time);
+        icetGetIntegerv(ICET_BYTES_SENT,
+                        &timing_array[frame].bytes_sent);
+        timing_array[frame].frame_time = elapsed_time;
 
         /* Write out image to verify rendering occurred correctly. */
         if (   g_write_image
@@ -677,6 +670,80 @@ static int SimpleTimingRun()
             free(buffer);
         }
     }
+
+    /* Print logging header. */
+    {
+        timings_type *timing_collection = malloc(num_proc*sizeof(timings_type));
+
+        if (rank == 0) {
+            printf("HEADER,"
+                   "num processes,"
+                   "tiles x,"
+                   "tiles y,"
+                   "frame,"
+                   "render time,"
+                   "buffer read time,"
+                   "buffer write time,"
+                   "compress time,"
+                   "blend time,"
+                   "draw time,"
+                   "composite time,"
+                   "bytes sent,"
+                   "frame time\n");
+        }
+
+        for (frame = 0; frame < g_num_frames; frame++) {
+            timings_type *timing = &timing_array[frame];
+
+            icetCommGather(timing,
+                           sizeof(timings_type),
+                           ICET_BYTE,
+                           timing_collection,
+                           0);
+
+            if (rank == 0) {
+                int p;
+                IceTInt64 total_bytes_sent = 0;
+
+                for (p = 0; p < num_proc; p++) {
+#define UPDATE_MAX(field) if (timing->field < timing_collection[p].field) timing->field = timing_collection[p].field;
+                    UPDATE_MAX(render_time);
+                    UPDATE_MAX(buffer_read_time);
+                    UPDATE_MAX(buffer_write_time);
+                    UPDATE_MAX(compress_time);
+                    UPDATE_MAX(blend_time);
+                    UPDATE_MAX(draw_time);
+                    UPDATE_MAX(composite_time);
+                    UPDATE_MAX(bytes_sent);
+                    UPDATE_MAX(frame_time);
+                    total_bytes_sent += timing_collection[p].bytes_sent;
+                }
+
+                printf("LOG,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
+                       num_proc,
+                       g_num_tiles_x,
+                       g_num_tiles_y,
+                       frame,
+                       timing->render_time,
+                       timing->buffer_read_time,
+                       timing->buffer_write_time,
+                       timing->compress_time,
+                       timing->blend_time,
+                       timing->draw_time,
+                       timing->composite_time,
+                       total_bytes_sent,
+                       timing->frame_time);
+            }
+        }
+
+        free(timing_collection);
+    }
+
+    free(timing_array);
+
+    /* This is to prevent a non-root from printing while the root is writing
+       the log. */
+    icetCommBarrier();
 
     return TEST_PASSED;
 }
