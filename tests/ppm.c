@@ -12,8 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-/* TODO: Delete this line once image format no longer relies on OpenGL */
-#include <IceTGL.h>
+#include <IceT.h>
 
 void write_ppm(const char *filename,
                const IceTUByte *image,
