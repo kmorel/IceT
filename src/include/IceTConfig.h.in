@@ -123,4 +123,6 @@ typedef IceTInt64 IceTPointerArithmetic;
 #error "Unexpected pointer size."
 #endif
 
+#define ICET_MAGIC_K_DEFAULT    @ICET_MAGIC_K@
+
 #endif /*__IceTConfig_h*/

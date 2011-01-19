@@ -131,6 +131,20 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
     icetStateSetInteger(ICET_FRAME_COUNT, 0);
 
+    if (getenv("ICET_MAGIC_K") != NULL) {
+        IceTInt magic_k = atoi(getenv("ICET_MAGIC_K"));
+        if (magic_k > 1) {
+            icetStateSetInteger(ICET_MAGIC_K, magic_k);
+        } else {
+            icetRaiseError("Environment varible ICET_MAGIC_K must be set"
+                           " to an integer greater than 1.",
+                           ICET_INVALID_VALUE);
+            icetStateSetInteger(ICET_MAGIC_K, ICET_MAGIC_K_DEFAULT);
+        }
+    } else {
+        icetStateSetInteger(ICET_MAGIC_K, ICET_MAGIC_K_DEFAULT);
+    }
+
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
     icetStateSetPointer(ICET_RENDER_LAYER_DESTRUCTOR, NULL);
 
