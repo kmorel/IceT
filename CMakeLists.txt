@@ -32,6 +32,21 @@ SET(ICET_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 OPTION(ICET_USE_OPENGL "Build OpenGL support layer for IceT." ON)
 OPTION(ICET_USE_MPI "Build MPI communication layer for IceT." ON)
 
+# Option to set the preferred K value to use in the radix-k algorithm
+SET(initial_magic_k 8)
+IF ("${CMAKE_SYSTEM_NAME}" MATCHES "^BlueGene")
+  SET(initial_magic_k 32)
+ENDIF ("${CMAKE_SYSTEM_NAME}" MATCHES "^BlueGene")
+IF ("$ENV{ICET_MAGIC_K}" GREATER 1)
+  SET(initial_magic_k $ENV{ICET_MAGIC_K})
+ENDIF ("$ENV{ICET_MAGIC_K}" GREATER 1)
+SET(ICET_MAGIC_K ${initial_magic_k} CACHE STRING
+  "Sets the preferred `k' value for the radix-k algorithm.  This is the amount of simultaneous messages each process receives.  A value of 8 is generally good on most architectures, but in others that have slower computation with respect to network (such as BlueGene), a larger value may give better performance."
+  )
+IF (NOT ${ICET_MAGIC_K} GREATER 1)
+  MESSAGE(SEND_ERROR "ICET_MAGIC_K must be set to a number greater than 1.")
+ENDIF (NOT ${ICET_MAGIC_K} GREATER 1)
+
 # Configure testing support.
 INCLUDE(Dart)
 IF (BUILD_TESTING)

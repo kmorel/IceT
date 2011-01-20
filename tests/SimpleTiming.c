@@ -674,10 +674,26 @@ static int SimpleTimingRun()
     /* Print logging header. */
     {
         timings_type *timing_collection = malloc(num_proc*sizeof(timings_type));
+        const char *strategy_name;
+        const char *si_strategy_name;
+
+        strategy_name = icetGetStrategyName();
+        if (g_single_image_strategy == ICET_SINGLE_IMAGE_STRATEGY_RADIXK) {
+            static char name_buffer[256];
+            IceTInt magic_k;
+
+            icetGetIntegerv(ICET_MAGIC_K, &magic_k);
+            sprintf(name_buffer, "radix-k %d", (int)magic_k);
+            si_strategy_name = name_buffer;
+        } else {
+            si_strategy_name = icetGetSingleImageStrategyName();
+        }
 
         if (rank == 0) {
             printf("HEADER,"
                    "num processes,"
+                   "multi-tile strategy,"
+                   "single-image strategy,"
                    "tiles x,"
                    "tiles y,"
                    "frame,"
@@ -719,8 +735,10 @@ static int SimpleTimingRun()
                     total_bytes_sent += timing_collection[p].bytes_sent;
                 }
 
-                printf("LOG,%d,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
+                printf("LOG,%d,%s,%s,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
                        num_proc,
+                       strategy_name,
+                       si_strategy_name,
                        g_num_tiles_x,
                        g_num_tiles_y,
                        frame,
@@ -731,7 +749,7 @@ static int SimpleTimingRun()
                        timing->blend_time,
                        timing->draw_time,
                        timing->composite_time,
-                       total_bytes_sent,
+                       (long int)total_bytes_sent,
                        timing->frame_time);
             }
         }

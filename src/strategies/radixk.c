@@ -34,8 +34,6 @@
 #define SWAP_IMAGE_DATA 21
 #define SWAP_DEPTH_DATA 22
 
-#define MAGIC_K 8 /* K value that is attempted to be used each round */
-
 #define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
 #define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
 #define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_2
@@ -56,7 +54,7 @@ typedef struct {
 
 /* BEGIN_PIVOT_FOR(loop_var, low, pivot, high)...END_PIVOT_FOR() provides a
    special looping mechanism that iterates over the numbers pivot, pivot-1,
-   pivot+1, pivot-2, pivot-3,... until all numbers between low (inclusive0 and
+   pivot+1, pivot-2, pivot-3,... until all numbers between low (inclusive) and
    high (exclusive) are visited.  Any numbers outside [low,high) are skipped. */
 #define BEGIN_PIVOT_FOR(loop_var, low, pivot, high) \
     { \
@@ -82,10 +80,13 @@ static int* radixkGetK(int world_size, int* num_rounds_p)
 {
     /* Divide the world size into groups that are closest to the magic k
        value. */
+    IceTInt magic_k;
     int* k_array;
     int max_num_k;
     int num_groups = 0;
     int next_divide = world_size;
+
+    icetGetIntegerv(ICET_MAGIC_K, &magic_k);
 
     /* The maximum number of factors possible is the floor of log base 2. */
     max_num_k = (int)(floor(log10(world_size)/log10(2)));
@@ -96,14 +97,14 @@ static int* radixkGetK(int world_size, int* num_rounds_p)
 
         /* If the magic k value is perfectly divisible by the next_divide
            size, we are good to go */
-        if ((next_divide % MAGIC_K) == 0) {
-            next_k = MAGIC_K;
+        if ((next_divide % magic_k) == 0) {
+            next_k = magic_k;
         }
 
         /* If that does not work, look for a factor near the magic_k. */
         if (next_k == -1) {
             int try_k;
-            BEGIN_PIVOT_FOR(try_k, 2, MAGIC_K, 2*MAGIC_K-0) {
+            BEGIN_PIVOT_FOR(try_k, 2, magic_k, 2*magic_k) {
                 if ((next_divide % try_k) == 0) {
                     next_k = try_k;
                     break;
@@ -125,7 +126,7 @@ static int* radixkGetK(int world_size, int* num_rounds_p)
             /* It would be better to just visit prime numbers, but other than
                having a huge table, how would you do that?  Hopefully this is an
                uncommon use case. */
-            for (try_k = MAGIC_K+1; try_k < max_k; try_k++) {
+            for (try_k = 2*magic_k; try_k < max_k; try_k++) {
                 if ((next_divide % try_k) == 0) {
                     next_k = try_k;
                     break;
