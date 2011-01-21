@@ -101,6 +101,8 @@
                 }
                 _dest_runlengths = _dest;
                 _dest += RUN_LENGTH_SIZE;
+                /* Handle inactive pixel region. */
+                _pixel += _dest_num_inactive;
                 while (0xFFFF < _dest_num_inactive) {
                     INACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;
                     ACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
@@ -120,6 +122,7 @@
 
 #define DT_INCREMENT_DEST_NUM_ACTIVE()                                  \
     _dest_num_active++;                                                 \
+    _pixel++;                                                           \
     if (0xFFFF < _dest_num_active) {                                    \
         ACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;                   \
         _dest_num_active -= 0xFFFF;                                     \
