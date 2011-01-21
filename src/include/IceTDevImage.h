@@ -131,41 +131,34 @@ ICET_EXPORT void icetCompressedSubComposite(IceTImage destBuffer,
                                             const IceTSparseImage srcBuffer,
                                             int srcOnTop);
 
-#define ICET_OVER_UBYTE(src, dest)                                      \
+ICET_EXPORT void icetCompressedCompressedComposite(
+                                             const IceTSparseImage front_buffer,
+                                             const IceTSparseImage back_buffer,
+                                             IceTSparseImage dest_buffer);
+
+#define ICET_BLEND_UBYTE(front, back, dest)                             \
 {                                                                       \
-    IceTUInt dfactor = 255 - (src)[3];                                  \
-    (dest)[0] = (IceTUByte)(((dest)[0]*dfactor)/255 + (src)[0]);        \
-    (dest)[1] = (IceTUByte)(((dest)[1]*dfactor)/255 + (src)[1]);        \
-    (dest)[2] = (IceTUByte)(((dest)[2]*dfactor)/255 + (src)[2]);        \
-    (dest)[3] = (IceTUByte)(((dest)[3]*dfactor)/255 + (src)[3]);        \
+    IceTUInt afactor = 255 - (front)[3];                                \
+    (dest)[0] = (IceTUByte)(((back)[0]*afactor)/255 + (front)[0]);      \
+    (dest)[1] = (IceTUByte)(((back)[1]*afactor)/255 + (front)[1]);      \
+    (dest)[2] = (IceTUByte)(((back)[2]*afactor)/255 + (front)[2]);      \
+    (dest)[3] = (IceTUByte)(((back)[3]*afactor)/255 + (front)[3]);      \
 }
 
-#define ICET_UNDER_UBYTE(src, dest)                                     \
+#define ICET_OVER_UBYTE(src, dest)  ICET_BLEND_UBYTE(src, dest, dest)
+#define ICET_UNDER_UBYTE(src, dest) ICET_BLEND_UBYTE(dest, src, dest)
+
+#define ICET_BLEND_FLOAT(front, back, dest)                             \
 {                                                                       \
-    IceTUInt sfactor = 255 - (dest)[3];                                 \
-    (dest)[0] = (IceTUByte)((dest)[0] + ((src)[0]*sfactor)/255);        \
-    (dest)[1] = (IceTUByte)((dest)[1] + ((src)[1]*sfactor)/255);        \
-    (dest)[2] = (IceTUByte)((dest)[2] + ((src)[2]*sfactor)/255);        \
-    (dest)[3] = (IceTUByte)((dest)[3] + ((src)[3]*sfactor)/255);        \
+    IceTFloat afactor = 1.0f - (front)[3];                              \
+    (dest)[0] = (back)[0]*afactor + (front)[0];                         \
+    (dest)[1] = (back)[1]*afactor + (front)[1];                         \
+    (dest)[2] = (back)[2]*afactor + (front)[2];                         \
+    (dest)[3] = (back)[3]*afactor + (front)[3];                         \
 }
 
-#define ICET_OVER_FLOAT(src, dest)                                      \
-{                                                                       \
-    IceTFloat dfactor = 1.0f - (src)[3];                                \
-    (dest)[0] = (dest)[0]*dfactor + (src)[0];                           \
-    (dest)[1] = (dest)[1]*dfactor + (src)[1];                           \
-    (dest)[2] = (dest)[2]*dfactor + (src)[2];                           \
-    (dest)[3] = (dest)[3]*dfactor + (src)[3];                           \
-}
-
-#define ICET_UNDER_FLOAT(src, dest)                                     \
-{                                                                       \
-    IceTFloat sfactor = 1.0f - (dest)[3];                               \
-    (dest)[0] = (dest)[0] + (src)[0]*sfactor;                           \
-    (dest)[1] = (dest)[1] + (src)[1]*sfactor;                           \
-    (dest)[2] = (dest)[2] + (src)[2]*sfactor;                           \
-    (dest)[3] = (dest)[3] + (src)[3]*sfactor;                           \
-}
+#define ICET_OVER_FLOAT(src, dest)  ICET_BLEND_FLOAT(src, dest, dest)
+#define ICET_UNDER_FLOAT(src, dest) ICET_BLEND_FLOAT(dest, src, dest)
 
 #ifdef __cplusplus
 }

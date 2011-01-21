@@ -15,7 +15,7 @@
  * try to debug big macros, we just include this file with various parameters.
  *
  * The following macros must be defined:
- *      INPUT_SPARSE_IMAGE - an IcetSparseImage object containing the data to
+ *      INPUT_SPARSE_IMAGE - an IceTSparseImage object containing the data to
  *              be decompressed.
  *      OUTPUT_IMAGE - an allocated IceTImage object to place the decompressed
  *              image.

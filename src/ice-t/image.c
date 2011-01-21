@@ -1436,6 +1436,24 @@ void icetCompressedSubComposite(IceTImage destBuffer,
     *compare_time += icetWallTime() - timer;
 }
 
+void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
+                                       const IceTSparseImage back_buffer,
+                                       IceTSparseImage dest_buffer)
+{
+    IceTDouble timer;
+    IceTDouble *compare_time;
+
+    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
+    timer = icetWallTime();
+
+#define FRONT_SPARSE_IMAGE front_buffer
+#define BACK_SPARSE_IMAGE back_buffer
+#define DEST_SPARSE_IMAGE dest_buffer
+#include "cc_composite_func_body.h"
+
+    *compare_time += icetWallTime() - timer;
+}
+
 static IceTImage renderTile(int tile,
                             IceTInt *screen_viewport,
                             IceTInt *target_viewport,
