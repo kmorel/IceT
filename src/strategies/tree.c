@@ -122,9 +122,9 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
         /* The actual image data is now in imageBuffer, so switch imageBuffer
            and imageData. */
         {
-            IceTSparseImage *oldImage = imageData;
-            imageData = imageBuffer;
-            imageBuffer = oldImage;
+            IceTSparseImage oldImage = *imageData;
+            *imageData = *imageBuffer;
+            *imageBuffer = oldImage;
         }
     }
 }
