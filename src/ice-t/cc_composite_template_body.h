@@ -98,6 +98,7 @@
                 if (_dest_runlengths != NULL) {
                     ACTIVE_RUN_LENGTH(_dest_runlengths)
                         = (IceTUShort)(_dest_num_active);
+                    _dest_num_active = 0;
                 }
                 _dest_runlengths = _dest;
                 _dest += RUN_LENGTH_SIZE;
@@ -117,6 +118,7 @@
                 if (_dest_runlengths == NULL) {
                     _dest_runlengths = _dest;
                     _dest += RUN_LENGTH_SIZE;
+                    INACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
                 }
             }
         }
@@ -154,6 +156,14 @@
                 _back_num_active--;
             }
         }
+    }
+
+    if (_dest_runlengths != NULL) {
+        ACTIVE_RUN_LENGTH(_dest_runlengths) = (IceTUShort)(_dest_num_active);
+    }
+
+    if (_pixel != _num_pixels) {
+        icetRaiseError("Corrupt compressed image.", ICET_INVALID_VALUE);
     }
 }
 
