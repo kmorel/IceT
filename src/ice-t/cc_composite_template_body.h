@@ -104,6 +104,8 @@
                 _dest += RUN_LENGTH_SIZE;
                 /* Handle inactive pixel region. */
                 _pixel += _dest_num_inactive;
+                _front_num_inactive -= _dest_num_inactive;
+                _back_num_inactive -= _dest_num_inactive;
                 while (0xFFFF < _dest_num_inactive) {
                     INACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;
                     ACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
