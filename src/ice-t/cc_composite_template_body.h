@@ -108,6 +108,7 @@
                     ACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
                     _dest_runlengths = _dest;
                     _dest += RUN_LENGTH_SIZE;
+                    _dest_num_inactive -= 0xFFFF;
                 }
                 INACTIVE_RUN_LENGTH(_dest_runlengths)
                     = (IceTUShort)(_dest_num_inactive);
