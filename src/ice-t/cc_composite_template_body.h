@@ -167,6 +167,18 @@
     if (_pixel != _num_pixels) {
         icetRaiseError("Corrupt compressed image.", ICET_INVALID_VALUE);
     }
+
+    {
+        /* Compute the actual number of bytes used to store the image. */
+        IceTPointerArithmetic _buffer_begin
+            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(DT_DEST_COMPRESSED_IMAGE);
+        IceTPointerArithmetic _buffer_end
+            =(IceTPointerArithmetic)_dest;
+        IceTPointerArithmetic _compressed_size = _buffer_end - _buffer_begin;
+        ICET_IMAGE_HEADER(DT_DEST_COMPRESSED_IMAGE)
+            [ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+            = (IceTInt)_compressed_size;
+    }
 }
 
 #undef DT_FRONT_COMPRESSED_IMAGE
