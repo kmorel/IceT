@@ -85,7 +85,7 @@
         UNPACK_PIXEL(src1_pointer, src1_color, src1_depth);             \
         UNPACK_PIXEL(src2_pointer, src2_color, src2_depth);             \
         UNPACK_PIXEL(dest_pointer, dest_color, dest_depth);             \
-        if (src1_depth < src2_depth) {                                  \
+        if (src1_depth[0] < src2_depth[0]) {                            \
             dest_color[0] = src1_color[0];                              \
             dest_depth[0] = src1_depth[0];                              \
         } else {                                                        \
@@ -126,7 +126,7 @@
         UNPACK_PIXEL(src1_pointer, src1_color, src1_depth);             \
         UNPACK_PIXEL(src2_pointer, src2_color, src2_depth);             \
         UNPACK_PIXEL(dest_pointer, dest_color, dest_depth);             \
-        if (src1_depth < src2_depth) {                                  \
+        if (src1_depth[0] < src2_depth[0]) {                            \
             dest_color[0] = src1_color[0];                              \
             dest_color[1] = src1_color[1];                              \
             dest_color[2] = src1_color[2];                              \
@@ -171,7 +171,7 @@
         UNPACK_PIXEL(src1_pointer, src1_depth);                         \
         UNPACK_PIXEL(src2_pointer, src2_depth);                         \
         UNPACK_PIXEL(dest_pointer, dest_depth);                         \
-        if (src1_depth < src2_depth) {                                  \
+        if (src1_depth[0] < src2_depth[0]) {                            \
             dest_depth[0] = src1_depth[0];                              \
         } else {                                                        \
             dest_depth[0] = src2_depth[0];                              \
