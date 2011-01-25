@@ -78,6 +78,31 @@ static void ICET_TEST_SPARSE_IMAGE_HEADER(IceTSparseImage image)
 static IceTSizeType colorPixelSize(IceTEnum color_format);
 static IceTSizeType depthPixelSize(IceTEnum depth_format);
 
+/* Given a pointer to a data element in a sparse image data buffer, the amount
+   of inactive pixels before this data element, and the number of active pixels
+   until the next run length, advance the pointer for the number of pixels given
+   and update the inactive and active parameters.  Note that the pointer may
+   point to a run length entry if the number of active is set to zero.  If
+   out_data_p is non-NULL, the data will also be written, in sparse format, to
+   the data pointed there and advanced.  It is up to the calling method to
+   handle the sparse image header. */
+static void icetSparseImageSkipPixels(const IceTVoid **data_p,
+                                      IceTSizeType *inactive_before_p,
+                                      IceTSizeType *active_till_next_runl_p,
+                                      IceTSizeType pixels_to_skip,
+                                      IceTSizeType pixel_size,
+                                      IceTVoid **out_data_p);
+
+/* Similar calling structure as icetSparseImageSkipPixels except that the
+   data is also copied to out_image. */
+static void icetSparseImageCopyPixelsInternal(
+                                          const IceTVoid **data_p,
+                                          IceTSizeType *inactive_before_p,
+                                          IceTSizeType *active_till_next_runl_p,
+                                          IceTSizeType pixels_to_copy,
+                                          IceTSizeType pixel_size,
+                                          IceTSparseImage out_image);
+
 /* Renders the geometry for a tile and returns an image of the rendered data.
    If IceT determines that it is most efficient to render the data directly to
    the tile projection, then screen_viewport and tile_viewport will be set to
@@ -1065,6 +1090,123 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
 
   /* The image is valid (as far as we can tell). */
     return image;
+}
+
+static void icetSparseImageSkipPixels(const IceTVoid **data_p,
+                                      IceTSizeType *inactive_before_p,
+                                      IceTSizeType *active_till_next_runl_p,
+                                      IceTSizeType pixels_to_skip,
+                                      IceTSizeType pixel_size,
+                                      IceTVoid **out_data_p)
+{
+    const IceTByte *data = *data_p; /* IceTByte for byte-pointer arithmetic. */
+    IceTSizeType inactive_before = *inactive_before_p;
+    IceTSizeType active_till_next_runl = *active_till_next_runl_p;
+    IceTSizeType pixels_left = pixels_to_skip;
+    IceTByte *out_data = (out_data_p ? *out_data_p : NULL);
+
+    while (pixels_left > 0) {
+        IceTSizeType count;
+        if ((inactive_before == 0) && (active_till_next_runl == 0)) {
+            inactive_before = INACTIVE_RUN_LENGTH(data);
+            active_till_next_runl = ACTIVE_RUN_LENGTH(data);
+            data += RUN_LENGTH_SIZE;
+        }
+
+        count = MIN(inactive_before, pixels_left);
+        inactive_before -= count;
+        pixels_left -= count;
+        if (out_data) {
+            INACTIVE_RUN_LENGTH(out_data) = count;
+        }
+
+        count = MIN(active_till_next_runl, pixels_left);
+        active_till_next_runl -= count;
+        pixels_left -= count;
+        if (out_data) {
+            ACTIVE_RUN_LENGTH(out_data) = count;
+            out_data += RUN_LENGTH_SIZE;
+            memcpy(out_data, data, pixel_size * count);
+            out_data += pixel_size * count;
+        }
+        data += pixel_size * count;
+    }
+    *data_p = data;
+    *inactive_before_p = inactive_before;
+    *active_till_next_runl_p = active_till_next_runl;
+    if (out_data_p) *out_data_p = out_data;
+}
+
+static void icetSparseImageCopyPixelsInternal(
+                                          const IceTVoid **in_data_p,
+                                          IceTSizeType *inactive_before_p,
+                                          IceTSizeType *active_till_next_runl_p,
+                                          IceTSizeType pixels_to_copy,
+                                          IceTSizeType pixel_size,
+                                          IceTSparseImage out_image)
+{
+    IceTVoid *out_data = ICET_IMAGE_DATA(out_image);
+
+    icetSparseImageSetDimensions(out_image, pixels_to_copy, 1);
+
+    icetSparseImageSkipPixels(in_data_p,
+                              inactive_before_p,
+                              active_till_next_runl_p,
+                              pixels_to_copy,
+                              pixel_size,
+                              &out_data);
+
+    {
+        /* Compute the actual number of bytes used to store the image. */
+        IceTPointerArithmetic buffer_begin
+            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(out_image);
+        IceTPointerArithmetic buffer_end
+            =(IceTPointerArithmetic)out_data;
+        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
+        ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+            = (IceTInt)compressed_size;
+    }
+}
+
+void icetSparseImageCopyPixels(const IceTSparseImage in_image,
+                               IceTSizeType in_offset,
+                               IceTSizeType num_pixels,
+                               IceTSparseImage out_image)
+{
+    IceTEnum color_format;
+    IceTEnum depth_format;
+    IceTSizeType pixel_size;
+
+    const IceTVoid *in_data;
+    IceTSizeType start_inactive;
+    IceTSizeType start_active;
+
+    color_format = icetSparseImageGetColorFormat(in_image);
+    depth_format = icetSparseImageGetDepthFormat(in_image);
+    if (   (color_format != icetSparseImageGetColorFormat(out_image))
+        || (depth_format != icetSparseImageGetDepthFormat(out_image)) ) {
+        icetRaiseError("Cannot copy pixels of images with different formats.",
+                       ICET_INVALID_VALUE);
+        return;
+    }
+
+    pixel_size = colorPixelSize(color_format) + depthPixelSize(depth_format);
+
+    in_data = ICET_IMAGE_DATA(in_image);
+    start_inactive = start_active = 0;
+    icetSparseImageSkipPixels(&in_data,
+                              &start_inactive,
+                              &start_active,
+                              in_offset,
+                              pixel_size,
+                              NULL);
+
+    icetSparseImageCopyPixelsInternal(&in_data,
+                                      &start_inactive,
+                                      &start_active,
+                                      num_pixels,
+                                      pixel_size,
+                                      out_image);
 }
 
 void icetClearImage(IceTImage image)

@@ -99,6 +99,11 @@ ICET_EXPORT void icetSparseImagePackageForSend(IceTSparseImage image,
 ICET_EXPORT IceTSparseImage icetSparseImageUnpackageFromReceive(
                                                               IceTVoid *buffer);
 
+ICET_EXPORT void icetSparseImageCopyPixels(const IceTSparseImage in_image,
+                                           IceTSizeType in_offset,
+                                           IceTSizeType num_pixels,
+                                           IceTSparseImage out_image);
+
 ICET_EXPORT void icetClearImage(IceTImage image);
 ICET_EXPORT void icetClearSparseImage(IceTSparseImage image);
 
