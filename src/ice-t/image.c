@@ -1209,6 +1209,86 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                                       out_image);
 }
 
+void icetSparseImageSplit(const IceTSparseImage in_image,
+                          IceTInt num_partitions,
+                          IceTSparseImage *out_images,
+                          IceTSizeType *offsets)
+{
+    IceTSizeType total_num_pixels;
+    IceTSizeType partition_num_pixels;
+    IceTSizeType remainder_num_pixels;
+
+    IceTEnum color_format;
+    IceTEnum depth_format;
+    IceTSizeType pixel_size;
+
+    const IceTVoid *in_data;
+    IceTSizeType start_inactive;
+    IceTSizeType start_active;
+
+    IceTInt partition;
+    IceTSizeType pixel;
+
+    if (num_partitions < 2) {
+        icetRaiseError("It does not make sense to call icetSparseImageSplit"
+                       " with less than 2 partitions.",
+                       ICET_INVALID_VALUE);
+        return;
+    }
+
+    total_num_pixels = icetSparseImageGetNumPixels(in_image);
+    partition_num_pixels = total_num_pixels/num_partitions;
+    remainder_num_pixels = total_num_pixels%num_partitions;
+
+    color_format = icetSparseImageGetColorFormat(in_image);
+    depth_format = icetSparseImageGetDepthFormat(in_image);
+    pixel_size = colorPixelSize(color_format) + depthPixelSize(depth_format);
+
+    in_data = ICET_IMAGE_DATA(in_image);
+    start_inactive = start_active = 0;
+    pixel = 0;
+
+    for (partition = 0; partition < num_partitions; partition++) {
+        IceTSparseImage out_image = out_images[partition];
+        IceTSizeType this_partition_num_pixels;
+
+        if (   (color_format != icetSparseImageGetColorFormat(out_image))
+            || (depth_format != icetSparseImageGetDepthFormat(out_image)) ) {
+            icetRaiseError("Cannot copy pixels of images with different"
+                           " formats.",
+                           ICET_INVALID_VALUE);
+            return;
+        }
+
+        offsets[partition] = pixel;
+        this_partition_num_pixels = partition_num_pixels;
+        if (partition < remainder_num_pixels) { this_partition_num_pixels++; }
+        pixel += this_partition_num_pixels;
+
+        icetSparseImageCopyPixelsInternal(&in_data,
+                                          &start_inactive,
+                                          &start_active,
+                                          this_partition_num_pixels,
+                                          pixel_size,
+                                          out_image);
+    }
+
+#ifdef DEBUG
+    if (   (pixel != total_num_pixels)
+        || (start_inactive != 0)
+        || (start_active != 0) ) {
+        icetRaiseError("Counting problem.", ICET_SANITY_CHECK_FAIL);
+    }
+#endif
+}
+
+IceTSizeType icetSparseImageSplitPartitionNumPixels(
+                                                  IceTSizeType input_num_pixels,
+                                                  IceTInt num_partitions)
+{
+    return input_num_pixels/num_partitions + 1;
+}
+
 void icetClearImage(IceTImage image)
 {
     IceTInt region[4] = {0, 0, 0, 0};

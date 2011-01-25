@@ -190,6 +190,76 @@ static int TestSparseImageCopyPixels(const IceTImage image)
     }
 
     return TEST_PASSED;
+#undef NUM_OFFSETS
+}
+
+static int TestSparseImageSplit(const IceTImage image)
+{
+#define NUM_PARTITIONS 7
+    IceTVoid *full_sparse_buffer;
+    IceTSparseImage full_sparse;
+    IceTVoid *sparse_partition_buffer[NUM_PARTITIONS];
+    IceTSparseImage sparse_partition[NUM_PARTITIONS];
+    IceTSizeType offsets[NUM_PARTITIONS];
+    IceTVoid *compare_sparse_buffer;
+    IceTSparseImage compare_sparse;
+
+    IceTSizeType width;
+    IceTSizeType height;
+    IceTSizeType num_partition_pixels;
+
+    IceTInt partition;
+
+    width = icetImageGetWidth(image);
+    height = icetImageGetHeight(image);
+    num_partition_pixels
+        = icetSparseImageSplitPartitionNumPixels(width*height, NUM_PARTITIONS);
+
+    full_sparse_buffer = malloc(icetSparseImageBufferSize(width, height));
+    full_sparse = icetSparseImageAssignBuffer(full_sparse_buffer,width,height);
+
+    for (partition = 0; partition < NUM_PARTITIONS; partition++) {
+        sparse_partition_buffer[partition]
+            = malloc(icetSparseImageBufferSize(num_partition_pixels, 1));
+        sparse_partition[partition]
+            = icetSparseImageAssignBuffer(sparse_partition_buffer[partition],
+                                          num_partition_pixels, 1);
+    }
+
+    compare_sparse_buffer
+        = malloc(icetSparseImageBufferSize(num_partition_pixels, 1));
+    compare_sparse
+        = icetSparseImageAssignBuffer(compare_sparse_buffer,
+                                      num_partition_pixels, 1);
+
+    icetCompressImage(image, full_sparse);
+
+    printf("Spliting image %d times\n", NUM_PARTITIONS);
+    icetSparseImageSplit(full_sparse,
+                         NUM_PARTITIONS,
+                         sparse_partition,
+                         offsets);
+    for (partition = 0; partition < NUM_PARTITIONS; partition++) {
+        IceTInt result;
+        icetCompressSubImage(image,
+                             offsets[partition],
+                             icetSparseImageGetNumPixels(
+                                                   sparse_partition[partition]),
+                             compare_sparse);
+        printf("    Comparing partition %d\n", partition);
+        result = CompareSparseImages(compare_sparse,
+                                     sparse_partition[partition]);
+        if (result != TEST_PASSED) return result;
+    }
+
+    free(full_sparse_buffer);
+    for (partition = 0; partition < NUM_PARTITIONS; partition++) {
+        free(sparse_partition_buffer[partition]);
+    }
+    free(compare_sparse_buffer);
+
+    return TEST_PASSED;
+#undef NUM_PARTITIONS
 }
 
 static int SparseImageCopyRun()
@@ -210,11 +280,17 @@ static int SparseImageCopyRun()
     if (TestSparseImageCopyPixels(image) != TEST_PASSED) {
         return TEST_FAILED;
     }
+    if (TestSparseImageSplit(image) != TEST_PASSED) {
+        return TEST_FAILED;
+    }
 
     printf("\n********* Creating upper triangle image\n");
     UpperTriangleImage(image);
 
     if (TestSparseImageCopyPixels(image) != TEST_PASSED) {
+        return TEST_FAILED;
+    }
+    if (TestSparseImageSplit(image) != TEST_PASSED) {
         return TEST_FAILED;
     }
 
