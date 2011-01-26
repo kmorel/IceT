@@ -65,7 +65,7 @@ static void parse_arguments(int argc, char *argv[])
 
     g_num_tiles_x = 1;
     g_num_tiles_y = 1;
-    g_num_frames = 100;
+    g_num_frames = 2;
     g_seed = (int)time(NULL);
     g_transparent = 0;
     g_write_image = 0;
