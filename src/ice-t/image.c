@@ -216,11 +216,15 @@ IceTSizeType icetSparseImageBufferSizeType(IceTEnum color_format,
      image plus the space of 2 run lengths per 0xFFFF (65,535) pixels.  This
      occurs when there are no inactive pixels (hence all data is stored plus the
      necessary run lengths, where the largest run length is 0xFFFF so it can fit
-     into a 16-bit integer).  Even in the pathalogical case where every run
-     length is 1, we are still never any more than that because the 2
-     active/inactive run lengths are packed into 2-bit shorts, which total takes
-     no more space than a color or depth value for a single pixel. */
-    return (  2*sizeof(IceTUShort)*((width*height)/0xFFFF + 1)
+     into a 16-bit integer).  We also add 2 more run lengths to that: one for
+     the first run length and another because the sparse image copy commands can
+     split the first run length unevenly.
+
+     Even in the pathalogical case where every run length is 1, we are still
+     never any more than that because the 2 active/inactive run lengths are
+     packed into 2-bit shorts, which total takes no more space than a color or
+     depth value for a single pixel. */
+    return (  2*sizeof(IceTUShort)*((width*height)/0xFFFF + 2)
             + icetImageBufferSizeType(color_format,depth_format,width,height) );
 }
 
