@@ -35,8 +35,7 @@
  *              BLEND_RGBA_FLOAT(src, dest) - same as above except src and dest
  *                      are IceTFloat arrays.
  *      OFFSET - If defined to a number (or variable holding a number), skips
- *              that many pixels at the beginning of the image.  This probably
- *              only makes sense when COMPOSITE is on.
+ *              that many pixels at the beginning of the image.
  *      PIXEL_COUNT - If defined to a number (or a variable holding a number),
  *              uses this as the size of the image rather than the actual size
  *              defined in the image.  This should be defined if OFFSET is

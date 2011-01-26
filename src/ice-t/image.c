@@ -1569,16 +1569,25 @@ void icetCompressSubImage(const IceTImage image,
 void icetDecompressImage(const IceTSparseImage compressed_image,
                          IceTImage image)
 {
-    ICET_TEST_IMAGE_HEADER(image);
-    ICET_TEST_SPARSE_IMAGE_HEADER(compressed_image);
-
     icetImageSetDimensions(image,
                            icetSparseImageGetWidth(compressed_image),
                            icetSparseImageGetHeight(compressed_image));
 
+    icetDecompressSubImage(compressed_image, 0, image);
+}
+
+void icetDecompressSubImage(const IceTSparseImage compressed_image,
+                            IceTSizeType offset,
+                            IceTImage image)
+{
+    ICET_TEST_IMAGE_HEADER(image);
+    ICET_TEST_SPARSE_IMAGE_HEADER(compressed_image);
+
 #define INPUT_SPARSE_IMAGE      compressed_image
 #define OUTPUT_IMAGE            image
 #define TIME_DECOMPRESSION
+#define OFFSET                  offset
+#define PIXEL_COUNT             icetSparseImageGetNumPixels(compressed_image)
 #include "decompress_func_body.h"
 }
 
