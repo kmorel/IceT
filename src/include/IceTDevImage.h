@@ -99,6 +99,9 @@ ICET_EXPORT void icetSparseImagePackageForSend(IceTSparseImage image,
 ICET_EXPORT IceTSparseImage icetSparseImageUnpackageFromReceive(
                                                               IceTVoid *buffer);
 
+ICET_EXPORT IceTBoolean icetSparseImageEqual(const IceTSparseImage image1,
+                                             const IceTSparseImage image2);
+
 ICET_EXPORT void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                                            IceTSizeType in_offset,
                                            IceTSizeType num_pixels,

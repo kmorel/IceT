@@ -91,11 +91,26 @@ static void icetSparseImageSkipPixels(const IceTVoid **data_p,
                                       IceTSizeType *active_till_next_runl_p,
                                       IceTSizeType pixels_to_skip,
                                       IceTSizeType pixel_size,
-                                      IceTVoid **out_data_p);
+                                      IceTVoid **out_data_p,
+                                      IceTVoid **last_run_length_p);
 
 /* Similar calling structure as icetSparseImageSkipPixels except that the
    data is also copied to out_image. */
 static void icetSparseImageCopyPixelsInternal(
+                                          const IceTVoid **data_p,
+                                          IceTSizeType *inactive_before_p,
+                                          IceTSizeType *active_till_next_runl_p,
+                                          IceTSizeType pixels_to_copy,
+                                          IceTSizeType pixel_size,
+                                          IceTSparseImage out_image);
+
+/* Similar to icetSparseImageCopyPixelsInternal except that data_p should be
+   pointing to the entry of the data in out_image and the inactive_before and
+   active_till_next_runl should be 0.  The pixels in the input (and output since
+   they are the same) will be skipped as normal except that the header
+   information and last run length for the image will be adjusted so that it is
+   equivalent to a copy. */
+static void icetSparseImageCopyPixelsInPlaceInternal(
                                           const IceTVoid **data_p,
                                           IceTSizeType *inactive_before_p,
                                           IceTSizeType *active_till_next_runl_p,
@@ -1092,22 +1107,31 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
     return image;
 }
 
+IceTBoolean icetSparseImageEqual(const IceTSparseImage image1,
+                                 const IceTSparseImage image2)
+{
+    return image1.opaque_internals == image2.opaque_internals;
+}
+
 static void icetSparseImageSkipPixels(const IceTVoid **data_p,
                                       IceTSizeType *inactive_before_p,
                                       IceTSizeType *active_till_next_runl_p,
                                       IceTSizeType pixels_to_skip,
                                       IceTSizeType pixel_size,
-                                      IceTVoid **out_data_p)
+                                      IceTVoid **out_data_p,
+                                      IceTVoid **last_run_length_p)
 {
     const IceTByte *data = *data_p; /* IceTByte for byte-pointer arithmetic. */
     IceTSizeType inactive_before = *inactive_before_p;
     IceTSizeType active_till_next_runl = *active_till_next_runl_p;
     IceTSizeType pixels_left = pixels_to_skip;
     IceTByte *out_data = (out_data_p ? *out_data_p : NULL);
+    const IceTVoid *last_run_length = NULL;
 
     while (pixels_left > 0) {
         IceTSizeType count;
         if ((inactive_before == 0) && (active_till_next_runl == 0)) {
+            last_run_length = data;
             inactive_before = INACTIVE_RUN_LENGTH(data);
             active_till_next_runl = ACTIVE_RUN_LENGTH(data);
             data += RUN_LENGTH_SIZE;
@@ -1134,7 +1158,8 @@ static void icetSparseImageSkipPixels(const IceTVoid **data_p,
     *data_p = data;
     *inactive_before_p = inactive_before;
     *active_till_next_runl_p = active_till_next_runl;
-    if (out_data_p) *out_data_p = out_data;
+    if (out_data_p) { *out_data_p = out_data; }
+    if (last_run_length_p) { *last_run_length_p = (IceTVoid *)last_run_length; }
 }
 
 static void icetSparseImageCopyPixelsInternal(
@@ -1154,7 +1179,8 @@ static void icetSparseImageCopyPixelsInternal(
                               active_till_next_runl_p,
                               pixels_to_copy,
                               pixel_size,
-                              &out_data);
+                              &out_data,
+                              NULL);
 
     {
         /* Compute the actual number of bytes used to store the image. */
@@ -1162,6 +1188,57 @@ static void icetSparseImageCopyPixelsInternal(
             =(IceTPointerArithmetic)ICET_IMAGE_HEADER(out_image);
         IceTPointerArithmetic buffer_end
             =(IceTPointerArithmetic)out_data;
+        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
+        ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+            = (IceTInt)compressed_size;
+    }
+}
+
+static void icetSparseImageCopyPixelsInPlaceInternal(
+                                          const IceTVoid **in_data_p,
+                                          IceTSizeType *inactive_before_p,
+                                          IceTSizeType *active_till_next_runl_p,
+                                          IceTSizeType pixels_to_copy,
+                                          IceTSizeType pixel_size,
+                                          IceTSparseImage out_image)
+{
+    IceTVoid *last_run_length = NULL;
+
+#ifdef DEBUG
+    if (   (*in_data_p != ICET_IMAGE_DATA(out_image))
+        || (*inactive_before_p != 0)
+        || (*active_till_next_runl_p != 0) ) {
+        icetRaiseError("icetSparseImageCopyPixelsInPlaceInternal not called"
+                       " at beginning of buffer.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+#endif
+
+    icetSparseImageSkipPixels(in_data_p,
+                              inactive_before_p,
+                              active_till_next_runl_p,
+                              pixels_to_copy,
+                              pixel_size,
+                              NULL,
+                              &last_run_length);
+
+    ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_WIDTH_INDEX]
+        = (IceTInt)pixels_to_copy;
+    ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_HEIGHT_INDEX] = (IceTInt)1;
+
+    if (last_run_length != NULL) {
+        INACTIVE_RUN_LENGTH(last_run_length)
+            -= (IceTUShort)(*inactive_before_p);
+        ACTIVE_RUN_LENGTH(last_run_length)
+            -= (IceTUShort)(*active_till_next_runl_p);
+    }
+
+    {
+        /* Compute the actual number of bytes used to store the image. */
+        IceTPointerArithmetic buffer_begin
+            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(out_image);
+        IceTPointerArithmetic buffer_end
+            =(IceTPointerArithmetic)(*in_data_p);
         IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
         ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
             = (IceTInt)compressed_size;
@@ -1199,6 +1276,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                               &start_active,
                               in_offset,
                               pixel_size,
+                              NULL,
                               NULL);
 
     icetSparseImageCopyPixelsInternal(&in_data,
@@ -1265,12 +1343,28 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
         if (partition < remainder_num_pixels) { this_partition_num_pixels++; }
         pixel += this_partition_num_pixels;
 
-        icetSparseImageCopyPixelsInternal(&in_data,
-                                          &start_inactive,
-                                          &start_active,
-                                          this_partition_num_pixels,
-                                          pixel_size,
-                                          out_image);
+        if (icetSparseImageEqual(in_image, out_image)) {
+            if (partition == 0) {
+                icetSparseImageCopyPixelsInPlaceInternal(
+                                                      &in_data,
+                                                      &start_inactive,
+                                                      &start_active,
+                                                      this_partition_num_pixels,
+                                                      pixel_size,
+                                                      out_image);
+            } else {
+                icetRaiseError("icetSparseImageSplit copy in place only allowed"
+                               " in first partition.",
+                               ICET_INVALID_VALUE);
+            }
+        } else {
+            icetSparseImageCopyPixelsInternal(&in_data,
+                                              &start_inactive,
+                                              &start_active,
+                                              this_partition_num_pixels,
+                                              pixel_size,
+                                              out_image);
+        }
     }
 
 #ifdef DEBUG

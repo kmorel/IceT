@@ -81,32 +81,41 @@ static void UpperTriangleImage(IceTImage image)
     }
 }
 
-static int CompareSparseImages(const IceTSparseImage image1,
-                               const IceTSparseImage image2)
+static int CompareSparseImages(const IceTSparseImage image0,
+                               const IceTSparseImage image1)
 {
-    /* This is a little bit hacky, but the sparse image internals are never
-     * exposed. */
-    IceTUInt *buffer1;
-    IceTUInt *buffer2;
-    IceTSizeType buffer_size1;
-    IceTSizeType buffer_size2;
-    IceTSizeType entries;
+    IceTSizeType width;
+    IceTSizeType height;
+    IceTVoid *image_buffer[2];
+    IceTImage image[2];
+    IceTUInt *color_buffer[2];
     IceTSizeType i;
 
-    icetSparseImagePackageForSend(image1, (IceTVoid**)&buffer1, &buffer_size1);
-    icetSparseImagePackageForSend(image2, (IceTVoid**)&buffer2, &buffer_size2);
-
-    if (buffer_size1 != buffer_size2) {
+    if (   icetSparseImageGetCompressedBufferSize(image0)
+        != icetSparseImageGetCompressedBufferSize(image1) ) {
         printf("Buffer sizes do not match: %d vs %d!\n",
-               buffer_size1, buffer_size2);
+               icetSparseImageGetCompressedBufferSize(image0),
+               icetSparseImageGetCompressedBufferSize(image1));
         return TEST_FAILED;
     }
 
-    entries = buffer_size1/sizeof(IceTUInt);
-    for (i = 0; i < entries; i++) {
-        if (buffer1[i] != buffer2[i]) {
+    width = icetSparseImageGetWidth(image1);
+    height = icetSparseImageGetHeight(image1);
+
+    image_buffer[0] = malloc(icetImageBufferSize(width, height));
+    image[0] = icetImageAssignBuffer(image_buffer[0], width, height);
+    icetDecompressImage(image0, image[0]);
+    color_buffer[0] = icetImageGetColorui(image[0]);
+
+    image_buffer[1] = malloc(icetImageBufferSize(width, height));
+    image[1] = icetImageAssignBuffer(image_buffer[1], width, height);
+    icetDecompressImage(image1, image[1]);
+    color_buffer[1] = icetImageGetColorui(image[1]);
+
+    for (i = 0; i < width*height; i++) {
+        if (color_buffer[0][i] != color_buffer[1][i]) {
             printf("Buffer mismatch at uint %d\n", i);
-            printf("0x%x vs 0x%x\n", buffer1[i], buffer2[i]);
+            printf("0x%x vs 0x%x\n", color_buffer[0][i], color_buffer[1][i]);
             return TEST_FAILED;
         }
     }
@@ -235,6 +244,26 @@ static int TestSparseImageSplit(const IceTImage image)
     icetCompressImage(image, full_sparse);
 
     printf("Spliting image %d times\n", NUM_PARTITIONS);
+    icetSparseImageSplit(full_sparse,
+                         NUM_PARTITIONS,
+                         sparse_partition,
+                         offsets);
+    for (partition = 0; partition < NUM_PARTITIONS; partition++) {
+        IceTInt result;
+        icetCompressSubImage(image,
+                             offsets[partition],
+                             icetSparseImageGetNumPixels(
+                                                   sparse_partition[partition]),
+                             compare_sparse);
+        printf("    Comparing partition %d\n", partition);
+        result = CompareSparseImages(compare_sparse,
+                                     sparse_partition[partition]);
+        if (result != TEST_PASSED) return result;
+    }
+
+    printf("Spliting image %d times with first partition in place.\n",
+           NUM_PARTITIONS);
+    sparse_partition[0] = full_sparse;
     icetSparseImageSplit(full_sparse,
                          NUM_PARTITIONS,
                          sparse_partition,
