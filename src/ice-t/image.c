@@ -1274,6 +1274,9 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
     IceTSizeType start_inactive;
     IceTSizeType start_active;
 
+    IceTDouble *compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
+    IceTDouble timer = icetWallTime();
+
     color_format = icetSparseImageGetColorFormat(in_image);
     depth_format = icetSparseImageGetDepthFormat(in_image);
     if (   (color_format != icetSparseImageGetColorFormat(out_image))
@@ -1301,6 +1304,8 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                                       num_pixels,
                                       pixel_size,
                                       out_image);
+
+    *compress_time += icetWallTime() - timer;
 }
 
 static void icetSparseImageSplitChoosePartitions(IceTInt num_partitions,
@@ -1348,6 +1353,9 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
     IceTSizeType start_active;
 
     IceTInt partition;
+
+    IceTDouble *compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
+    IceTDouble timer = icetWallTime();
 
     if (num_partitions < 2) {
         icetRaiseError("It does not make sense to call icetSparseImageSplit"
@@ -1417,6 +1425,8 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
         icetRaiseError("Counting problem.", ICET_SANITY_CHECK_FAIL);
     }
 #endif
+
+    *compress_time += icetWallTime() - timer;
 }
 
 IceTSizeType icetSparseImageSplitPartitionNumPixels(
