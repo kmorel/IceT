@@ -14,8 +14,7 @@
 #include <IceTDevImage.h>
 
 #define TREE_IN_SPARSE_IMAGE_BUFFER     ICET_SI_STRATEGY_BUFFER_0
-#define TREE_SPARSE_IMAGE_DATA          ICET_SI_STRATEGY_BUFFER_1
-#define TREE_SPARSE_IMAGE_BUFFER        ICET_SI_STRATEGY_BUFFER_2
+#define TREE_SPARSE_IMAGE_BUFFER        ICET_SI_STRATEGY_BUFFER_1
 
 #define TREE_IMAGE_DATA 23
 
@@ -132,9 +131,9 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
 void icetTreeCompose(const IceTInt *compose_group,
                      IceTInt group_size,
                      IceTInt image_dest,
-                     IceTImage image,
-                     IceTSizeType *piece_offset,
-                     IceTSizeType *piece_size)
+                     IceTSparseImage input_image,
+                     IceTSparseImage *result_image,
+                     IceTSizeType *piece_offset)
 {
     IceTInt group_rank;
     IceTVoid *inSparseImageBuffer;
@@ -143,15 +142,14 @@ void icetTreeCompose(const IceTInt *compose_group,
     IceTSizeType width, height;
     IceTSizeType sparseBufferSize;
 
-    width = icetImageGetWidth(image);
-    height = icetImageGetHeight(image);
+    width = icetSparseImageGetWidth(input_image);
+    height = icetSparseImageGetHeight(input_image);
 
     sparseBufferSize = icetSparseImageBufferSize(width, height);
 
     inSparseImageBuffer = icetGetStateBuffer(TREE_IN_SPARSE_IMAGE_BUFFER,
                                              sparseBufferSize);
-    imageData = icetGetStateBufferSparseImage(TREE_SPARSE_IMAGE_DATA,
-                                              width, height);
+    imageData = input_image;
     imageBuffer = icetGetStateBufferSparseImage(TREE_SPARSE_IMAGE_BUFFER,
                                                 width, height);
 
@@ -162,16 +160,9 @@ void icetTreeCompose(const IceTInt *compose_group,
         return;
     }
 
-    icetCompressImage(image, imageData);
-
     RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
                          &imageData, inSparseImageBuffer, &imageBuffer);
 
+    *result_image = imageData;
     *piece_offset = 0;
-    if (group_rank == image_dest) {
-        *piece_size = icetSparseImageGetNumPixels(imageData);
-        icetDecompressImage(imageData, image);
-    } else {
-        *piece_size = 0;
-    }
 }

@@ -1286,6 +1286,34 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
         return;
     }
 
+    if (   (in_offset == 0)
+        && (num_pixels == icetSparseImageGetNumPixels(in_image)) ) {
+        /* Special case, copying image in its entirety.  Using the standard
+         * method will work, but doing a raw data copy can be faster. */
+        IceTSizeType bytes_to_copy
+            = ICET_IMAGE_HEADER(in_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX];
+        IceTSizeType max_pixels
+            = ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_MAX_NUM_PIXELS_INDEX];
+
+        ICET_TEST_SPARSE_IMAGE_HEADER(out_image);
+
+        if (max_pixels < num_pixels) {
+            icetRaiseError("Cannot set an image size to greater than what the"
+                           " image was originally created.",
+                           ICET_INVALID_VALUE);
+            return;
+        }
+
+        memcpy(ICET_IMAGE_HEADER(out_image),
+               ICET_IMAGE_HEADER(in_image),
+               bytes_to_copy);
+
+        ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]
+            = max_pixels;
+
+        return;
+    }
+
     pixel_size = colorPixelSize(color_format) + depthPixelSize(depth_format);
 
     in_data = ICET_IMAGE_DATA(in_image);

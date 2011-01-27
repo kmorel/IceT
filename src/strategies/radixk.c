@@ -41,7 +41,6 @@
 #define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_6
 #define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_7
 #define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_8
-#define RADIXK_WORKING_IMAGE_BUFFER             ICET_SI_STRATEGY_BUFFER_9
 
 typedef struct radixkPartnerInfoStruct {
     int rank; /* Rank of partner. */
@@ -508,9 +507,10 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
 void icetRadixkCompose(const IceTInt *compose_group,
                        IceTInt group_size,
                        IceTInt image_dest,
-                       IceTImage image,
-                       IceTSizeType *piece_offset,
-                       IceTSizeType *piece_size) {
+                       IceTSparseImage input_image,
+                       IceTSparseImage *result_image,
+                       IceTSizeType *piece_offset)
+{
     int num_rounds;
     int* k_array;
 
@@ -518,15 +518,15 @@ void icetRadixkCompose(const IceTInt *compose_group,
     int *partition_indices; /* My round vector [round0 pos, round1 pos, ...] */
     int current_round;
 
-    IceTSparseImage working_image;
+    IceTSparseImage working_image = input_image;
 
     /* Find your rank in your group. */
     IceTInt group_rank = icetFindMyRankInGroup(compose_group, group_size);
     if (group_rank < 0) {
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
+        *result_image = input_image;
         *piece_offset = 0;
-        *piece_size = 0;
         return;
     }
 
@@ -537,15 +537,10 @@ void icetRadixkCompose(const IceTInt *compose_group,
     if (group_size == 1) {
         /* I am the only process in the group.  No compositing to be done.
          * Just return and the image will be complete. */
+        *result_image = input_image;
         *piece_offset = 0;
-        *piece_size = icetImageGetNumPixels(image);
         return;
     }
-
-    working_image = icetGetStateBufferSparseImage(RADIXK_WORKING_IMAGE_BUFFER,
-                                                  icetImageGetWidth(image),
-                                                  icetImageGetHeight(image));
-    icetCompressImage(image, working_image);
 
     k_array = radixkGetK(group_size, &num_rounds);
 
@@ -605,11 +600,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
         my_offset = partners[current_partition_index].offset;
     } /* for all rounds */
 
-    *piece_offset = my_offset;
-    *piece_size = icetSparseImageGetNumPixels(working_image);
-    if (*piece_size > 0) {
-        icetDecompressSubImage(working_image, *piece_offset, image);
-    }
+    *result_image = working_image;
 
     return;
 }

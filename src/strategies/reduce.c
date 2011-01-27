@@ -21,16 +21,18 @@
 #pragma warning(disable:4127)
 #endif
 
-#define REDUCE_IMAGE_BUFFER             ICET_STRATEGY_BUFFER_0
-#define REDUCE_IN_SPARSE_IMAGE_BUFFER   ICET_STRATEGY_BUFFER_1
-#define REDUCE_OUT_SPARSE_IMAGE_BUFFER  ICET_STRATEGY_BUFFER_2
+#define REDUCE_RESULT_IMAGE_BUFFER              ICET_STRATEGY_BUFFER_0
+#define REDUCE_COMPOSITE_IMAGE_BUFFER_1         ICET_STRATEGY_BUFFER_1
+#define REDUCE_COMPOSITE_IMAGE_BUFFER_2         ICET_STRATEGY_BUFFER_2
+#define REDUCE_IN_IMAGE_BUFFER                  ICET_STRATEGY_BUFFER_3
+#define REDUCE_OUT_IMAGE_BUFFER                 ICET_STRATEGY_BUFFER_4
 
-#define REDUCE_NUM_PROC_FOR_TILE_BUFFER ICET_STRATEGY_BUFFER_3
-#define REDUCE_NODE_ASSIGNMENT_BUFFER   ICET_STRATEGY_BUFFER_4
-#define REDUCE_TILE_PROC_GROUPS_BUFFER  ICET_STRATEGY_BUFFER_5
-#define REDUCE_GROUP_SIZES_BUFFER       ICET_STRATEGY_BUFFER_6
-#define REDUCE_TILE_IMAGE_DEST_BUFFER   ICET_STRATEGY_BUFFER_7
-#define REDUCE_CONTRIBUTORS_BUFFER      ICET_STRATEGY_BUFFER_8
+#define REDUCE_NUM_PROC_FOR_TILE_BUFFER         ICET_STRATEGY_BUFFER_5
+#define REDUCE_NODE_ASSIGNMENT_BUFFER           ICET_STRATEGY_BUFFER_6
+#define REDUCE_TILE_PROC_GROUPS_BUFFER          ICET_STRATEGY_BUFFER_7
+#define REDUCE_GROUP_SIZES_BUFFER               ICET_STRATEGY_BUFFER_8
+#define REDUCE_TILE_IMAGE_DEST_BUFFER           ICET_STRATEGY_BUFFER_9
+#define REDUCE_CONTRIBUTORS_BUFFER              ICET_STRATEGY_BUFFER_10
 
 static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt **compose_groupp, IceTInt *group_sizep,
@@ -39,9 +41,13 @@ static IceTInt delegate(IceTInt **tile_image_destp,
 
 IceTImage icetReduceCompose(void)
 {
-    IceTVoid *inSparseImageBuffer;
+    IceTVoid *inImageBuffer;
     IceTSparseImage outSparseImage;
-    IceTImage image;
+    IceTSparseImage composite_image1;
+    IceTSparseImage composite_image2;
+    IceTSparseImage rendered_image;
+    IceTSparseImage composited_image;
+    IceTImage result_image;
     IceTInt max_width, max_height;
     IceTInt num_processes;
     IceTInt tile_displayed;
@@ -50,7 +56,7 @@ IceTImage icetReduceCompose(void)
     IceTInt *tile_image_dest;
     IceTInt *compose_group, group_size, group_image_dest;
     IceTInt compose_tile;
-    IceTSizeType piece_offset, piece_size;
+    IceTSizeType piece_offset;
 
     IceTInt *contrib_counts;
     IceTInt *tile_display_nodes;
@@ -67,23 +73,31 @@ IceTImage icetReduceCompose(void)
                             &compose_group, &group_size, &group_image_dest);
 
     sparse_image_size = icetSparseImageBufferSize(max_width, max_height);
-    inSparseImageBuffer  = icetGetStateBuffer(REDUCE_IN_SPARSE_IMAGE_BUFFER,
-                                              sparse_image_size);
-    outSparseImage       = icetGetStateBufferSparseImage(
-                                                 REDUCE_OUT_SPARSE_IMAGE_BUFFER,
-                                                 max_width, max_height);
-    image                = icetGetStateBufferImage(REDUCE_IMAGE_BUFFER,
+    inImageBuffer  = icetGetStateBuffer(REDUCE_IN_IMAGE_BUFFER,
+                                        sparse_image_size);
+    outSparseImage = icetGetStateBufferSparseImage(REDUCE_OUT_IMAGE_BUFFER,
                                                    max_width, max_height);
+    composite_image1 = icetGetStateBufferSparseImage(
+                                                REDUCE_COMPOSITE_IMAGE_BUFFER_1,
+                                                max_width, max_height);
+    composite_image2 = icetGetStateBufferSparseImage(
+                                                REDUCE_COMPOSITE_IMAGE_BUFFER_2,
+                                                max_width, max_height);
 
-    icetRenderTransferFullImages(image,
-                                 inSparseImageBuffer,
-                                 outSparseImage,
-                                 tile_image_dest);
+    icetRenderTransferSparseImages(composite_image1,
+                                   composite_image2,
+                                   inImageBuffer,
+                                   outSparseImage,
+                                   tile_image_dest,
+                                   &rendered_image);
 
     if (compose_tile >= 0) {
-        icetSingleImageCompose(compose_group, group_size,
-                               group_image_dest, image,
-                               &piece_offset, &piece_size);
+        icetSingleImageCompose(compose_group,
+                               group_size,
+                               group_image_dest,
+                               rendered_image,
+                               &composited_image,
+                               &piece_offset);
     } else {
       /* Not assigned to compose any tile.  Do nothing. */
     }
@@ -91,22 +105,22 @@ IceTImage icetReduceCompose(void)
     /* Run collect function for all tiles with data.  Unlike compose where
        we only had to call it for the tile we participated in, with collect
        all processes have to make a call for each tile. */
+    result_image = icetGetStateBufferImage(REDUCE_RESULT_IMAGE_BUFFER,
+                                           max_width, max_height);
     contrib_counts = icetUnsafeStateGetInteger(ICET_TILE_CONTRIB_COUNTS);
     tile_display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     for (tile_idx = 0; tile_idx < num_tiles; tile_idx++) {
-        IceTSizeType offset, size;
+        IceTSizeType offset;
         if (tile_idx == compose_tile) {
             offset = piece_offset;
-            size = piece_size;
         } else {
             offset = 0;
-            size = 0;
         }
-        icetSingleImageCollect(image,
+        icetSingleImageCollect(rendered_image,
                                tile_display_nodes[tile_idx],
                                offset,
-                               size);
+                               result_image);
     }
 
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
@@ -118,11 +132,13 @@ IceTImage icetReduceCompose(void)
         IceTInt display_tile_height = display_tile_viewport[3];
 
         icetRaiseDebug("Clearing pixels");
-        icetImageSetDimensions(image, display_tile_width, display_tile_height);
-        icetClearImage(image);
+        icetImageSetDimensions(result_image,
+                               display_tile_width,
+                               display_tile_height);
+        icetClearImage(result_image);
     }
 
-    return image;
+    return result_image;
 }
 
 static IceTInt delegate(IceTInt **tile_image_destp,

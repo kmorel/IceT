@@ -24,27 +24,27 @@ extern IceTImage icetVtreeCompose(void);
 extern void icetAutomaticCompose(const IceTInt *compose_group,
                                  IceTInt group_size,
                                  IceTInt image_dest,
-                                 IceTImage image,
-                                 IceTSizeType *piece_offset,
-                                 IceTSizeType *piece_size);
+                                 IceTSparseImage input_image,
+                                 IceTSparseImage *result_image,
+                                 IceTSizeType *piece_offset);
 extern void icetBswapCompose(const IceTInt *compose_group,
                              IceTInt group_size,
                              IceTInt image_dest,
-                             IceTImage image,
-                             IceTSizeType *piece_offset,
-                             IceTSizeType *piece_size);
+                             IceTSparseImage input_image,
+                             IceTSparseImage *result_image,
+                             IceTSizeType *piece_offset);
 extern void icetTreeCompose(const IceTInt *compose_group,
                             IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image,
-                            IceTSizeType *piece_offset,
-                            IceTSizeType *piece_size);
+                            IceTSparseImage input_image,
+                            IceTSparseImage *result_image,
+                            IceTSizeType *piece_offset);
 extern void icetRadixkCompose(const IceTInt *compose_group,
                               IceTInt group_size,
                               IceTInt image_dest,
-                              IceTImage image,
-                              IceTSizeType *piece_offset,
-                              IceTSizeType *piece_size);
+                              IceTSparseImage input_image,
+                              IceTSparseImage *result_image,
+                              IceTSizeType *piece_offset);
 
 /*==================================================================*/
 
@@ -151,42 +151,42 @@ void icetInvokeSingleImageStrategy(IceTEnum strategy,
                                    const IceTInt *compose_group,
                                    IceTInt group_size,
                                    IceTInt image_dest,
-                                   IceTImage image,
-                                   IceTSizeType *piece_offset,
-                                   IceTSizeType *piece_size)
+                                   IceTSparseImage input_image,
+                                   IceTSparseImage *result_image,
+                                   IceTSizeType *piece_offset)
 {
     switch(strategy) {
       case ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC:
           icetAutomaticCompose(compose_group,
                                group_size,
                                image_dest,
-                               image,
-                               piece_offset,
-                               piece_size);
+                               input_image,
+                               result_image,
+                               piece_offset);
           break;
       case ICET_SINGLE_IMAGE_STRATEGY_BSWAP:
           icetBswapCompose(compose_group,
                            group_size,
                            image_dest,
-                           image,
-                           piece_offset,
-                           piece_size);
+                           input_image,
+                           result_image,
+                           piece_offset);
           break;
       case ICET_SINGLE_IMAGE_STRATEGY_TREE:
           icetTreeCompose(compose_group,
                           group_size,
                           image_dest,
-                          image,
-                          piece_offset,
-                          piece_size);
+                          input_image,
+                          result_image,
+                          piece_offset);
           break;
       case ICET_SINGLE_IMAGE_STRATEGY_RADIXK:
           icetRadixkCompose(compose_group,
                             group_size,
                             image_dest,
-                            image,
-                            piece_offset,
-                            piece_size);
+                            input_image,
+                            result_image,
+                            piece_offset);
           break;
       default:
           icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);

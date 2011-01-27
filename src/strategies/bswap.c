@@ -13,12 +13,11 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
 
-#define BSWAP_INCOMING_IMAGES_BUFFER    ICET_SI_STRATEGY_BUFFER_0
-#define BSWAP_OUTGOING_IMAGES_BUFFER    ICET_SI_STRATEGY_BUFFER_1
-#define BSWAP_SPARE_WORKING_IMAGE_BUFFER ICET_SI_STRATEGY_BUFFER_2
-#define BSWAP_WORKING_IMAGE_BUFFER      ICET_SI_STRATEGY_BUFFER_3
-#define BSWAP_IMAGE_ARRAY               ICET_SI_STRATEGY_BUFFER_4
-#define BSWAP_DUMMY_ARRAY               ICET_SI_STRATEGY_BUFFER_5
+#define BSWAP_INCOMING_IMAGES_BUFFER            ICET_SI_STRATEGY_BUFFER_0
+#define BSWAP_OUTGOING_IMAGES_BUFFER            ICET_SI_STRATEGY_BUFFER_1
+#define BSWAP_SPARE_WORKING_IMAGE_BUFFER        ICET_SI_STRATEGY_BUFFER_2
+#define BSWAP_IMAGE_ARRAY                       ICET_SI_STRATEGY_BUFFER_3
+#define BSWAP_DUMMY_ARRAY                       ICET_SI_STRATEGY_BUFFER_4
 
 #define BSWAP_SWAP_IMAGES 21
 #define BSWAP_TELESCOPE 22
@@ -526,37 +525,20 @@ static void bswapComposeNoCombine(const IceTInt *compose_group,
 void icetBswapCompose(const IceTInt *compose_group,
                       IceTInt group_size,
                       IceTInt image_dest,
-                      IceTImage image,
-                      IceTSizeType *piece_offset,
-                      IceTSizeType *piece_size)
+                      IceTSparseImage input_image,
+                      IceTSparseImage *result_image,
+                      IceTSizeType *piece_offset)
 {
-    IceTSizeType width, height;
-    IceTSparseImage working_image;
-    IceTSparseImage result_image;
-
     icetRaiseDebug("In bswapCompose");
 
     /* Remove warning about unused parameter.  Binary swap leaves images evenly
      * partitioned, so we have no use of the image_dest parameter. */
     (void)image_dest;
 
-    width = icetImageGetWidth(image);
-    height = icetImageGetHeight(image);
-
-    working_image = icetGetStateBufferSparseImage(BSWAP_WORKING_IMAGE_BUFFER,
-                                                  width,
-                                                  height);
-    icetCompressImage(image, working_image);
-
     /* Do actual bswap. */
     bswapComposeNoCombine(compose_group,
                           group_size,
-                          working_image,
-                          &result_image,
+                          input_image,
+                          result_image,
                           piece_offset);
-
-    *piece_size = icetSparseImageGetNumPixels(result_image);
-    if (*piece_size > 0) {
-        icetDecompressSubImage(result_image, *piece_offset, image);
-    }
 }

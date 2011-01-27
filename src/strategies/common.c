@@ -66,8 +66,6 @@ static void rtfi_handleDataFunc(void *inSparseImageBuffer, IceTInt src) {
     }
     rtfi_first = ICET_FALSE;
 }
-static IceTInt *imageDestinations = NULL;
-static IceTInt allocatedTileSize = 0;
 void icetRenderTransferFullImages(IceTImage image,
                                   IceTVoid *inSparseImageBuffer,
                                   IceTSparseImage outSparseImage,
@@ -77,6 +75,7 @@ void icetRenderTransferFullImages(IceTImage image,
     IceTInt *tile_list;
     IceTInt num_tiles;
     IceTInt width, height;
+    IceTInt *imageDestinations;
 
     IceTInt i;
 
@@ -90,11 +89,7 @@ void icetRenderTransferFullImages(IceTImage image,
     icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &height);
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
 
-    if (allocatedTileSize < num_tiles) {
-        free(imageDestinations);
-        imageDestinations = malloc(num_tiles * sizeof(IceTInt));
-        allocatedTileSize = num_tiles;
-    }
+    imageDestinations = malloc(num_tiles * sizeof(IceTInt));
 
   /* Make each element imageDestinations point to the processor to send the
      corresponding image in tile_list. */
@@ -107,6 +102,117 @@ void icetRenderTransferFullImages(IceTImage image,
                               rtfi_generateDataFunc, rtfi_handleDataFunc,
                               inSparseImageBuffer,
                               icetSparseImageBufferSize(width, height));
+
+    free(imageDestinations);
+}
+
+static IceTSparseImage rtsi_workingImage;
+static IceTSparseImage rtsi_availableImage;
+static IceTSparseImage rtsi_outSparseImage;
+static IceTBoolean rtsi_first;
+static IceTVoid *rtsi_generateDataFunc(IceTInt id, IceTInt dest,
+                                       IceTSizeType *size) {
+    IceTInt rank;
+    IceTInt *tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
+    IceTVoid *outBuffer;
+
+    icetGetIntegerv(ICET_RANK, &rank);
+    if (dest == rank) {
+      /* Special case: sending to myself.
+         Just get directly to color and depth buffers. */
+        icetGetCompressedTileImage(tile_list[id], rtsi_workingImage);
+        *size = 0;
+        return NULL;
+    }
+    icetGetCompressedTileImage(tile_list[id], rtsi_outSparseImage);
+    icetSparseImagePackageForSend(rtsi_outSparseImage, &outBuffer, size);
+    return outBuffer;
+}
+static void rtsi_handleDataFunc(void *inSparseImageBuffer, IceTInt src) {
+    if (inSparseImageBuffer == NULL) {
+      /* Superfluous call from send to self. */
+        if (!rtsi_first) {
+            icetRaiseError("Unexpected callback order"
+                           " in icetRenderTransferSparseImages.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
+    } else {
+        IceTSparseImage inSparseImage
+            = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
+        if (rtsi_first) {
+            IceTSizeType num_pixels
+                = icetSparseImageGetNumPixels(inSparseImage);
+            icetSparseImageCopyPixels(inSparseImage,
+                                      0,
+                                      num_pixels,
+                                      rtsi_workingImage);
+        } else {
+            IceTInt rank;
+            IceTInt *process_orders;
+            IceTSparseImage old_workingImage;
+
+            icetGetIntegerv(ICET_RANK, &rank);
+            process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
+            if (process_orders[src] < process_orders[rank]) {
+                icetCompressedCompressedComposite(inSparseImage,
+                                                  rtsi_workingImage,
+                                                  rtsi_availableImage);
+            } else {
+                icetCompressedCompressedComposite(rtsi_workingImage,
+                                                  inSparseImage,
+                                                  rtsi_availableImage);
+            }
+
+            old_workingImage = rtsi_workingImage;
+            rtsi_workingImage = rtsi_availableImage;
+            rtsi_availableImage = old_workingImage;
+        }
+    }
+    rtsi_first = ICET_FALSE;
+}
+void icetRenderTransferSparseImages(IceTSparseImage compositeImage1,
+                                    IceTSparseImage compositeImage2,
+                                    IceTVoid *inImageBuffer,
+                                    IceTSparseImage outSparseImage,
+                                    IceTInt *tile_image_dest,
+                                    IceTSparseImage *resultImage)
+{
+    IceTInt num_sending;
+    IceTInt *tile_list;
+    IceTInt num_tiles;
+    IceTInt width, height;
+    IceTInt *imageDestinations;
+
+    IceTInt i;
+
+    rtsi_workingImage = compositeImage1;
+    rtsi_availableImage = compositeImage2;
+    rtsi_outSparseImage = outSparseImage;
+    rtsi_first = ICET_TRUE;
+
+    icetGetIntegerv(ICET_NUM_CONTAINED_TILES, &num_sending);
+    tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
+    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &width);
+    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &height);
+    icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
+
+    imageDestinations = malloc(num_tiles * sizeof(IceTInt));
+
+  /* Make each element imageDestinations point to the processor to send the
+     corresponding image in tile_list. */
+    for (i = 0; i < num_sending; i++) {
+        imageDestinations[i] = tile_image_dest[tile_list[i]];
+    }
+
+    icetSendRecvLargeMessages(num_sending, imageDestinations,
+                              icetIsEnabled(ICET_ORDERED_COMPOSITE),
+                              rtsi_generateDataFunc, rtsi_handleDataFunc,
+                              inImageBuffer,
+                              icetSparseImageBufferSize(width, height));
+
+    *resultImage = rtsi_workingImage;
+
+    free(imageDestinations);
 }
 
 static void startLargeRecv(void *buf, IceTSizeType size, IceTInt src,
@@ -120,13 +226,6 @@ static void startLargeSend(IceTInt dest, IceTCommRequest *req,
     data = (*callback)(sendIds[dest], dest, &data_size);
     *req = icetCommIsend(data, data_size, ICET_BYTE, dest, LARGE_MESSAGE);
 }
-static IceTInt *sendIds = NULL;
-static char *myDests = NULL;
-static char *allDests = NULL;
-static IceTInt *sendQueue = NULL;
-static IceTInt *recvQueue = NULL;
-static IceTInt *recvFrom = NULL;
-static IceTInt allocatedCommSize = 0;
 void icetSendRecvLargeMessages(IceTInt numMessagesSending,
                                IceTInt *messageDestinations,
                                IceTBoolean messagesInOrder,
@@ -146,6 +245,13 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     IceTInt *composite_order;
     IceTInt *process_orders;
 
+    IceTInt *sendIds;
+    IceTByte *myDests;
+    IceTByte *allDests;
+    IceTInt *sendQueue;
+    IceTInt *recvQueue;
+    IceTInt *recvFrom;
+
 #define RECV_IDX 0
 #define SEND_IDX 1
     IceTCommRequest requests[2];
@@ -156,23 +262,16 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     composite_order = icetUnsafeStateGetInteger(ICET_COMPOSITE_ORDER);
     process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
 
-  /* Make sure we have big enough arrays.  We should not have to allocate
-     very often. */
-    if (comm_size > allocatedCommSize) {
-        free(sendIds);
-        free(myDests);
-        free(allDests);
-        free(sendQueue);
-        free(recvQueue);
-        free(recvFrom);
-        sendIds = malloc(comm_size * sizeof(IceTInt));
-        myDests = malloc(comm_size);
-        allDests = malloc(comm_size * comm_size);
-        sendQueue = malloc(comm_size * sizeof(IceTInt));
-        recvQueue = malloc(comm_size * sizeof(IceTInt));
-        recvFrom = malloc(comm_size * sizeof(IceTInt));
-        allocatedCommSize = comm_size;
-    }
+    /* Allocate structures that manage who sends to what.
+       YIKES, that allDests can get really big.  We will have to work around
+       that in order to run on supercomputers.  (It is generally used for
+       tiled displays.) */
+    sendIds = malloc(comm_size * sizeof(IceTInt));
+    myDests = malloc(comm_size);
+    allDests = malloc(comm_size * comm_size);
+    sendQueue = malloc(comm_size * sizeof(IceTInt));
+    recvQueue = malloc(comm_size * sizeof(IceTInt));
+    recvFrom = malloc(comm_size * sizeof(IceTInt));
 
   /* Convert array of ranks to a mask of ranks. */
     for (i = 0; i < comm_size; i++) {
@@ -309,44 +408,59 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
               continue;
         }
     }
+
+    free(sendIds);
+    free(myDests);
+    free(allDests);
+    free(sendQueue);
+    free(recvQueue);
+    free(recvFrom);
 }
 
-void icetSingleImageCompose(IceTInt *compose_group, IceTInt group_size,
+void icetSingleImageCompose(IceTInt *compose_group,
+                            IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image,
-                            IceTSizeType *piece_offset,
-                            IceTSizeType *piece_size)
+                            IceTSparseImage input_image,
+                            IceTSparseImage *result_image,
+                            IceTSizeType *piece_offset)
 {
     IceTEnum strategy;
 
     icetGetEnumv(ICET_SINGLE_IMAGE_STRATEGY, &strategy);
     icetInvokeSingleImageStrategy(strategy,
-                                  compose_group, group_size,
+                                  compose_group,
+                                  group_size,
                                   image_dest,
-                                  image,
-                                  piece_offset,
-                                  piece_size);
+                                  input_image,
+                                  result_image,
+                                  piece_offset);
 }
 
-void icetSingleImageCollect(IceTImage image,
+void icetSingleImageCollect(const IceTSparseImage input_image,
                             IceTInt dest,
                             IceTSizeType piece_offset,
-                            IceTSizeType piece_size)
+                            IceTImage result_image)
 {
     IceTSizeType *offsets;
     IceTSizeType *sizes;
-    int rank;
-    int numproc;
+    IceTInt rank;
+    IceTInt numproc;
+
+    IceTSizeType piece_size;
 
     IceTEnum color_format;
     IceTEnum depth_format;
     IceTSizeType color_size = 1;
     IceTSizeType depth_size = 1;
 
+#define DUMMY_BUFFER_SIZE       ((IceTSizeType)(16*sizeof(IceTInt)))
+    IceTByte dummy_buffer[DUMMY_BUFFER_SIZE];
+
     rank = icetCommRank();
     numproc = icetCommSize();
 
     /* Collect partitions held by each process. */
+    piece_size = icetSparseImageGetNumPixels(input_image);
     if (rank == dest) {
         offsets = icetGetStateBuffer(ICET_IMAGE_COLLECT_OFFSET_BUF,
                                      sizeof(IceTSizeType)*numproc);
@@ -359,16 +473,34 @@ void icetSingleImageCollect(IceTImage image,
     icetCommGather(&piece_offset, 1, ICET_SIZE_TYPE, offsets, dest);
     icetCommGather(&piece_size, 1, ICET_SIZE_TYPE, sizes, dest);
 
+    if ((piece_size > 0) || (rank == dest)) {
+        /* Decompress data into appropriate offset of result image. */
+        icetDecompressSubImage(input_image, piece_offset, result_image);
+    } else {
+        /* If this function is called for multiple collections, it is likely
+           that the local process will not have data for all collections.  To
+           prevent making the calling function allocate an image buffer when it
+           is neither sending or receiving data, just allocate a dummy buffer to
+           satisfy the following code. */
+        if (DUMMY_BUFFER_SIZE < icetImageBufferSize(0, 0)) {
+            icetRaiseError("Oops.  My dummy buffer is not big enough.",
+                           ICET_SANITY_CHECK_FAIL);
+            return;
+        }
+        result_image = icetImageAssignBuffer(dummy_buffer, 0, 0);
+    }
+
     /* Adjust image for output as some buffers, such as depth, might be
        dropped. */
-    icetImageAdjustForOutput(image);
+    icetImageAdjustForOutput(result_image);
 
-    color_format = icetImageGetColorFormat(image);
-    depth_format = icetImageGetDepthFormat(image);
+    color_format = icetImageGetColorFormat(result_image);
+    depth_format = icetImageGetDepthFormat(result_image);
 
     if (color_format != ICET_IMAGE_COLOR_NONE) {
         /* Use IceTByte for byte-based pointer arithmetic. */
-        IceTByte *color_buffer = icetImageGetColorVoid(image, &color_size);
+        IceTByte *color_buffer
+          = icetImageGetColorVoid(result_image, &color_size);
         int proc;
 
         if (rank == dest) {
@@ -397,7 +529,8 @@ void icetSingleImageCollect(IceTImage image,
 
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
         /* Use IceTByte for byte-based pointer arithmetic. */
-        IceTByte *depth_buffer = icetImageGetDepthVoid(image, &depth_size);
+        IceTByte *depth_buffer
+          = icetImageGetDepthVoid(result_image, &depth_size);
         int proc;
 
         if (rank == dest) {

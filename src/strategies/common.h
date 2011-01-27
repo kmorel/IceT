@@ -21,7 +21,7 @@
    uses memory given with the buffer arguments, and will make its best
    efforts to get the graphics and network hardware to run in parallel.
 
-   imageBuffer - An image big enough to hold color and/or depth values
+   image - An image big enough to hold color and/or depth values
         that is ICET_MAX_PIXELS big.  The results will be put in this
         image.
    inSparseImageBuffer - A buffer big enough to hold sparse color and
@@ -33,14 +33,45 @@
    tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
         rendered image for tile t is sent to tile_image_dest[t].
 
-   This function returns an image object (using the imageBuffer)
-   containing the composited image send to this process.  The contents
-   are undefined if nothing sent to this process.
-*/
+   This function returns an image object (using the image) containing the
+   composited image send to this process.  The contents are undefined if nothing
+   sent to this process.  */
 void icetRenderTransferFullImages(IceTImage image,
                                   IceTVoid *inSparseImageBuffer,
                                   IceTSparseImage outSparseImage,
                                   IceTInt *tile_image_dest);
+
+/* icetRenderTransferSparseImages
+
+   Same as icetRenderTransferSparseImage except that it returns a sparse image
+   rather than a full image.  Using this method can be more efficient if the
+   resulting image is compressed afterward.
+
+   compositeImage1, compositeImage2 - Sparse images big enough to hold color
+        and/or depth values that are ICET_MAX_PIXELS big.  These buffers are
+        used store composite results.
+   inImageBuffer - A buffer big enough to hold sparse color and
+        depth information for an image that is ICET_MAX_PIXELS big.
+        The size can be determined with the icetSparseImageBufferSize
+        function in image.h.
+   outSparseImage - A sparse image big enough to hold color and/or depth values
+        that is ICET_MAX_PIXELS big.
+   tile_image_dest - if tile t is in ICET_CONTAINED_TILES, then the
+        rendered image for tile t is sent to tile_image_dest[t].
+   resultImage - Will be set to the image with the final results.  It will point
+        to either compositeImage1 or compositeImage2 depending on which buffer
+        the result happened to end in.
+
+   This function returns an image object (using the imageBuffer)
+   containing the composited image send to this process.  The contents
+   are undefined if nothing sent to this process.
+*/
+void icetRenderTransferSparseImages(IceTSparseImage compositeImage1,
+                                    IceTSparseImage compositeImage2,
+                                    IceTVoid *inImageBuffer,
+                                    IceTSparseImage outSparseImage,
+                                    IceTInt *tile_image_dest,
+                                    IceTSparseImage *resultImage);
 
 
 /* icetSendRecvLargeMessages
@@ -113,24 +144,26 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
         placed.  It is an index into compose_group, not the actual rank
         of the process.  This is a hint to the composite algorithm rather
         than a determination of where data will end up.
-   image - The input image colors and/or depth to be used.  The result of the
-        composition will also be placed in this buffer.  The results may be
-        distributed amongst all the processes in the group.  That is, the final
-        image will be partitioned amongst the processes and each process will
-        have a separate piece.  Thus, in general some of the resulting pixels
-        will be valid and others will be invalid.  the following two output
-        arguments specify the valid pixels.
+   input_image - The input image colors and/or depth to be used.  This buffer
+        may (and probably will) be changed during the composition.  The end data
+        is undefined.
+   result_image - An image containing the results of the composition.  The image
+        need not be (should not be) allocated before its pointer is passed to
+        this function.  The results may be distributed amongst all the processes
+        in the group.  That is, the final image will be partitioned amongst the
+        processes and each process will have a separate piece.  The piece in
+        each process is always a contiguous set of pixels starting at the offset
+        set in piece_offset and the length of result_image.  result_image may or
+        may not be set to input_image.  Use icetSparseImageEqual() to find out.
    piece_offset - The offset to the start of the valid pixels will be placed
         in this argument.
-   piece_size - The number of valid pixels in the local partition will be
-        placed in this argument.
 */
 void icetSingleImageCompose(IceTInt *compose_group,
                             IceTInt group_size,
                             IceTInt image_dest,
-                            IceTImage image,
-                            IceTSizeType *piece_offset,
-                            IceTSizeType *piece_size);
+                            IceTSparseImage input_image,
+                            IceTSparseImage *result_image,
+                            IceTSizeType *piece_offset);
 
 /* icetSingleImageCollect
 
@@ -141,21 +174,18 @@ void icetSingleImageCompose(IceTInt *compose_group,
    have no piece of the image should pass 0 for both piece_offset and
    piece_size.
 
-   image - At input, contains the image composited image partition returned from
-        icetSingleImageCompose.  When the call returns, the process with rank
-        dest will contain the complete image.
+   input_image - Contains the image composited image partition returned from
+        icetSingleImageCompose.
    dest - The rank of the process to where the image should be collected.  Be
         aware that this is generally a different value than the image_dest
         parameter of icetSingleImageCompose.
    piece_offset - The offset to the start of the valid pixels will be placed
         in this argument.  Same value as returned from icetSingleImageCompose.
-   piece_size - The number of valid pixels in the local partition will be
-        placed in this argument.  Same value as returned from
-        icetSingleImageCompose.
-*/
-void icetSingleImageCollect(IceTImage image,
+   result_image - an allocated and sized image in which to place the
+        uncompressed results of the collection.  */
+void icetSingleImageCollect(const IceTSparseImage input_image,
                             IceTInt dest,
                             IceTSizeType piece_offset,
-                            IceTSizeType piece_size);
+                            IceTImage result_image);
 
 #endif /*_ICET_STRATEGY_COMMON_H_*/
