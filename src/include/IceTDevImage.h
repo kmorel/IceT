@@ -82,6 +82,8 @@ ICET_EXPORT IceTSparseImage icetGetStateBufferSparseImage(IceTEnum pname,
 ICET_EXPORT IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
                                                         IceTSizeType width,
                                                         IceTSizeType height);
+ICET_EXPORT IceTSparseImage icetSparseImageNull(void);
+ICET_EXPORT IceTBoolean icetSparseImageIsNull(const IceTSparseImage image);
 ICET_EXPORT IceTEnum icetSparseImageGetColorFormat(const IceTSparseImage image);
 ICET_EXPORT IceTEnum icetSparseImageGetDepthFormat(const IceTSparseImage image);
 ICET_EXPORT IceTSizeType icetSparseImageGetWidth(const IceTSparseImage image);

@@ -365,6 +365,22 @@ IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
     return image;
 }
 
+IceTSparseImage icetSparseImageNull(void)
+{
+    IceTSparseImage image;
+    image.opaque_internals = NULL;
+    return image;
+}
+
+IceTBoolean icetSparseImageIsNull(const IceTSparseImage image)
+{
+    if (image.opaque_internals == NULL) {
+        return ICET_TRUE;
+    } else {
+        return ICET_FALSE;
+    }
+}
+
 void icetImageAdjustForOutput(IceTImage image)
 {
     IceTEnum color_format;

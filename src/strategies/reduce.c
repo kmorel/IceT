@@ -112,12 +112,15 @@ IceTImage icetReduceCompose(void)
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     for (tile_idx = 0; tile_idx < num_tiles; tile_idx++) {
         IceTSizeType offset;
+        IceTSparseImage collect_image;
         if (tile_idx == compose_tile) {
             offset = piece_offset;
+            collect_image = composited_image;
         } else {
             offset = 0;
+            collect_image = icetSparseImageNull();
         }
-        icetSingleImageCollect(rendered_image,
+        icetSingleImageCollect(collect_image,
                                tile_display_nodes[tile_idx],
                                offset,
                                result_image);
