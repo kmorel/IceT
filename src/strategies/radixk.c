@@ -601,6 +601,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
     } /* for all rounds */
 
     *result_image = working_image;
+    *piece_offset = my_offset;
 
     return;
 }
