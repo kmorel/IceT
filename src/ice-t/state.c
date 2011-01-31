@@ -565,23 +565,23 @@ static void *icetUnsafeStateGet(IceTEnum pname, IceTEnum type)
     return icetGetState()[pname].data;
 }
 
-IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
+const IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_DOUBLE);
 }
-IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
+const IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_FLOAT);
 }
-IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
+const IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_INT);
 }
-IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
+const IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_BOOLEAN);
 }
-IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
+const IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_POINTER);
 }

@@ -260,7 +260,8 @@ static void drawFindContainedViewport(IceTInt contained_viewport[4],
     /* Transform each vertex to find where it lies in the global viewport and
        normalized z.  Leave the results in homogeneous coordinates for now. */
     {
-        IceTDouble *bound_vert = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
+        const IceTDouble *bound_vert
+            = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
         for (i = 0; i < num_bounding_verts; i++) {
             IceTDouble bound_vert_4vec[4];
             bound_vert_4vec[0] = bound_vert[3*i+0];
@@ -370,7 +371,7 @@ static void drawDetermineContainedTiles(const IceTInt contained_viewport[4],
                                         IceTBoolean *contained_mask,
                                         IceTInt *num_contained_p)
 {
-    IceTInt *tile_viewports;
+    const IceTInt *tile_viewports;
     IceTInt num_tiles;
     int i;
 
@@ -404,7 +405,7 @@ static void drawAdjustContainedForDataReplication(IceTInt *contained_viewport,
 {
     IceTInt *data_replication_group;
     IceTInt data_replication_group_size;
-    IceTInt *display_nodes;
+    const IceTInt *display_nodes;
     IceTInt rank;
     IceTInt num_proc;
 
@@ -485,9 +486,9 @@ static void drawAdjustContainedForDataReplication(IceTInt *contained_viewport,
 
             /* Record a new viewport covering only my portion of the tile. */
             if (tile_rendering >= 0) {
-                IceTInt *tile_viewports
+                const IceTInt *tile_viewports
                     = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
-                IceTInt *tv = tile_viewports + 4*tile_rendering;
+                const IceTInt *tv = tile_viewports + 4*tile_rendering;
                 int new_length = tv[2]/num_rendering_tile;
                 *num_contained_p = 1;
                 contained_list[0] = tile_rendering;
@@ -691,7 +692,7 @@ static IceTImage drawInvokeStrategy(void)
     /* Ensure that the returned image is the expected size. */
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
-        IceTInt *display_tile_viewport
+        const IceTInt *display_tile_viewport
             = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS) + 4*display_tile;
         if (   (display_tile_viewport[2] != icetImageGetWidth(image))
             || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {

@@ -64,9 +64,9 @@
     IceTEnum _composite_mode;
 #ifdef TIME_DECOMPRESSION
     IceTDouble _timer;
-    IceTDouble *_compress_time;
+    IceTDouble _compress_time;
 
-    _compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
+    icetGetDoublev(ICET_COMPRESS_TIME, &_compress_time);
     _timer = icetWallTime();
 #endif /* TIME_DECOMPRESSION */
 
@@ -331,7 +331,8 @@
     }
 
 #ifdef TIME_DECOMPRESSION
-    *_compress_time += icetWallTime() - _timer;
+    _compress_time += icetWallTime() - _timer;
+    icetStateSetDouble(ICET_COMPRESS_TIME, _compress_time);
 #endif
 }
 

@@ -195,7 +195,7 @@ static void displayImage(const IceTImage image)
 {
     IceTUByte *colorBuffer;
     IceTInt readBuffer;
-    IceTInt *tile_viewports;
+    const IceTInt *tile_viewports;
     IceTInt display_tile;
     IceTBoolean color_blending;
 
