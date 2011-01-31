@@ -58,10 +58,8 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
         return -1;
     }
 
-  /* Get current number of tiles and viewports. */
+  /* Get current number of tiles. */
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    viewports = malloc((num_tiles+1)*4*sizeof(IceTInt));
-    icetGetIntegerv(ICET_TILE_VIEWPORTS, viewports);
 
   /* Get display node information. */
     icetGetIntegerv(ICET_RANK, &rank);
@@ -74,7 +72,6 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
 	sprintf(msg, "icetDisplayNodes: Invalid rank for tile %d.",
 		(int)num_tiles);
 	icetRaiseError(msg, ICET_INVALID_VALUE);
-	free(viewports);
 	free(display_nodes);
 	return -1;
     }
@@ -83,17 +80,20 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
 	    sprintf(msg, "icetDisplayNodes: Rank %d used for tiles %d and %d.",
 		    display_rank, i, (int)num_tiles);
 	    icetRaiseError(msg, ICET_INVALID_VALUE);
-	    free(viewports);
 	    free(display_nodes);
 	    return -1;
 	}
     }
     display_nodes[num_tiles] = display_rank;
-    icetUnsafeStateSet(ICET_DISPLAY_NODES, num_tiles+1,
-		       ICET_INT, display_nodes);
+    icetStateSetIntegerv(ICET_DISPLAY_NODES, num_tiles+1, display_nodes);
+    free(display_nodes);
     if (display_rank == rank) {
 	icetStateSetInteger(ICET_TILE_DISPLAYED, num_tiles);
     }
+
+  /* Get viewports. */
+    viewports = malloc((num_tiles+1)*4*sizeof(IceTInt));
+    icetGetIntegerv(ICET_TILE_VIEWPORTS, viewports);
 
   /* Figure out current global viewport. */
     gvp[0] = x;  gvp[1] = y;
@@ -115,8 +115,7 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
 
   /* Set new state. */
     icetStateSetInteger(ICET_NUM_TILES, num_tiles+1);
-    icetUnsafeStateSet(ICET_TILE_VIEWPORTS, (num_tiles+1)*4,
-		       ICET_INT, viewports);
+    icetStateSetIntegerv(ICET_TILE_VIEWPORTS, (num_tiles+1)*4, viewports);
     icetStateSetIntegerv(ICET_GLOBAL_VIEWPORT, 4, gvp);
 
     icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
@@ -216,6 +215,7 @@ void icetBoundingVertices(IceTInt size, IceTEnum type, IceTSizeType stride,
 	}
     }
 
-    icetUnsafeStateSet(ICET_GEOMETRY_BOUNDS, count*3, ICET_DOUBLE, verts);
+    icetStateSetDoublev(ICET_GEOMETRY_BOUNDS, count*3, verts);
+    free(verts);
     icetStateSetInteger(ICET_NUM_BOUNDING_VERTS, (IceTInt)count);
 }

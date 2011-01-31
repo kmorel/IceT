@@ -88,17 +88,9 @@ void icetCompositeOrder(const IceTInt *process_ranks)
     IceTInt num_proc;
     IceTInt i;
     IceTInt *process_orders;
-    IceTBoolean new_process_orders;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
-        && (icetStateGetNumEntries(ICET_PROCESS_ORDERS) >= num_proc) ) {
-        process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
-        new_process_orders = 0;
-    } else {
-        process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(IceTInt));
-        new_process_orders = 1;
-    }
+    process_orders = icetStateAllocateInteger(ICET_PROCESS_ORDERS, num_proc);
     for (i = 0; i < num_proc; i++) {
         process_orders[i] = -1;
     }
@@ -107,15 +99,11 @@ void icetCompositeOrder(const IceTInt *process_ranks)
     }
     for (i = 0; i < num_proc; i++) {
         if (process_orders[i] == -1) {
-            icetRaiseError("Invalid composit order.", ICET_INVALID_VALUE);
+            icetRaiseError("Invalid composite order.", ICET_INVALID_VALUE);
             return;
         }
     }
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, num_proc, process_ranks);
-    if (new_process_orders) {
-        icetUnsafeStateSet(ICET_PROCESS_ORDERS, num_proc,
-                           ICET_INT, process_orders);
-    }
 }
 
 void icetDataReplicationGroup(IceTInt size, const IceTInt *processes)
