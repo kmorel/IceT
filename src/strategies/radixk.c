@@ -352,7 +352,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
     piece_offsets = icetGetStateBuffer(RADIXK_SPLIT_OFFSET_ARRAY_BUFFER,
                                        current_k * sizeof(IceTInt));
     image_pieces = icetGetStateBuffer(RADIXK_SPLIT_IMAGE_ARRAY_BUFFER,
-                                      current_k * sizeof(IceTSizeType));
+                                      current_k * sizeof(IceTSparseImage));
     for (i = 0; i < current_k; i++) {
         image_pieces[i] = partners[i].sendImage;
     }
