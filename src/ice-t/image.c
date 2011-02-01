@@ -1642,6 +1642,12 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
     raw_image = renderTile(tile, screen_viewport, target_viewport,
                            icetImageNull());
 
+    if ((target_viewport[2] < 1) || (target_viewport[3] < 1)) {
+        /* Tile empty.  Just clear result. */
+        icetClearSparseImage(compressed_image);
+        return;
+    }
+
     space_left = target_viewport[0];
     space_right = width - target_viewport[2] - space_left;
     space_bottom = target_viewport[1];
