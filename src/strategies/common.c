@@ -16,6 +16,7 @@
 #include <IceTDevStrategySelect.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #define FULL_IMAGE_DATA 20
 
@@ -474,6 +475,21 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
     }
     icetCommGather(&piece_offset, 1, ICET_SIZE_TYPE, offsets, dest);
     icetCommGather(&piece_size, 1, ICET_SIZE_TYPE, sizes, dest);
+
+#ifdef DEBUG
+    if (rank == dest) {
+        IceTVoid *data;
+        IceTSizeType size;
+        if (icetImageGetColorFormat(result_image) != ICET_IMAGE_COLOR_NONE) {
+            data = icetImageGetColorVoid(result_image, &size);
+            memset(data, 0xCD, icetImageGetNumPixels(result_image)*size);
+        }
+        if (icetImageGetDepthFormat(result_image) != ICET_IMAGE_DEPTH_NONE) {
+            data = icetImageGetDepthVoid(result_image, &size);
+            memset(data, 0xCD, icetImageGetNumPixels(result_image)*size);
+        }
+    }
+#endif
 
     if (piece_size > 0) {
         /* Decompress data into appropriate offset of result image. */
