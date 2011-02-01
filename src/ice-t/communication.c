@@ -15,10 +15,12 @@
 #include <IceTDevPorting.h>
 
 #define icetAddSentBytes(num_sending)                                   \
-    (icetUnsafeStateGetInteger(ICET_BYTES_SENT))[0] += (num_sending)
+    icetStateSetInteger(ICET_BYTES_SENT,                                \
+                        icetUnsafeStateGetInteger(ICET_BYTES_SENT)[0]   \
+                        + (num_sending))
 
 #define icetAddSent(count, datatype)                                    \
-    (icetAddSentBytes((IceTInt)count*icetTypeWidth(datatype)))
+    icetAddSentBytes((IceTInt)count*icetTypeWidth(datatype))
 
 #define icetCommCheckCount(count)                                       \
     if (count > 1073741824) {                                           \

@@ -1290,8 +1290,11 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
     IceTSizeType start_inactive;
     IceTSizeType start_active;
 
-    IceTDouble *compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
-    IceTDouble timer = icetWallTime();
+    IceTDouble compress_time;
+    IceTDouble timer;
+
+    icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
+    timer = icetWallTime();
 
     color_format = icetSparseImageGetColorFormat(in_image);
     depth_format = icetSparseImageGetDepthFormat(in_image);
@@ -1349,7 +1352,8 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                                       pixel_size,
                                       out_image);
 
-    *compress_time += icetWallTime() - timer;
+    compress_time += icetWallTime() - timer;
+    icetStateSetInteger(ICET_COMPRESS_TIME, compress_time);
 }
 
 static void icetSparseImageSplitChoosePartitions(IceTInt num_partitions,
@@ -1398,8 +1402,11 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
 
     IceTInt partition;
 
-    IceTDouble *compress_time = icetUnsafeStateGetDouble(ICET_COMPRESS_TIME);
-    IceTDouble timer = icetWallTime();
+    IceTDouble compress_time;
+    IceTDouble timer;
+
+    icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
+    timer = icetWallTime();
 
     if (num_partitions < 2) {
         icetRaiseError("It does not make sense to call icetSparseImageSplit"
@@ -1470,7 +1477,8 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
     }
 #endif
 
-    *compress_time += icetWallTime() - timer;
+    compress_time += icetWallTime() - timer;
+    icetStateSetInteger(ICET_COMPRESS_TIME, compress_time);
 }
 
 IceTSizeType icetSparseImageSplitPartitionNumPixels(
@@ -1556,7 +1564,7 @@ void icetSetDepthFormat(IceTEnum depth_format)
 void icetGetTileImage(IceTInt tile, IceTImage image)
 {
     IceTInt screen_viewport[4], target_viewport[4];
-    IceTInt *viewports;
+    const IceTInt *viewports;
     IceTSizeType width, height;
     IceTImage rendered_image;
     IceTDouble read_time;
@@ -1597,7 +1605,7 @@ void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
 {
     IceTInt screen_viewport[4], target_viewport[4];
     IceTImage raw_image;
-    IceTInt *viewports;
+    const IceTInt *viewports;
     IceTSizeType width, height;
     IceTSizeType space_left, space_right, space_bottom, space_top;
 
@@ -1697,7 +1705,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
     IceTEnum composite_mode;
     IceTEnum color_format, depth_format;
     IceTDouble timer;
-    IceTDouble *compare_time;
+    IceTDouble compare_time;
 
     pixels = icetImageGetNumPixels(destBuffer);
     if (pixels != icetImageGetNumPixels(srcBuffer)) {
@@ -1718,7 +1726,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
 
     icetGetEnumv(ICET_COMPOSITE_MODE, &composite_mode);
 
-    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
+    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
     timer = icetWallTime();
 
     if (composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
@@ -1810,7 +1818,8 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                        ICET_SANITY_CHECK_FAIL);
     }
 
-    *compare_time += icetWallTime() - timer;
+    compare_time += icetWallTime() - timer;
+    icetStateSetDouble(ICET_COMPARE_TIME, compare_time);
 }
 
 void icetCompressedComposite(IceTImage destBuffer,
@@ -1830,9 +1839,9 @@ void icetCompressedSubComposite(IceTImage destBuffer,
                                 int srcOnTop)
 {
     IceTDouble timer;
-    IceTDouble *compare_time;
+    IceTDouble compare_time;
 
-    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
+    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
     timer = icetWallTime();
 
     if (srcOnTop) {
@@ -1855,7 +1864,8 @@ void icetCompressedSubComposite(IceTImage destBuffer,
 #include "decompress_func_body.h"
     }
 
-    *compare_time += icetWallTime() - timer;
+    compare_time += icetWallTime() - timer;
+    icetStateSetDouble(ICET_COMPARE_TIME, compare_time);
 }
 
 void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
@@ -1863,9 +1873,9 @@ void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
                                        IceTSparseImage dest_buffer)
 {
     IceTDouble timer;
-    IceTDouble *compare_time;
+    IceTDouble compare_time;
 
-    compare_time = icetUnsafeStateGetDouble(ICET_COMPARE_TIME);
+    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
     timer = icetWallTime();
 
 #define FRONT_SPARSE_IMAGE front_buffer
@@ -1873,7 +1883,8 @@ void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
 #define DEST_SPARSE_IMAGE dest_buffer
 #include "cc_composite_func_body.h"
 
-    *compare_time += icetWallTime() - timer;
+    compare_time += icetWallTime() - timer;
+    icetStateSetInteger(ICET_COMPARE_TIME, compare_time);
 }
 
 static IceTImage renderTile(int tile,
@@ -1881,9 +1892,9 @@ static IceTImage renderTile(int tile,
                             IceTInt *target_viewport,
                             IceTImage tile_buffer)
 {
-    IceTInt *contained_viewport;
-    IceTInt *tile_viewport;
-    IceTBoolean *contained_mask;
+    const IceTInt *contained_viewport;
+    const IceTInt *tile_viewport;
+    const IceTBoolean *contained_mask;
     IceTInt physical_width, physical_height;
     IceTBoolean use_floating_viewport;
     IceTDrawCallbackType drawfunc;
@@ -2052,7 +2063,7 @@ static IceTImage renderTile(int tile,
         if (  icetStateGetTime(ICET_RENDERED_VIEWPORT)
             > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
           /* Already rendered image for this tile. */
-            IceTInt *old_rendered_viewport
+            const IceTInt *old_rendered_viewport
                 = icetUnsafeStateGetInteger(ICET_RENDERED_VIEWPORT);
             IceTBoolean old_rendered_viewport_valid
                 = (   (old_rendered_viewport[0] == rendered_viewport[0])

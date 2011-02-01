@@ -27,7 +27,8 @@ static IceTBoolean rtfi_first;
 static IceTVoid *rtfi_generateDataFunc(IceTInt id, IceTInt dest,
                                        IceTSizeType *size) {
     IceTInt rank;
-    IceTInt *tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
+    const IceTInt *tile_list
+        = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     IceTVoid *outBuffer;
 
     icetGetIntegerv(ICET_RANK, &rank);
@@ -57,7 +58,7 @@ static void rtfi_handleDataFunc(void *inSparseImageBuffer, IceTInt src) {
             icetDecompressImage(inSparseImage, rtfi_image);
         } else {
             IceTInt rank;
-            IceTInt *process_orders;
+            const IceTInt *process_orders;
             icetGetIntegerv(ICET_RANK, &rank);
             process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
             icetCompressedComposite(rtfi_image, inSparseImage,
@@ -72,7 +73,7 @@ void icetRenderTransferFullImages(IceTImage image,
                                   IceTInt *tile_image_dest)
 {
     IceTInt num_sending;
-    IceTInt *tile_list;
+    const IceTInt *tile_list;
     IceTInt num_tiles;
     IceTInt width, height;
     IceTInt *imageDestinations;
@@ -113,7 +114,8 @@ static IceTBoolean rtsi_first;
 static IceTVoid *rtsi_generateDataFunc(IceTInt id, IceTInt dest,
                                        IceTSizeType *size) {
     IceTInt rank;
-    IceTInt *tile_list = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
+    const IceTInt *tile_list
+        = icetUnsafeStateGetInteger(ICET_CONTAINED_TILES_LIST);
     IceTVoid *outBuffer;
 
     icetGetIntegerv(ICET_RANK, &rank);
@@ -148,7 +150,7 @@ static void rtsi_handleDataFunc(void *inSparseImageBuffer, IceTInt src) {
                                       rtsi_workingImage);
         } else {
             IceTInt rank;
-            IceTInt *process_orders;
+            const IceTInt *process_orders;
             IceTSparseImage old_workingImage;
 
             icetGetIntegerv(ICET_RANK, &rank);
@@ -178,7 +180,7 @@ void icetRenderTransferSparseImages(IceTSparseImage compositeImage1,
                                     IceTSparseImage *resultImage)
 {
     IceTInt num_sending;
-    IceTInt *tile_list;
+    const IceTInt *tile_list;
     IceTInt num_tiles;
     IceTInt width, height;
     IceTInt *imageDestinations;
@@ -242,8 +244,8 @@ void icetSendRecvLargeMessages(IceTInt numMessagesSending,
     IceTInt someoneSends;
     IceTInt sendToSelf;
     IceTInt sqi, rqi;     /* Send/Recv queue index. */
-    IceTInt *composite_order;
-    IceTInt *process_orders;
+    const IceTInt *composite_order;
+    const IceTInt *process_orders;
 
     IceTInt *sendIds;
     IceTByte *myDests;

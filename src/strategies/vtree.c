@@ -57,10 +57,10 @@ IceTImage icetVtreeCompose(void)
     IceTInt rank, num_proc;
     IceTInt num_tiles;
     IceTInt max_width, max_height;
-    IceTInt *display_nodes;
+    const IceTInt *display_nodes;
     IceTInt tile_displayed;
     IceTBoolean *all_contained_tmasks;
-    IceTInt *tile_viewports;
+    const IceTInt *tile_viewports;
     IceTImage image;
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
@@ -235,7 +235,8 @@ IceTImage icetVtreeCompose(void)
             icetGetTileImage(tile_displayed, image);
         } else {
           /* "This" tile is blank. */
-            IceTInt *display_tile_viewport = tile_viewports + 4*tile_displayed;
+            const IceTInt *display_tile_viewport
+                = tile_viewports + 4*tile_displayed;
             IceTInt display_tile_width = display_tile_viewport[2];
             IceTInt display_tile_height = display_tile_viewport[3];
 

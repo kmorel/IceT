@@ -58,8 +58,8 @@ IceTImage icetReduceCompose(void)
     IceTInt compose_tile;
     IceTSizeType piece_offset;
 
-    IceTInt *contrib_counts;
-    IceTInt *tile_display_nodes;
+    const IceTInt *contrib_counts;
+    const IceTInt *tile_display_nodes;
     IceTInt num_tiles;
     IceTInt tile_idx;
 
@@ -129,8 +129,9 @@ IceTImage icetReduceCompose(void)
     icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
     if ((tile_displayed >= 0) && (tile_displayed != compose_tile)) {
       /* Return empty image if nothing in this tile. */
-        IceTInt *tile_viewports =icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
-        IceTInt *display_tile_viewport = tile_viewports + 4*tile_displayed;
+        const IceTInt *tile_viewports
+          = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+        const IceTInt *display_tile_viewport = tile_viewports + 4*tile_displayed;
         IceTInt display_tile_width = display_tile_viewport[2];
         IceTInt display_tile_height = display_tile_viewport[3];
 
@@ -149,15 +150,15 @@ static IceTInt delegate(IceTInt **tile_image_destp,
                         IceTInt *group_sizep,
                         IceTInt *group_image_destp)
 {
-    IceTBoolean *all_contained_tiles_masks;
-    IceTInt *contrib_counts;
+    const IceTBoolean *all_contained_tiles_masks;
+    const IceTInt *contrib_counts;
     IceTInt total_image_count;
 
     IceTInt num_tiles;
     IceTInt num_processes;
     IceTInt rank;
-    IceTInt *tile_display_nodes;
-    IceTInt *composite_order;
+    const IceTInt *tile_display_nodes;
+    const IceTInt *composite_order;
 
     IceTInt *num_proc_for_tile;
     IceTInt *node_assignment;
@@ -289,7 +290,8 @@ group_sizes[(tile)]++;
   /* Assign each node to a tile it is rendering, if possible. */
     for (node = 0; node < num_processes; node++) {
         if (node_assignment[node] < 0) {
-            IceTBoolean *tile_mask = all_contained_tiles_masks + node*num_tiles;
+            const IceTBoolean *tile_mask
+                = all_contained_tiles_masks + node*num_tiles;
             for (tile = 0; tile < num_tiles; tile++) {
                 if (   (tile_mask[tile])
                     && (group_sizes[tile] < num_proc_for_tile[tile])) {

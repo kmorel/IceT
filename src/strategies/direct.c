@@ -26,8 +26,8 @@ IceTImage icetDirectCompose(void)
     IceTVoid *inSparseImageBuffer;
     IceTSparseImage outSparseImage;
     IceTSizeType sparseImageSize;
-    IceTInt *contrib_counts;
-    IceTInt *display_nodes;
+    const IceTInt *contrib_counts;
+    const IceTInt *display_nodes;
     IceTInt max_width, max_height;
     IceTInt num_tiles;
     IceTInt num_contributors;
@@ -73,8 +73,9 @@ IceTImage icetDirectCompose(void)
 
     if ((display_tile >= 0) && (num_contributors < 1)) {
       /* Must be displaying a blank tile. */
-        IceTInt *tile_viewports =icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
-        IceTInt *display_tile_viewport = tile_viewports + 4*display_tile;
+        const IceTInt *tile_viewports
+            = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+        const IceTInt *display_tile_viewport = tile_viewports + 4*display_tile;
         IceTInt display_tile_width = display_tile_viewport[2];
         IceTInt display_tile_height = display_tile_viewport[3];
 

@@ -88,17 +88,9 @@ void icetCompositeOrder(const IceTInt *process_ranks)
     IceTInt num_proc;
     IceTInt i;
     IceTInt *process_orders;
-    IceTBoolean new_process_orders;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    if (   (icetStateGetType(ICET_PROCESS_ORDERS) == ICET_INT)
-        && (icetStateGetNumEntries(ICET_PROCESS_ORDERS) >= num_proc) ) {
-        process_orders = icetUnsafeStateGetInteger(ICET_PROCESS_ORDERS);
-        new_process_orders = 0;
-    } else {
-        process_orders = malloc(ICET_PROCESS_ORDERS * sizeof(IceTInt));
-        new_process_orders = 1;
-    }
+    process_orders = icetStateAllocateInteger(ICET_PROCESS_ORDERS, num_proc);
     for (i = 0; i < num_proc; i++) {
         process_orders[i] = -1;
     }
@@ -107,15 +99,11 @@ void icetCompositeOrder(const IceTInt *process_ranks)
     }
     for (i = 0; i < num_proc; i++) {
         if (process_orders[i] == -1) {
-            icetRaiseError("Invalid composit order.", ICET_INVALID_VALUE);
+            icetRaiseError("Invalid composite order.", ICET_INVALID_VALUE);
             return;
         }
     }
     icetStateSetIntegerv(ICET_COMPOSITE_ORDER, num_proc, process_ranks);
-    if (new_process_orders) {
-        icetUnsafeStateSet(ICET_PROCESS_ORDERS, num_proc,
-                           ICET_INT, process_orders);
-    }
 }
 
 void icetDataReplicationGroup(IceTInt size, const IceTInt *processes)
@@ -272,7 +260,8 @@ static void drawFindContainedViewport(IceTInt contained_viewport[4],
     /* Transform each vertex to find where it lies in the global viewport and
        normalized z.  Leave the results in homogeneous coordinates for now. */
     {
-        IceTDouble *bound_vert = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
+        const IceTDouble *bound_vert
+            = icetUnsafeStateGetDouble(ICET_GEOMETRY_BOUNDS);
         for (i = 0; i < num_bounding_verts; i++) {
             IceTDouble bound_vert_4vec[4];
             bound_vert_4vec[0] = bound_vert[3*i+0];
@@ -382,7 +371,7 @@ static void drawDetermineContainedTiles(const IceTInt contained_viewport[4],
                                         IceTBoolean *contained_mask,
                                         IceTInt *num_contained_p)
 {
-    IceTInt *tile_viewports;
+    const IceTInt *tile_viewports;
     IceTInt num_tiles;
     int i;
 
@@ -416,7 +405,7 @@ static void drawAdjustContainedForDataReplication(IceTInt *contained_viewport,
 {
     IceTInt *data_replication_group;
     IceTInt data_replication_group_size;
-    IceTInt *display_nodes;
+    const IceTInt *display_nodes;
     IceTInt rank;
     IceTInt num_proc;
 
@@ -497,9 +486,9 @@ static void drawAdjustContainedForDataReplication(IceTInt *contained_viewport,
 
             /* Record a new viewport covering only my portion of the tile. */
             if (tile_rendering >= 0) {
-                IceTInt *tile_viewports
+                const IceTInt *tile_viewports
                     = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
-                IceTInt *tv = tile_viewports + 4*tile_rendering;
+                const IceTInt *tv = tile_viewports + 4*tile_rendering;
                 int new_length = tv[2]/num_rendering_tile;
                 *num_contained_p = 1;
                 contained_list[0] = tile_rendering;
@@ -703,7 +692,7 @@ static IceTImage drawInvokeStrategy(void)
     /* Ensure that the returned image is the expected size. */
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
     if (display_tile >= 0) {
-        IceTInt *display_tile_viewport
+        const IceTInt *display_tile_viewport
             = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS) + 4*display_tile;
         if (   (display_tile_viewport[2] != icetImageGetWidth(image))
             || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {

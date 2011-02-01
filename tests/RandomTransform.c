@@ -427,7 +427,7 @@ static int RandomTransformRun()
     int rank, num_proc;
     IceTInt *image_order;
     IceTInt rep_group_size;
-    IceTInt *rep_group;
+    const IceTInt *rep_group;
     IceTFloat background_color[3];
     unsigned int seed;
     int strategy_idx;
