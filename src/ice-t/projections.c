@@ -27,12 +27,12 @@ static void update_tile_projections(void);
 
 void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
 {
-    IceTInt *viewports;
+    const IceTInt *viewports;
     IceTInt tile_width, tile_height;
     IceTInt renderable_width, renderable_height;
     IceTDouble *tile_proj;
     IceTDouble tile_viewport_proj[16];
-    IceTDouble *global_proj;
+    const IceTDouble *global_proj;
 
   /* Update tile projections. */
     if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
@@ -154,7 +154,7 @@ void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
 
 static void update_tile_projections(void)
 {
-    IceTInt *viewports;
+    const IceTInt *viewports;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);

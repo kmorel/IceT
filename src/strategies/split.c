@@ -43,16 +43,16 @@ IceTImage icetSplitCompose(void)
     IceTInt num_proc;
     IceTInt num_tiles;
     IceTInt max_width, max_height;
-    IceTInt *tile_contribs;
+    const IceTInt *tile_contribs;
     IceTInt total_image_count;
-    IceTInt *display_nodes;
+    const IceTInt *display_nodes;
     IceTInt tile_displayed;
-    IceTInt *tile_viewports;
+    const IceTInt *tile_viewports;
     IceTInt my_width, my_height;
 
     IceTInt num_contained_tiles;
-    IceTInt *contained_tiles_list;
-    IceTBoolean *all_contained_tiles_masks;
+    const IceTInt *contained_tiles_list;
+    const IceTBoolean *all_contained_tiles_masks;
 
     int tile, image, node;
     int num_allocated;

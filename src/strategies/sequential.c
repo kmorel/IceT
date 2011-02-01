@@ -24,7 +24,7 @@ IceTImage icetSequentialCompose(void)
     IceTInt max_width, max_height;
     IceTInt rank;
     IceTInt num_proc;
-    IceTInt *display_nodes;
+    const IceTInt *display_nodes;
     IceTBoolean ordered_composite;
     IceTImage myImage;
     IceTImage image;

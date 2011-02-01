@@ -20,6 +20,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef DEBUG
+#define ICET_CHECK_STATE_MEM
+#endif
+
 struct IceTStateValue {
     IceTEnum type;
     IceTSizeType num_entries;
@@ -27,10 +31,22 @@ struct IceTStateValue {
     IceTTimeStamp mod_time;
 };
 
+#ifdef ICET_CHECK_STATE_MEM
+static void stateCheck(IceTEnum pname, const IceTState state);
+#else
+#define stateCheck(pname, state)
+#endif
+
 static IceTVoid *stateAllocate(IceTEnum pname,
                                IceTSizeType num_entries,
-                               IceTEnum type);
-static void stateSet(IceTEnum pname, IceTSizeType num_entries, IceTEnum type,
+                               IceTEnum type,
+                               IceTState state);
+
+static void stateFree(IceTEnum pname, IceTState state);
+
+static void stateSet(IceTEnum pname,
+                     IceTSizeType num_entries,
+                     IceTEnum type,
                      const IceTVoid *data);
 
 IceTState icetStateCreate(void)
@@ -48,9 +64,7 @@ void icetStateDestroy(IceTState state)
     IceTEnum i;
 
     for (i = 0; i < ICET_STATE_SIZE; i++) {
-        if (state[i].type != ICET_NULL) {
-            free(state[i].data);
-        }
+        stateFree(i, state);
     }
     free(state);
 }
@@ -72,19 +86,16 @@ void icetStateCopy(IceTState dest, const IceTState src)
             continue;
         }
 
-        if (dest[i].type != ICET_NULL) {
-            free(dest[i].data);
-        }
-
         type_width = icetTypeWidth(src[i].type);
 
-        dest[i].type = src[i].type;
-        dest[i].num_entries = src[i].num_entries;
         if (type_width > 0) {
-            dest[i].data = malloc(type_width * dest[i].num_entries);
-            memcpy(dest[i].data, src[i].data, src[i].num_entries * type_width);
+            IceTVoid *data = stateAllocate(i,
+                                           src[i].num_entries,
+                                           src[i].type,
+                                           dest);
+            memcpy(data, src[i].data, src[i].num_entries * type_width);
         } else {
-            dest[i].data = NULL;
+            stateFree(i, dest);
         }
         dest[i].mod_time = mod_time;
     }
@@ -119,13 +130,14 @@ void icetStateSetDefaults(void)
     icetStateSetInteger(ICET_STRATEGY, ICET_STRATEGY_UNDEFINED);
     icetSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-    int_array = malloc(comm_size * sizeof(IceTInt));
+    int_array = icetStateAllocateInteger(ICET_COMPOSITE_ORDER, comm_size);
     for (i = 0; i < comm_size; i++) {
         int_array[i] = i;
     }
-    icetStateSetIntegerv(ICET_COMPOSITE_ORDER, comm_size, int_array);
-    icetStateSetIntegerv(ICET_PROCESS_ORDERS, comm_size, int_array);
-    free(int_array);
+    int_array = icetStateAllocateInteger(ICET_PROCESS_ORDERS, comm_size);
+    for (i = 0; i < comm_size; i++) {
+        int_array[i] = i;
+    }
 
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP, comm_rank);
     icetStateSetInteger(ICET_DATA_REPLICATION_GROUP_SIZE, 1);
@@ -213,14 +225,17 @@ void icetStateSetPointer(IceTEnum pname, const IceTVoid *value)
 
 IceTEnum icetStateGetType(IceTEnum pname)
 {
+    stateCheck(pname, icetGetState());
     return icetGetState()[pname].type;
 }
 IceTSizeType icetStateGetNumEntries(IceTEnum pname)
 {
+    stateCheck(pname, icetGetState());
     return icetGetState()[pname].num_entries;
 }
 IceTTimeStamp icetStateGetTime(IceTEnum pname)
 {
+    stateCheck(pname, icetGetState());
     return icetGetState()[pname].mod_time;
 }
 
@@ -262,24 +277,28 @@ void icetGetDoublev(IceTEnum pname, IceTDouble *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     copyArray(IceTDouble, params, value->type, value->data, value->num_entries);
 }
 void icetGetFloatv(IceTEnum pname, IceTFloat *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     copyArray(IceTFloat, params, value->type, value->data, value->num_entries);
 }
 void icetGetBooleanv(IceTEnum pname, IceTBoolean *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     copyArray(IceTBoolean, params, value->type, value->data,value->num_entries);
 }
 void icetGetIntegerv(IceTEnum pname, IceTInt *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     copyArray(IceTInt, params, value->type, value->data, value->num_entries);
 }
 
@@ -287,6 +306,7 @@ void icetGetEnumv(IceTEnum pname, IceTEnum *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
         icetRaiseError("Floating point values cannot be enumerations.",
                        ICET_BAD_CAST);
@@ -297,6 +317,7 @@ void icetGetBitFieldv(IceTEnum pname, IceTBitField *params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     if ((value->type == ICET_FLOAT) || (value->type == ICET_DOUBLE)) {
         icetRaiseError("Floating point values cannot be enumerations.",
                        ICET_BAD_CAST);
@@ -309,6 +330,7 @@ void icetGetPointerv(IceTEnum pname, IceTVoid **params)
 {
     struct IceTStateValue *value = icetGetState() + pname;
     int i;
+    stateCheck(pname, icetGetState());
     if (value->type == ICET_NULL) {
         char msg[256];
         sprintf(msg, "No such parameter, 0x%x.", (int)pname);
@@ -353,39 +375,166 @@ IceTBoolean icetIsEnabled(IceTEnum pname)
     return isEnabled;
 }
 
-void icetUnsafeStateSet(IceTEnum pname,
-                        IceTSizeType num_entries,
-                        IceTEnum type,
-                        IceTVoid *data)
+#ifdef ICET_CHECK_STATE_MEM
+#define STATE_PADDING_SIZE (16)
+#define STATE_DATA_WIDTH(type, num_entries) \
+    (icetTypeWidth(type)*num_entries)
+#define STATE_DATA_ALLOCATE(type, num_entries) \
+    (STATE_DATA_WIDTH(type, num_entries) + 2*STATE_PADDING_SIZE)
+#define STATE_DATA_PRE_PADDING(pname, state) \
+    (((IceTByte *)state[pname].data) - STATE_PADDING_SIZE)
+#define STATE_DATA_POST_PADDING(pname, state) \
+    (  ((IceTByte *)state[pname].data) \
+     + STATE_DATA_WIDTH(state[pname].type, state[pname].num_entries))
+static const IceTByte g_pre_padding[STATE_PADDING_SIZE] = {
+    0x9A, 0xBC, 0xDE, 0xF0,
+    0x12, 0x34, 0x56, 0x78,
+    0x29, 0x38, 0x47, 0x56,
+    0xDE, 0xAD, 0xBE, 0xEF
+};
+static const IceTByte g_post_padding[STATE_PADDING_SIZE] = {
+    0xDE, 0xAD, 0xBE, 0xEF,
+    0x12, 0x34, 0x56, 0x78,
+    0x9A, 0xBC, 0xDE, 0xF0,
+    0x29, 0x38, 0x47, 0x56
+};
+
+static void stateCheck(IceTEnum pname, const IceTState state)
 {
-    IceTState state = icetGetState();
-
     if (state[pname].type != ICET_NULL) {
-        free(state[pname].data);
+        if (state[pname].num_entries > 0) {
+            IceTSizeType i;
+            IceTByte *padding;
+            padding = STATE_DATA_PRE_PADDING(pname, state);
+            for (i = 0; i < STATE_PADDING_SIZE; i++) {
+                if (padding[i] != g_pre_padding[i]) {
+                    char message[256];
+                    sprintf(message,
+                            "Lower buffer overrun detected in "
+                            " state variable 0x%X",
+                            pname);
+                    icetRaiseError(message, ICET_SANITY_CHECK_FAIL);
+                }
+            }
+            padding = STATE_DATA_POST_PADDING(pname, state);
+            for (i = 0; i < STATE_PADDING_SIZE; i++) {
+                if (padding[i] != g_post_padding[i]) {
+                    char message[256];
+                    sprintf(message,
+                            "Upper buffer overrun detected in "
+                            " state variable 0x%X",
+                            pname);
+                    icetRaiseError(message, ICET_SANITY_CHECK_FAIL);
+                }
+            }
+        } else {
+            if (state[pname].data != NULL) {
+                char message[256];
+                sprintf(message,
+                        "State variable 0x%X has zero entries but"
+                        " non-null pointer.",
+                        pname);
+                icetRaiseError(message, ICET_SANITY_CHECK_FAIL);
+            }
+        }
+    } else { /* state[pname].type == ICET_NULL */
+        if (state[pname].data != NULL) {
+            char message[256];
+            sprintf(message,
+                    "State variable 0x%X has ICET_NULL type but"
+                    " non-null pointer.",
+                    pname);
+            icetRaiseError(message, ICET_SANITY_CHECK_FAIL);
+        }
+        if (state[pname].num_entries != 0) {
+            char message[256];
+            sprintf(message,
+                    "State variable 0x%X has ICET_NULL type but"
+                    " also has %d entries (!= 0).",
+                    pname,
+                    (int)state[pname].num_entries);
+            icetRaiseError(message, ICET_SANITY_CHECK_FAIL);
+        }
     }
-
-    state[pname].type = type;
-    state[pname].num_entries = num_entries;
-    state[pname].mod_time = icetGetTimeStamp();
-    state[pname].data = data;
 }
+#else /* ICET_CHECK_STATE_MEM */
+#define STATE_DATA_WIDTH(type, num_entries) \
+    (icetTypeWidth(type)*num_entries)
+#define STATE_DATA_ALLOCATE(type, num_entries) \
+    (STATE_DATA_WIDTH(type, num_entries))
+#endif /* ICET_CHECK_STATE_MEM */
 
 static IceTVoid *stateAllocate(IceTEnum pname,
                                IceTSizeType num_entries,
-                               IceTEnum type)
+                               IceTEnum type,
+                               IceTState state)
 {
-    IceTState state = icetGetState();
+    IceTVoid *buffer;
+
+    stateCheck(pname, state);
 
     if (   (num_entries == state[pname].num_entries)
         && (type == state[pname].type) ) {
-      /* Return the current buffer. */
+        /* Return the current buffer. */
         state[pname].mod_time = icetGetTimeStamp();
-        return state[pname].data;
-    } else {
-      /* Create a new buffer. */
-        IceTVoid *buffer = malloc(num_entries * icetTypeWidth(type));
-        icetUnsafeStateSet(pname, num_entries, type, buffer);
-        return buffer;
+        buffer = state[pname].data;
+    } else if (num_entries > 0) {
+        /* Create a new buffer. */
+        buffer = malloc(STATE_DATA_ALLOCATE(type, num_entries));
+#ifdef ICET_CHECK_STATE_MEM
+        /* Skip past padding. */
+        buffer = (IceTByte *)buffer + STATE_PADDING_SIZE;
+#endif
+
+        state[pname].type = type;
+        state[pname].num_entries = num_entries;
+        state[pname].data = buffer;
+        state[pname].mod_time = icetGetTimeStamp();
+
+#ifdef ICET_CHECK_STATE_MEM
+        /* Set padding data. */
+        {
+            IceTSizeType i;
+            IceTByte *padding;
+            padding = STATE_DATA_PRE_PADDING(pname, state);
+            for (i = 0; i < STATE_PADDING_SIZE; i++) {
+                padding[i] = g_pre_padding[i];
+            }
+            padding = STATE_DATA_POST_PADDING(pname, state);
+            for (i = 0; i < STATE_PADDING_SIZE; i++) {
+                padding[i] = g_post_padding[i];
+            }
+        }
+#endif
+    } else { /* num_entries <= 0 */
+        buffer = NULL;
+
+        state[pname].type = type;
+        state[pname].num_entries = 0;
+        state[pname].data = buffer;
+        state[pname].mod_time = icetGetTimeStamp();
+    }
+
+#ifdef ICET_CHECK_STATE_MEM
+    memset(buffer, 0xDC, STATE_DATA_WIDTH(type, num_entries));
+#endif
+    return buffer;
+}
+
+static void stateFree(IceTEnum pname, IceTState state)
+{
+    stateCheck(pname, state);
+
+    if ((state[pname].type != ICET_NULL) && (state[pname].num_entries > 0)) {
+#ifdef ICET_CHECK_STATE_MEM
+        free(STATE_DATA_PRE_PADDING(pname, state));
+#else
+        free(state[pname].data);
+#endif
+        state[pname].type = ICET_NULL;
+        state[pname].num_entries = 0;
+        state[pname].data = NULL;
+        state[pname].mod_time = 0;
     }
 }
 
@@ -395,13 +544,19 @@ static void stateSet(IceTEnum pname,
                      const IceTVoid *data)
 {
     IceTSizeType type_width = icetTypeWidth(type);
-    void *datacopy = stateAllocate(pname, num_entries, type);
+    void *datacopy = stateAllocate(pname, num_entries, type, icetGetState());
+
+    stateCheck(pname, icetGetState());
 
     memcpy(datacopy, data, num_entries * type_width);
+
+    stateCheck(pname, icetGetState());
 }
 
 static void *icetUnsafeStateGet(IceTEnum pname, IceTEnum type)
 {
+    stateCheck(pname, icetGetState());
+
     if (icetGetState()[pname].type != type) {
 	icetRaiseError("Mismatched types in unsafe state get.",
 		       ICET_SANITY_CHECK_FAIL);
@@ -410,51 +565,46 @@ static void *icetUnsafeStateGet(IceTEnum pname, IceTEnum type)
     return icetGetState()[pname].data;
 }
 
-IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
+const IceTDouble *icetUnsafeStateGetDouble(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_DOUBLE);
 }
-IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
+const IceTFloat *icetUnsafeStateGetFloat(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_FLOAT);
 }
-IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
+const IceTInt *icetUnsafeStateGetInteger(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_INT);
 }
-IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
+const IceTBoolean *icetUnsafeStateGetBoolean(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_BOOLEAN);
 }
-IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
+const IceTVoid **icetUnsafeStateGetPointer(IceTEnum pname)
 {
     return icetUnsafeStateGet(pname, ICET_POINTER);
 }
 
-IceTEnum icetStateType(IceTEnum pname)
-{
-    return icetGetState()[pname].type;
-}
-
 IceTDouble *icetStateAllocateDouble(IceTEnum pname, IceTSizeType num_entries)
 {
-    return stateAllocate(pname, num_entries, ICET_DOUBLE);
+    return stateAllocate(pname, num_entries, ICET_DOUBLE, icetGetState());
 }
 IceTFloat *icetStateAllocateFloat(IceTEnum pname, IceTSizeType num_entries)
 {
-    return stateAllocate(pname, num_entries, ICET_FLOAT);
+    return stateAllocate(pname, num_entries, ICET_FLOAT, icetGetState());
 }
 IceTInt *icetStateAllocateInteger(IceTEnum pname, IceTSizeType num_entries)
 {
-    return stateAllocate(pname, num_entries, ICET_INT);
+    return stateAllocate(pname, num_entries, ICET_INT, icetGetState());
 }
 IceTBoolean *icetStateAllocateBoolean(IceTEnum pname, IceTSizeType num_entries)
 {
-    return stateAllocate(pname, num_entries, ICET_BOOLEAN);
+    return stateAllocate(pname, num_entries, ICET_BOOLEAN, icetGetState());
 }
 IceTVoid **icetStateAllocatePointer(IceTEnum pname, IceTSizeType num_entries)
 {
-    return stateAllocate(pname, num_entries, ICET_POINTER);
+    return stateAllocate(pname, num_entries, ICET_POINTER, icetGetState());
 }
 
 IceTVoid *icetGetStateBuffer(IceTEnum pname, IceTSizeType num_bytes)
@@ -475,11 +625,7 @@ IceTVoid *icetGetStateBuffer(IceTEnum pname, IceTSizeType num_bytes)
                          ICET_SANITY_CHECK_FAIL);
     }
 
-    {
-        IceTVoid *buffer = malloc(num_bytes);
-        icetUnsafeStateSet(pname, num_bytes, ICET_VOID, buffer);
-        return buffer;
-    }
+    return stateAllocate(pname, num_bytes, ICET_VOID, icetGetState());
 }
 
 IceTTimeStamp icetGetTimeStamp(void)
@@ -510,6 +656,7 @@ void icetStateDump(void)
     state = icetGetState();
     printf("State dump:\n");
     for (i = 0; i < ICET_STATE_SIZE; i++) {
+        stateCheck(i, state);
         if (state->type != ICET_NULL) {
             printf("param       = 0x%x\n", i);
             printf("type        = 0x%x\n", (int)state->type);
