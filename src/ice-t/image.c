@@ -1514,6 +1514,17 @@ void icetClearSparseImage(IceTSparseImage image)
 
     INACTIVE_RUN_LENGTH(data) = (IceTUShort)p;
     ACTIVE_RUN_LENGTH(data) = 0;
+
+    {
+        /* Compute the actual number of bytes used to store the image. */
+        IceTPointerArithmetic buffer_begin
+            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(image);
+        IceTPointerArithmetic buffer_end
+            =(IceTPointerArithmetic)(data+RUN_LENGTH_SIZE);
+        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
+        ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+            = (IceTInt)compressed_size;
+    }
 }
 
 void icetSetColorFormat(IceTEnum color_format)
