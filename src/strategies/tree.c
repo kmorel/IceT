@@ -165,4 +165,7 @@ void icetTreeCompose(const IceTInt *compose_group,
 
     *result_image = imageData;
     *piece_offset = 0;
+    if (image_dest != group_rank) {
+        icetSparseImageSetDimensions(*result_image, 0, 0);
+    }
 }
