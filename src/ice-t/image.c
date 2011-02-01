@@ -52,10 +52,12 @@ static void ICET_TEST_IMAGE_HEADER(IceTImage image)
 }
 static void ICET_TEST_SPARSE_IMAGE_HEADER(IceTSparseImage image)
 {
-    if (    ICET_IMAGE_HEADER(image)[ICET_IMAGE_MAGIC_NUM_INDEX]
-         != ICET_SPARSE_IMAGE_MAGIC_NUM ) {
-        icetRaiseError("Detected invalid image header.",
-                       ICET_SANITY_CHECK_FAIL);
+    if (!icetSparseImageIsNull(image)) {
+        if (    ICET_IMAGE_HEADER(image)[ICET_IMAGE_MAGIC_NUM_INDEX]
+            != ICET_SPARSE_IMAGE_MAGIC_NUM ) {
+            icetRaiseError("Detected invalid image header.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
     }
 }
 #else /*DEBUG*/
@@ -1082,6 +1084,16 @@ void icetSparseImagePackageForSend(IceTSparseImage image,
 {
     ICET_TEST_SPARSE_IMAGE_HEADER(image);
 
+    if (icetSparseImageIsNull(image)) {
+        /* Should we return a Null pointer and 0 size without error?
+           Would all versions of MPI accept that? */
+        icetRaiseError("Cannot package NULL image for send.",
+                       ICET_INVALID_VALUE);
+        *buffer = NULL;
+        *size = 0;
+        return;
+    }
+
     *buffer = image.opaque_internals;
     *size = ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX];
 }
@@ -1500,6 +1512,8 @@ void icetClearSparseImage(IceTSparseImage image)
     IceTSizeType p;
 
     ICET_TEST_SPARSE_IMAGE_HEADER(image);
+
+    if (icetSparseImageIsNull(image)) { return; }
 
     /* Use IceTByte for byte-based pointer arithmetic. */
     data = ICET_IMAGE_DATA(image);
