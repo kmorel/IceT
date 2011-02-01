@@ -475,10 +475,10 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
     icetCommGather(&piece_offset, 1, ICET_SIZE_TYPE, offsets, dest);
     icetCommGather(&piece_size, 1, ICET_SIZE_TYPE, sizes, dest);
 
-    if ((piece_size > 0) || (rank == dest)) {
+    if (piece_size > 0) {
         /* Decompress data into appropriate offset of result image. */
         icetDecompressSubImage(input_image, piece_offset, result_image);
-    } else {
+    } else if (rank != dest) {
         /* If this function is called for multiple collections, it is likely
            that the local process will not have data for all collections.  To
            prevent making the calling function allocate an image buffer when it
@@ -490,6 +490,10 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
             return;
         }
         result_image = icetImageAssignBuffer(dummy_buffer, 0, 0);
+    } else {
+        /* Collecting data at empty process.  We still want to use the provided
+           result_image, but we have nothing of our own to put in it.  Thus, do
+           nothing. */
     }
 
     /* Adjust image for output as some buffers, such as depth, might be
