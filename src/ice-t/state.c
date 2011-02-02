@@ -21,7 +21,7 @@
 #include <string.h>
 
 #ifdef DEBUG
-#define ICET_CHECK_STATE_MEM
+#define ICET_STATE_CHECK_MEM
 #endif
 
 struct IceTStateValue {
@@ -31,7 +31,7 @@ struct IceTStateValue {
     IceTTimeStamp mod_time;
 };
 
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
 static void stateCheck(IceTEnum pname, const IceTState state);
 #else
 #define stateCheck(pname, state)
@@ -61,43 +61,49 @@ IceTState icetStateCreate(void)
 
 void icetStateDestroy(IceTState state)
 {
-    IceTEnum i;
+    IceTEnum pname;
 
-    for (i = 0; i < ICET_STATE_SIZE; i++) {
-        stateFree(i, state);
+    for (pname = ICET_STATE_ENGINE_START;
+         pname < ICET_STATE_ENGINE_END;
+         pname++) {
+        stateFree(pname, state);
     }
     free(state);
 }
 
 void icetStateCopy(IceTState dest, const IceTState src)
 {
-    IceTEnum i;
+    IceTEnum pname;
     IceTSizeType type_width;
     IceTTimeStamp mod_time;
 
     mod_time = icetGetTimeStamp();
 
-    for (i = 0; i < ICET_STATE_SIZE; i++) {
-        if (   (i == ICET_RANK) || (i == ICET_NUM_PROCESSES)
-            || (i == ICET_DATA_REPLICATION_GROUP)
-            || (i == ICET_DATA_REPLICATION_GROUP_SIZE)
-            || (i == ICET_COMPOSITE_ORDER) || (i == ICET_PROCESS_ORDERS) )
+    for (pname = ICET_STATE_ENGINE_START;
+         pname < ICET_STATE_ENGINE_END;
+         pname++) {
+        if (   (pname == ICET_RANK)
+            || (pname == ICET_NUM_PROCESSES)
+            || (pname == ICET_DATA_REPLICATION_GROUP)
+            || (pname == ICET_DATA_REPLICATION_GROUP_SIZE)
+            || (pname == ICET_COMPOSITE_ORDER)
+            || (pname == ICET_PROCESS_ORDERS) )
         {
             continue;
         }
 
-        type_width = icetTypeWidth(src[i].type);
+        type_width = icetTypeWidth(src[pname].type);
 
         if (type_width > 0) {
-            IceTVoid *data = stateAllocate(i,
-                                           src[i].num_entries,
-                                           src[i].type,
+            IceTVoid *data = stateAllocate(pname,
+                                           src[pname].num_entries,
+                                           src[pname].type,
                                            dest);
-            memcpy(data, src[i].data, src[i].num_entries * type_width);
+            memcpy(data, src[pname].data, src[pname].num_entries * type_width);
         } else {
-            stateFree(i, dest);
+            stateFree(pname, dest);
         }
-        dest[i].mod_time = mod_time;
+        dest[pname].mod_time = mod_time;
     }
 }
 
@@ -169,6 +175,20 @@ void icetStateSetDefaults(void)
     icetStateSetBoolean(ICET_RENDER_BUFFER_SIZE, 0);
 
     icetStateResetTiming();
+}
+
+void icetStateCheckMemory(void)
+{
+#ifdef ICET_STATE_CHECK_MEM
+    IceTState state = icetGetState();
+    IceTEnum pname;
+
+    for (pname = ICET_STATE_ENGINE_START;
+         pname < ICET_STATE_ENGINE_END;
+         pname++) {
+        stateCheck(pname, state);
+    }
+#endif
 }
 
 void icetStateSetDoublev(IceTEnum pname,
@@ -375,7 +395,7 @@ IceTBoolean icetIsEnabled(IceTEnum pname)
     return isEnabled;
 }
 
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
 #define STATE_PADDING_SIZE (16)
 #define STATE_DATA_WIDTH(type, num_entries) \
     (icetTypeWidth(type)*num_entries)
@@ -457,12 +477,12 @@ static void stateCheck(IceTEnum pname, const IceTState state)
         }
     }
 }
-#else /* ICET_CHECK_STATE_MEM */
+#else /* ICET_STATE_CHECK_MEM */
 #define STATE_DATA_WIDTH(type, num_entries) \
     (icetTypeWidth(type)*num_entries)
 #define STATE_DATA_ALLOCATE(type, num_entries) \
     (STATE_DATA_WIDTH(type, num_entries))
-#endif /* ICET_CHECK_STATE_MEM */
+#endif /* ICET_STATE_CHECK_MEM */
 
 static IceTVoid *stateAllocate(IceTEnum pname,
                                IceTSizeType num_entries,
@@ -481,7 +501,7 @@ static IceTVoid *stateAllocate(IceTEnum pname,
     } else if (num_entries > 0) {
         /* Create a new buffer. */
         buffer = malloc(STATE_DATA_ALLOCATE(type, num_entries));
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
         /* Skip past padding. */
         buffer = (IceTByte *)buffer + STATE_PADDING_SIZE;
 #endif
@@ -491,7 +511,7 @@ static IceTVoid *stateAllocate(IceTEnum pname,
         state[pname].data = buffer;
         state[pname].mod_time = icetGetTimeStamp();
 
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
         /* Set padding data. */
         {
             IceTSizeType i;
@@ -515,7 +535,7 @@ static IceTVoid *stateAllocate(IceTEnum pname,
         state[pname].mod_time = icetGetTimeStamp();
     }
 
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
     memset(buffer, 0xDC, STATE_DATA_WIDTH(type, num_entries));
 #endif
     return buffer;
@@ -526,7 +546,7 @@ static void stateFree(IceTEnum pname, IceTState state)
     stateCheck(pname, state);
 
     if ((state[pname].type != ICET_NULL) && (state[pname].num_entries > 0)) {
-#ifdef ICET_CHECK_STATE_MEM
+#ifdef ICET_STATE_CHECK_MEM
         free(STATE_DATA_PRE_PADDING(pname, state));
 #else
         free(state[pname].data);
@@ -650,15 +670,17 @@ void icetStateResetTiming(void)
 
 void icetStateDump(void)
 {
-    IceTEnum i;
+    IceTEnum pname;
     IceTState state;
 
     state = icetGetState();
     printf("State dump:\n");
-    for (i = 0; i < ICET_STATE_SIZE; i++) {
-        stateCheck(i, state);
+    for (pname = ICET_STATE_ENGINE_START;
+         pname < ICET_STATE_ENGINE_END;
+         pname++) {
+        stateCheck(pname, state);
         if (state->type != ICET_NULL) {
-            printf("param       = 0x%x\n", i);
+            printf("param       = 0x%x\n", pname);
             printf("type        = 0x%x\n", (int)state->type);
             printf("num_entries = %d\n", (int)state->num_entries);
             printf("data        = %p\n", state->data);

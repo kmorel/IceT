@@ -12,6 +12,7 @@
 #include <IceT.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevImage.h>
+#include <IceTDevState.h>
 
 /* Declaration of strategy compose functions. */
 extern IceTImage icetDirectCompose(void);
@@ -192,4 +193,6 @@ void icetInvokeSingleImageStrategy(IceTEnum strategy,
           icetRaiseError("Invalid single image strategy.", ICET_INVALID_ENUM);
           break;
     }
+
+    icetStateCheckMemory();
 }
