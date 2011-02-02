@@ -191,7 +191,7 @@ IceTImage icetSplitCompose(void)
     my_fragment_size = FRAG_SIZE(max_width*max_height, group_size);
 
     num_requests = tile_contribs[my_tile];
-    if (num_requests < 1) num_requests = 1;
+    if (num_requests < 2) num_requests = 2;
 
     fragmentSparseImageSize = icetSparseImageBufferSize(my_fragment_size, 1);
 

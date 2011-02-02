@@ -705,6 +705,8 @@ static IceTImage drawInvokeStrategy(void)
         }
     }
 
+    icetStateCheckMemory();
+
     return image;
 }
 
@@ -816,6 +818,8 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetStateSetDouble(ICET_COMPOSITE_TIME, compose_time);
 
     icetStateSetDouble(ICET_BUFFER_WRITE_TIME, 0.0);
+
+    icetStateCheckMemory();
 
     return image;
 }

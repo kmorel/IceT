@@ -389,6 +389,7 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_SI_STRATEGY_BUFFER_15 (ICET_SI_STRATEGY_BUFFER_START | (IceTEnum)0x000F)
 
 #define ICET_STATE_SIZE         (IceTEnum)0x00000200
+#define ICET_STATE_ENGINE_END   (ICET_STATE_ENGINE_START + ICET_STATE_SIZE)
 
 ICET_EXPORT void icetGetDoublev(IceTEnum pname, IceTDouble *params);
 ICET_EXPORT void icetGetFloatv(IceTEnum pname, IceTFloat *params);

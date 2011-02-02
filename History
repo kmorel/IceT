@@ -18,6 +18,11 @@ Revision 2.1:
 	 problems with large numbers of processes and would probably be
 	 inefficient anyway.
 
+	 Changed the single image compositing methods to work strictly with
+	 compressed images.  This prevents having to pad images with
+	 background only to then test that same background later during
+	 compressiong.
+
 Revision 2.0: A major restructuring of the IceT code comprising the
 	following changes:
 

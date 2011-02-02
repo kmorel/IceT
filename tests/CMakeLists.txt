@@ -20,6 +20,7 @@ SET(MyTests
   CompressionSize.c
   OddImageSizes.c
   SimpleTiming.c
+  SparseImageCopy.c
   )
 
 IF (ICET_TESTS_USE_OPENGL)

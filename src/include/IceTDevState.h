@@ -29,6 +29,8 @@ void      icetStateDestroy(IceTState state);
 void      icetStateCopy(IceTState dest, const IceTState src);
 void      icetStateSetDefaults(void);
 
+ICET_EXPORT void icetStateCheckMemory(void);
+
 ICET_EXPORT void icetStateSetDoublev(IceTEnum pname,
                                      IceTSizeType num_entries,
                                      const IceTDouble *data);

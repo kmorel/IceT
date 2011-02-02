@@ -14,7 +14,7 @@
 #include <IceTDevImage.h>
 
 #define TREE_IN_SPARSE_IMAGE_BUFFER     ICET_SI_STRATEGY_BUFFER_0
-#define TREE_OUT_SPARSE_IMAGE_BUFFER    ICET_SI_STRATEGY_BUFFER_1
+#define TREE_SPARSE_IMAGE_BUFFER        ICET_SI_STRATEGY_BUFFER_1
 
 #define TREE_IMAGE_DATA 23
 
@@ -22,9 +22,9 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
                                  IceTInt group_size,
                                  IceTInt group_rank,
                                  IceTInt image_dest,
-                                 IceTImage image,
+                                 IceTSparseImage *imageData,
                                  IceTVoid *inSparseImageBuffer,
-                                 IceTSparseImage outSparseImage)
+                                 IceTSparseImage *imageBuffer)
 {
     IceTInt middle;
     enum { NO_IMAGE, SEND_IMAGE, RECV_IMAGE } current_image;
@@ -38,7 +38,7 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
     middle = group_size/2;
     if (group_rank < middle) {
         RecursiveTreeCompose(compose_group, middle, group_rank, image_dest,
-                             image, inSparseImageBuffer, outSparseImage);
+                             imageData, inSparseImageBuffer, imageBuffer);
         if (group_rank == image_dest) {
           /* I'm the destination.  GIMME! */
             current_image = RECV_IMAGE;
@@ -64,7 +64,7 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
     } else {
         RecursiveTreeCompose(compose_group + middle, group_size - middle,
                              group_rank - middle, image_dest - middle,
-                             image, inSparseImageBuffer, outSparseImage);
+                             imageData, inSparseImageBuffer, imageBuffer);
         if (group_rank == image_dest) {
           /* I'm the destination.  GIMME! */
             current_image = RECV_IMAGE;
@@ -90,9 +90,9 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
         IceTVoid *package_buffer;
         IceTSizeType package_size;
         icetRaiseDebug1("Sending image to %d", (int)compose_group[pair_proc]);
-        icetCompressImage(image, outSparseImage);
-        icetSparseImagePackageForSend(outSparseImage,
-                                      &package_buffer, &package_size);
+        icetSparseImagePackageForSend(*imageData,
+                                      &package_buffer,
+                                      &package_size);
         icetCommSend(package_buffer, package_size, ICET_BYTE,
                      compose_group[pair_proc], TREE_IMAGE_DATA);
     } else if (current_image == RECV_IMAGE) {
@@ -100,42 +100,58 @@ static void RecursiveTreeCompose(const IceTInt *compose_group,
         IceTSparseImage inSparseImage;
         IceTSizeType incoming_size;
         icetRaiseDebug1("Getting image from %d", (int)compose_group[pair_proc]);
-        incoming_size
-            = icetSparseImageBufferSizeType(icetImageGetColorFormat(image),
-                                            icetImageGetDepthFormat(image),
-                                            icetImageGetWidth(image),
-                                            icetImageGetHeight(image));
+        incoming_size = icetSparseImageBufferSizeType(
+                                      icetSparseImageGetColorFormat(*imageData),
+                                      icetSparseImageGetDepthFormat(*imageData),
+                                      icetSparseImageGetWidth(*imageData),
+                                      icetSparseImageGetHeight(*imageData));
         icetCommRecv(inSparseImageBuffer, incoming_size, ICET_BYTE,
                      compose_group[pair_proc], TREE_IMAGE_DATA);
         inSparseImage
             = icetSparseImageUnpackageFromReceive(inSparseImageBuffer);
-        icetCompressedComposite(image, inSparseImage,
-                                pair_proc < group_rank);
+        if (group_rank < pair_proc) {
+            icetCompressedCompressedComposite(*imageData,
+                                              inSparseImage,
+                                              *imageBuffer);
+        } else {
+            icetCompressedCompressedComposite(inSparseImage,
+                                              *imageData,
+                                              *imageBuffer);
+        }
+        /* The actual image data is now in imageBuffer, so switch imageBuffer
+           and imageData. */
+        {
+            IceTSparseImage oldImage = *imageData;
+            *imageData = *imageBuffer;
+            *imageBuffer = oldImage;
+        }
     }
 }
 
 void icetTreeCompose(const IceTInt *compose_group,
                      IceTInt group_size,
                      IceTInt image_dest,
-                     IceTImage image,
-                     IceTSizeType *piece_offset,
-                     IceTSizeType *piece_size)
+                     IceTSparseImage input_image,
+                     IceTSparseImage *result_image,
+                     IceTSizeType *piece_offset)
 {
     IceTInt group_rank;
     IceTVoid *inSparseImageBuffer;
-    IceTSparseImage outSparseImage;
+    IceTSparseImage imageData;
+    IceTSparseImage imageBuffer;
     IceTSizeType width, height;
     IceTSizeType sparseBufferSize;
 
-    width = icetImageGetWidth(image);
-    height = icetImageGetHeight(image);
+    width = icetSparseImageGetWidth(input_image);
+    height = icetSparseImageGetHeight(input_image);
 
     sparseBufferSize = icetSparseImageBufferSize(width, height);
 
     inSparseImageBuffer = icetGetStateBuffer(TREE_IN_SPARSE_IMAGE_BUFFER,
                                              sparseBufferSize);
-    outSparseImage =icetGetStateBufferSparseImage(TREE_OUT_SPARSE_IMAGE_BUFFER,
-                                                  width, height);
+    imageData = input_image;
+    imageBuffer = icetGetStateBufferSparseImage(TREE_SPARSE_IMAGE_BUFFER,
+                                                width, height);
 
     group_rank = icetFindMyRankInGroup(compose_group, group_size);
     if (group_rank < 0) {
@@ -145,12 +161,11 @@ void icetTreeCompose(const IceTInt *compose_group,
     }
 
     RecursiveTreeCompose(compose_group, group_size, group_rank, image_dest,
-                         image, inSparseImageBuffer, outSparseImage);
+                         &imageData, inSparseImageBuffer, &imageBuffer);
 
+    *result_image = imageData;
     *piece_offset = 0;
-    if (group_rank == image_dest) {
-        *piece_size = icetImageGetNumPixels(image);
-    } else {
-        *piece_size = 0;
+    if (image_dest != group_rank) {
+        icetSparseImageSetDimensions(*result_image, 0, 0);
     }
 }

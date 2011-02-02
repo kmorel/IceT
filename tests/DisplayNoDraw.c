@@ -112,7 +112,6 @@ static void DisplayNoDrawDoTest(void)
                         global_iteration);
                 write_ppm(filename, color_buffer,
                           (int)SCREEN_WIDTH, (int)SCREEN_HEIGHT);
-                break;
             }
         }
     }

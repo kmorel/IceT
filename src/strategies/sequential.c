@@ -16,35 +16,32 @@
 
 #define SEQUENTIAL_IMAGE_BUFFER                 ICET_STRATEGY_BUFFER_0
 #define SEQUENTIAL_FINAL_IMAGE_BUFFER           ICET_STRATEGY_BUFFER_1
-#define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_2
+#define SEQUENTIAL_INTERMEDIATE_IMAGE_BUFFER    ICET_STRATEGY_BUFFER_2
+#define SEQUENTIAL_COMPOSE_GROUP_BUFFER         ICET_STRATEGY_BUFFER_3
 
 IceTImage icetSequentialCompose(void)
 {
     IceTInt num_tiles;
-    IceTInt max_width, max_height;
     IceTInt rank;
     IceTInt num_proc;
     const IceTInt *display_nodes;
+    const IceTInt *tile_viewports;
     IceTBoolean ordered_composite;
-    IceTImage myImage;
-    IceTImage image;
+    IceTImage my_image;
     IceTInt *compose_group;
     int i;
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
-    icetGetIntegerv(ICET_TILE_MAX_HEIGHT, &max_height);
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
+    tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
-    image               = icetGetStateBufferImage(SEQUENTIAL_IMAGE_BUFFER,
-                                                  max_width, max_height);
-    compose_group       = icetGetStateBuffer(SEQUENTIAL_COMPOSE_GROUP_BUFFER,
-                                             sizeof(IceTInt)*num_proc);
+    compose_group = icetGetStateBuffer(SEQUENTIAL_COMPOSE_GROUP_BUFFER,
+                                       sizeof(IceTInt)*num_proc);
 
-    myImage = icetImageNull();
+    my_image = icetImageNull();
 
     if (ordered_composite) {
 	icetGetIntegerv(ICET_COMPOSITE_ORDER, compose_group);
@@ -56,11 +53,17 @@ IceTImage icetSequentialCompose(void)
 
   /* Render and compose every tile. */
     for (i = 0; i < num_tiles; i++) {
-        IceTImage tileImage;
+        IceTImage tile_image;
 	int d_node = display_nodes[i];
 	int image_dest;
+        IceTSparseImage rendered_image;
+        IceTSparseImage composited_image;
         IceTSizeType piece_offset;
-        IceTSizeType piece_size;
+        IceTSizeType tile_width;
+        IceTSizeType tile_height;
+
+        tile_width = tile_viewports[4*i + 2];
+        tile_height = tile_viewports[4*i + 3];
 
       /* Make the image go to the display node. */
 	if (ordered_composite) {
@@ -72,32 +75,38 @@ IceTImage icetSequentialCompose(void)
 	    image_dest = d_node;
 	}
 
-      /* If this processor is display node, make sure image goes to
-         myColorBuffer. */
-	if (d_node == rank) {
-            tileImage = icetGetStateBufferImage(SEQUENTIAL_FINAL_IMAGE_BUFFER,
-                                                max_width, max_height);
-	} else {
-	    tileImage = image;
-          /* A previous iteration may have changed the image buffer to remove
-             the depth.  This command restores that so that both buffers are
-             read in for the next pass. */
-            icetImageAdjustForInput(tileImage);
-	}
 
-	icetGetTileImage(i, tileImage);
+        rendered_image = icetGetStateBufferSparseImage(SEQUENTIAL_IMAGE_BUFFER,
+                                                       tile_width, tile_height);
+
+        icetGetCompressedTileImage(i, rendered_image);
 	icetSingleImageCompose(compose_group,
                                num_proc,
                                image_dest,
-                               tileImage,
-                               &piece_offset,
-                               &piece_size);
-        icetSingleImageCollect(tileImage, d_node, piece_offset, piece_size);
+                               rendered_image,
+                               &composited_image,
+                               &piece_offset);
+
+      /* If this processor is display node, make sure image goes to
+         myColorBuffer. */
+	if (d_node == rank) {
+            tile_image = icetGetStateBufferImage(SEQUENTIAL_FINAL_IMAGE_BUFFER,
+                                                 tile_width, tile_height);
+	} else {
+            tile_image = icetGetStateBufferImage(
+                                           SEQUENTIAL_INTERMEDIATE_IMAGE_BUFFER,
+                                           tile_width, tile_height);
+	}
+
+        icetSingleImageCollect(composited_image,
+                               d_node,
+                               piece_offset,
+                               tile_image);
 
         if (d_node == rank) {
-            myImage = tileImage;
+            my_image = tile_image;
         }
     }
 
-    return myImage;
+    return my_image;
 }
