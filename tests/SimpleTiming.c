@@ -53,6 +53,7 @@ static int g_num_tiles_y;
 static int g_num_frames;
 static int g_seed;
 static int g_transparent;
+static int g_colored_background;
 static int g_write_image;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
@@ -68,6 +69,7 @@ static void parse_arguments(int argc, char *argv[])
     g_num_frames = 2;
     g_seed = (int)time(NULL);
     g_transparent = 0;
+    g_colored_background = 0;
     g_write_image = 0;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
@@ -87,6 +89,8 @@ static void parse_arguments(int argc, char *argv[])
             g_seed = atoi(argv[arg]);
         } else if (strcmp(argv[arg], "-transparent") == 0) {
             g_transparent = 1;
+        } else if (strcmp(argv[arg], "-colored-background") == 0) {
+            g_colored_background = 1;
         } else if (strcmp(argv[arg], "-write-image") == 0) {
             g_write_image = 1;
         } else if (strcmp(argv[arg], "-reduce") == 0) {
@@ -497,10 +501,17 @@ static int SimpleTimingRun()
     icetGetIntegerv(ICET_RANK, &rank);
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
 
-    background_color[0] = 0.2f;
-    background_color[1] = 0.5f;
-    background_color[2] = 0.7f;
-    background_color[3] = 1.0f;
+    if (g_colored_background) {
+        background_color[0] = 0.2f;
+        background_color[1] = 0.5f;
+        background_color[2] = 0.7f;
+        background_color[3] = 1.0f;
+    } else {
+        background_color[0] = 0.0f;
+        background_color[1] = 0.0f;
+        background_color[2] = 0.0f;
+        background_color[3] = 0.0f;
+    }
 
     /* Give IceT a function that will issue the drawing commands. */
     icetDrawCallback(draw);
