@@ -34,19 +34,21 @@
 
 #define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
 #define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
-#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_2
-#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_3
-#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_4
-#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_5
-#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_6
-#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_7
-#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_8
+#define RADIXK_SPARE_BUFFER                     ICET_SI_STRATEGY_BUFFER_2
+#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_3
+#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_4
+#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_5
+#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_6
+#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_7
+#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_8
+#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_9
 
 typedef struct radixkPartnerInfoStruct {
     int rank; /* Rank of partner. */
     IceTSizeType offset; /* Offset of partner's partition in image. */
     IceTVoid *receiveBuffer; /* A buffer for receiving data from partner. */
     IceTSparseImage sendImage; /* A buffer to hold data being sent to partner */
+    IceTSparseImage receiveImage; /* Hold for received non-composited image. */
     IceTBoolean hasArrived; /* True when message arrives. */
     IceTBoolean isComposited; /* True when received image is composited. */
 } radixkPartnerInfo;
@@ -74,6 +76,13 @@ typedef struct radixkPartnerInfoStruct {
 #define END_PIVOT_FOR() \
         } \
     }
+
+static void radixkSwapImages(IceTSparseImage *image1, IceTSparseImage *image2)
+{
+    IceTSparseImage old_image1 = *image1;
+    *image1 = *image2;
+    *image2 = old_image1;
+}
 
 static int* radixkGetK(int world_size, int* num_rounds_p)
 {
@@ -274,6 +283,8 @@ static radixkPartnerInfo *radixkGetPartners(const int *k_array,
         p->sendImage = icetSparseImageAssignBuffer(send_buffer,
                                                    partition_num_pixels, 1);
 
+        p->receiveImage = icetSparseImageNull();
+
         p->hasArrived = ICET_FALSE;
         p->isComposited = ICET_FALSE;
     }
@@ -320,8 +331,9 @@ static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
         } else {
             /* No need to send to myself. */
             receive_requests[i] = ICET_COMM_REQUEST_NULL;
+            p->receiveImage = p->sendImage;
             p->hasArrived = ICET_TRUE;
-            p->isComposited = ICET_TRUE;
+            p->isComposited = ICET_FALSE;
         }
     }
 
@@ -389,42 +401,6 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
     return send_requests;
 }
 
-/* If the image for the given partner has been received and not already
-   composited, composite it with the data in image_data.  The composite results
-   are stored in next_image, and then the pointers for image_data and next_image
-   are switched to be ready for the next iteration.  Return true if the image
-   has been composited (either by this call or a previous call), false
-   otherwise. */
-static IceTBoolean radixkTryCompositeBuffer(radixkPartnerInfo *partner,
-                                            IceTSparseImage *image_data,
-                                            IceTSparseImage *next_image,
-                                            int partnerOnTop)
-{
-    if (partner->hasArrived && !partner->isComposited) {
-        IceTSparseImage in_image
-            = icetSparseImageUnpackageFromReceive(partner->receiveBuffer);
-        if (   icetSparseImageGetNumPixels(in_image)
-            != icetSparseImageGetNumPixels(*image_data) ) {
-            icetRaiseError("Radix-k received image with wrong size.",
-                           ICET_SANITY_CHECK_FAIL);
-        }
-        if (partnerOnTop) {
-            icetCompressedCompressedComposite(in_image,*image_data,*next_image);
-        } else {
-            icetCompressedCompressedComposite(*image_data,in_image,*next_image);
-        }
-
-        {
-            IceTSparseImage old_image_data = *image_data;
-            *image_data = *next_image;
-            *next_image = old_image_data;
-        }
-
-        partner->isComposited = ICET_TRUE;
-    }
-    return (partner->hasArrived && partner->isComposited);
-}
-
 static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                                           IceTCommRequest *receive_requests,
                                           int current_k,
@@ -433,75 +409,90 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
 {
     const radixkPartnerInfo *me = &partners[current_partition_index];
     IceTBoolean ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
-    IceTBoolean done = ICET_FALSE;
 
-    IceTSparseImage image_data;
-    IceTSparseImage next_image;
+    IceTSparseImage spare_image;
+    IceTInt remaining_composites;
 
-    /* Use the given image and the image in me->sendImage as inputs and outputs
-       to icetCompressedCompressedComposite, switching each time.  Given the
-       number of total composites we need to perform (current_k - 1), start
-       with the data in a buffer such that the results end in image. */
-    if ((current_k-1)%2 == 0) {
-        /* There is an even number of composites.  The result will end up
-           in the same image we started with.  Copy the local data to the
-           buffer we want it to end up in. */
-        icetSparseImageCopyPixels(me->sendImage,
-                                  0, icetSparseImageGetNumPixels(me->sendImage),
-                                  image);
-        image_data = image;
-        next_image = me->sendImage;
+    IceTSizeType width;
+    IceTSizeType height;
+
+    /* Regardless of order, there are k-1 composite operations to perform. */
+    remaining_composites = current_k-1;
+
+    /* We will be reusing buffers like crazy, but we'll need at least one
+       more for the first composite. */
+    width = icetSparseImageGetWidth(me->sendImage);
+    height = icetSparseImageGetHeight(me->sendImage);
+    if (remaining_composites > 1) {
+        spare_image = icetGetStateBufferSparseImage(RADIXK_SPARE_BUFFER,
+                                                    width,
+                                                    height);
     } else {
-        image_data = me->sendImage;
-        next_image = image;
+        spare_image = icetSparseImageNull();
     }
 
-    while (!done) {
+    while (remaining_composites > 0) {
         int receive_idx;
+        radixkPartnerInfo *receiver;
         int partner_idx;
 
         /* Wait for an image to come in. */
         receive_idx = icetCommWaitany(current_k, receive_requests);
-        partners[receive_idx].hasArrived = ICET_TRUE;
+        receiver = &partners[receive_idx];
+        receiver->hasArrived = ICET_TRUE;
+        receiver->receiveImage
+            = icetSparseImageUnpackageFromReceive(receiver->receiveBuffer);
+        if (   (icetSparseImageGetWidth(receiver->receiveImage) != width)
+            || (icetSparseImageGetHeight(receiver->receiveImage) != height) ) {
+            icetRaiseError("Radix-k received image with wrong size.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
 
-        /* Check all images to see if anything is ready for compositing.  When
-           doing an ordered composite, we can only composite images adjacent
-           our rank or adjacent to one already composited. */
-        done = ICET_TRUE;
-        for (partner_idx = current_partition_index - 1;
-             partner_idx >= 0;
-             partner_idx--) {
-            IceTBoolean composited =
-                radixkTryCompositeBuffer(&partners[partner_idx],
-                                         &image_data,
-                                         &next_image,
-                                         ICET_SRC_ON_TOP);
-            if (!composited) {
-                done = ICET_FALSE;
-                if (ordered_composite) break;
+        /* Check adjacent image to see if there is anything adjacent to
+           composite to. */
+        for (partner_idx = receive_idx - 1; partner_idx >= 0; partner_idx--) {
+            radixkPartnerInfo *partner = &partners[partner_idx];
+            if (partner->hasArrived && !partner->isComposited) {
+                if (remaining_composites == 1) {
+                    /* Place last composite in destination image. */
+                    spare_image = image;
+                }
+                icetCompressedCompressedComposite(partner->receiveImage,
+                                                  receiver->receiveImage,
+                                                  spare_image);
+                partner->isComposited = ICET_TRUE;
+                radixkSwapImages(&receiver->receiveImage, &spare_image);
+                remaining_composites--;
+            } else if (!partner->hasArrived && ordered_composite) {
+                break;
+            } else {
+                /* Either already composited or not received (and not ordered.)
+                   Do nothing. */
             }
         }
-        for (partner_idx = current_partition_index + 1;
+        for (partner_idx = receive_idx + 1;
              partner_idx < current_k;
              partner_idx++) {
-            IceTBoolean composited =
-                radixkTryCompositeBuffer(&partners[partner_idx],
-                                         &image_data,
-                                         &next_image,
-                                         ICET_DEST_ON_TOP);
-            if (!composited) {
-                done = ICET_FALSE;
-                if (ordered_composite) break;
+            radixkPartnerInfo *partner = &partners[partner_idx];
+            if (partner->hasArrived && !partner->isComposited) {
+                if (remaining_composites == 1) {
+                    /* Place last composite in destination image. */
+                    spare_image = image;
+                }
+                icetCompressedCompressedComposite(receiver->receiveImage,
+                                                  partner->receiveImage,
+                                                  spare_image);
+                partner->isComposited = ICET_TRUE;
+                radixkSwapImages(&receiver->receiveImage, &spare_image);
+                remaining_composites--;
+            } else if (!partner->hasArrived && ordered_composite) {
+                break;
+            } else {
+                /* Either already composited or not received (and not ordered.)
+                   Do nothing. */
             }
         }
     }
-
-#ifdef DEBUG
-    if (!icetSparseImageEqual(image_data, image)) {
-        icetRaiseError("Radix-k piece did not end in expected buffer.",
-                       ICET_SANITY_CHECK_FAIL);
-    }
-#endif
 }
 
 void icetRadixkCompose(const IceTInt *compose_group,
