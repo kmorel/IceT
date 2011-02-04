@@ -66,44 +66,51 @@ static int (*test_function)(void);
 static void checkOglError(void)
 {
     GLenum error = glGetError();
-#define TRY_ERROR(ename)                                                \
-    if (error == ename) {                                               \
-        printf("## Current OpenGL error = " #ename "\n");               \
-        return;                                                         \
-    }
-    
-    TRY_ERROR(GL_NO_ERROR);
-    TRY_ERROR(GL_INVALID_ENUM);
-    TRY_ERROR(GL_INVALID_VALUE);
-    TRY_ERROR(GL_INVALID_OPERATION);
-    TRY_ERROR(GL_STACK_OVERFLOW);
-    TRY_ERROR(GL_STACK_UNDERFLOW);
-    TRY_ERROR(GL_OUT_OF_MEMORY);
+
+#define CASE_ERROR(ename)                                               \
+    case ename: printf("## Current IceT error = " #ename "\n"); break;
+
+    switch (error) {
+      CASE_ERROR(GL_NO_ERROR);
+      CASE_ERROR(GL_INVALID_ENUM);
+      CASE_ERROR(GL_INVALID_VALUE);
+      CASE_ERROR(GL_INVALID_OPERATION);
+      CASE_ERROR(GL_STACK_OVERFLOW);
+      CASE_ERROR(GL_STACK_UNDERFLOW);
+      CASE_ERROR(GL_OUT_OF_MEMORY);
 #ifdef GL_TABLE_TOO_LARGE
-    TRY_ERROR(GL_TABLE_TOO_LARGE);
+      CASE_ERROR(GL_TABLE_TOO_LARGE);
 #endif
-    printf("## UNKNOWN OPENGL ERROR CODE!!!!!!\n");
-#undef TRY_ERROR
+      default:
+          printf("## UNKNOWN OPENGL ERROR CODE!!!!!!\n");
+          break;
+    }
+
+#undef CASE_ERROR
 }
 #endif /* ICET_TESTS_USE_OPENGL */
 
 static void checkIceTError(void)
 {
     IceTEnum error = icetGetError();
-#define TRY_ERROR(ename)                                                \
-    if (error == ename) {                                               \
-        printf("## Current IceT error = " #ename "\n");                \
-        return;                                                         \
+
+#define CASE_ERROR(ename)                                               \
+    case ename: printf("## Current IceT error = " #ename "\n"); break;
+
+    switch (error) {
+      CASE_ERROR(ICET_NO_ERROR);
+      CASE_ERROR(ICET_SANITY_CHECK_FAIL);
+      CASE_ERROR(ICET_INVALID_ENUM);
+      CASE_ERROR(ICET_BAD_CAST);
+      CASE_ERROR(ICET_OUT_OF_MEMORY);
+      CASE_ERROR(ICET_INVALID_OPERATION);
+      CASE_ERROR(ICET_INVALID_VALUE);
+      default:
+          printf("## UNKNOWN ICET ERROR CODE!!!!!\n");
+          break;
     }
-    TRY_ERROR(ICET_NO_ERROR);
-    TRY_ERROR(ICET_SANITY_CHECK_FAIL);
-    TRY_ERROR(ICET_INVALID_ENUM);
-    TRY_ERROR(ICET_BAD_CAST);
-    TRY_ERROR(ICET_OUT_OF_MEMORY);
-    TRY_ERROR(ICET_INVALID_OPERATION);
-    TRY_ERROR(ICET_INVALID_VALUE);
-    printf("## UNKNOWN ICET ERROR CODE!!!!!\n");
-#undef TRY_ERROR
+
+#undef CASE_ERROR
 }
 
 /* Just in case I need to actually print stuff out to the screen in the
