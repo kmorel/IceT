@@ -1918,14 +1918,11 @@ static IceTImage renderTile(int tile,
     IceTBoolean use_floating_viewport;
     IceTDrawCallbackType drawfunc;
     IceTVoid *value;
-    IceTDouble timer;
     IceTInt readback_viewport[4];
     IceTImage render_buffer;
     IceTDouble projection_matrix[16];
     IceTDouble modelview_matrix[16];
     IceTFloat background_color[4];
-
-    icetTimingRenderBegin();
 
     icetRaiseDebug1("Rendering tile %d", tile);
     contained_viewport = icetUnsafeStateGetInteger(ICET_CONTAINED_VIEWPORT);
@@ -2126,10 +2123,9 @@ static IceTImage renderTile(int tile,
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     drawfunc = (IceTDrawCallbackType)value;
     icetRaiseDebug("Calling draw function.");
-    timer = icetWallTime();
+    icetTimingRenderBegin();
     (*drawfunc)(projection_matrix, modelview_matrix, background_color,
                 readback_viewport, render_buffer);
-
     icetTimingRenderEnd();
 
     return render_buffer;
