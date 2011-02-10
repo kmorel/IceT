@@ -50,6 +50,7 @@ static void icetTimingBegin(IceTEnum start_pname,
                             const char *name)
 {
     icetRaiseDebug1("Beginning %s", name);
+    (void)name;
 
     icetEventBegin(result_pname);
 
@@ -77,6 +78,7 @@ static void icetTimingEnd(IceTEnum start_pname,
                           const char *name)
 {
     icetRaiseDebug1("Ending %s", name);
+    (void)name;
 
     icetEventEnd(result_pname);
 
