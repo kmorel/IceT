@@ -1891,19 +1891,14 @@ void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
                                        const IceTSparseImage back_buffer,
                                        IceTSparseImage dest_buffer)
 {
-    IceTDouble timer;
-    IceTDouble compare_time;
-
-    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
-    timer = icetWallTime();
+    icetTimingBlendBegin();
 
 #define FRONT_SPARSE_IMAGE front_buffer
 #define BACK_SPARSE_IMAGE back_buffer
 #define DEST_SPARSE_IMAGE dest_buffer
 #include "cc_composite_func_body.h"
 
-    compare_time += icetWallTime() - timer;
-    icetStateSetInteger(ICET_COMPARE_TIME, compare_time);
+    icetTimingBlendEnd();
 }
 
 static IceTImage renderTile(int tile,
