@@ -79,8 +79,6 @@ ICET_EXPORT IceTVoid       *icetGetStateBuffer(IceTEnum pname,
 
 ICET_EXPORT IceTTimeStamp icetGetTimeStamp(void);
 
-void icetStateResetTiming(void);
-
 void icetStateDump(void);
 
 #ifdef __cplusplus

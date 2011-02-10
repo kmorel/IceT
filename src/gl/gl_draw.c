@@ -11,6 +11,7 @@
 
 #include <IceTDevDiagnostics.h>
 #include <IceTDevState.h>
+#include <IceTDevTiming.h>
 
 #include <IceTDevGLImage.h>
 
@@ -139,7 +140,8 @@ static void finalizeOpenGLRender(const IceTImage image,
                                  IceTDrawCallbackType original_callback)
 {
     IceTInt display_tile;
-    IceTDouble buf_write_time;
+
+    icetTimingBufferWriteBegin();
 
   /* Restore core IceT callback. */
     icetDrawCallback(original_callback);
@@ -150,7 +152,6 @@ static void finalizeOpenGLRender(const IceTImage image,
 
   /* Paste final image back to buffer if enabled. */
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
-    buf_write_time = icetWallTime();
     if (display_tile >= 0) {
         IceTEnum color_format = icetImageGetColorFormat(image);
 
@@ -168,8 +169,7 @@ static void finalizeOpenGLRender(const IceTImage image,
     glLoadMatrixd(modelview_matrix);
 
   /* Calculate display times. */
-    buf_write_time = icetWallTime() - buf_write_time;
-    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, buf_write_time);
+    icetTimingBufferWriteEnd();
 }
 
 static void correctOpenGLRenderTimes(IceTDouble total_time)

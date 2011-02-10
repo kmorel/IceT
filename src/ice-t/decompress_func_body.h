@@ -61,12 +61,9 @@
     IceTEnum _color_format, _depth_format;
     IceTSizeType _pixel_count;
     IceTEnum _composite_mode;
-#ifdef TIME_DECOMPRESSION
-    IceTDouble _timer;
-    IceTDouble _compress_time;
 
-    icetGetDoublev(ICET_COMPRESS_TIME, &_compress_time);
-    _timer = icetWallTime();
+#ifdef TIME_DECOMPRESSION
+    icetTimingCompressBegin();
 #endif /* TIME_DECOMPRESSION */
 
     icetGetEnumv(ICET_COMPOSITE_MODE, &_composite_mode);
@@ -330,8 +327,7 @@
     }
 
 #ifdef TIME_DECOMPRESSION
-    _compress_time += icetWallTime() - _timer;
-    icetStateSetDouble(ICET_COMPRESS_TIME, _compress_time);
+    icetTimingCompressEnd();
 #endif
 }
 

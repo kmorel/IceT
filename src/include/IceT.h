@@ -314,7 +314,12 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_BLEND_TIME         ICET_COMPARE_TIME
 #define ICET_COMPOSITE_TIME     (ICET_STATE_TIMING_START | (IceTEnum)0x0006)
 #define ICET_TOTAL_DRAW_TIME    (ICET_STATE_TIMING_START | (IceTEnum)0x0007)
-#define ICET_BYTES_SENT         (ICET_STATE_TIMING_START | (IceTEnum)0x0010)
+#define ICET_BYTES_SENT         (ICET_STATE_TIMING_START | (IceTEnum)0x0008)
+
+#define ICET_DRAW_START_TIME    (ICET_STATE_TIMING_START | (IceTEnum)0x0010)
+#define ICET_DRAW_TIME_ID       (ICET_STATE_TIMING_START | (IceTEnum)0x0011)
+#define ICET_SUBFUNC_START_TIME (ICET_STATE_TIMING_START | (IceTEnum)0x0012)
+#define ICET_SUBFUNC_TIME_ID    (ICET_STATE_TIMING_START | (IceTEnum)0x0013)
 
 /* This set of state variables are reserved for the rendering layer. */
 #define ICET_RENDER_LAYER_STATE_START (IceTEnum)0x00000100

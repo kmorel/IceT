@@ -13,6 +13,7 @@
 
 #include <IceTDevDiagnostics.h>
 #include <IceTDevState.h>
+#include <IceTDevTiming.h>
 
 void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
                                 const IceTDouble *modelview_matrix,
@@ -56,6 +57,11 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         (*callback)();
     }
 
+    /* Temporarily stop render time while reading back buffer. */
+    icetTimingRenderEnd();
+
+    icetTimingBufferReadBegin();
+
   /* Read the OpenGL buffers. */
     {
         IceTEnum color_format = icetImageGetColorFormat(result);
@@ -63,9 +69,6 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         IceTEnum readbuffer;
         IceTSizeType x_offset = gl_viewport[0] + readback_viewport[0];
         IceTSizeType y_offset = gl_viewport[1] + readback_viewport[1];
-        IceTDouble read_time;
-        IceTDouble render_time;
-        IceTDouble timer;
 
         glPixelStorei(GL_PACK_ROW_LENGTH, (GLint)icetImageGetWidth(result));
 
@@ -77,8 +80,6 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
 
         icetGetEnumv(ICET_GL_READ_BUFFER, &readbuffer);
         glReadBuffer(readbuffer);
-
-        timer = icetWallTime();
 
         if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
             IceTUInt *colorBuffer = icetImageGetColorui(result);
@@ -121,15 +122,11 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
         glPixelStorei(GL_PACK_ROW_LENGTH, 0);
         /* glPixelStorei(GL_PACK_SKIP_PIXELS, 0); */
         /* glPixelStorei(GL_PACK_SKIP_ROWS, 0); */
-
-        icetGetDoublev(ICET_BUFFER_READ_TIME, &read_time);
-        read_time += icetWallTime() - timer;
-        icetStateSetDouble(ICET_BUFFER_READ_TIME, read_time);
-
-      /* Subtract read time from render time since the render time is being
-         recorded as we are in this funtion. */
-        icetGetDoublev(ICET_RENDER_TIME, &render_time);
-        render_time -= read_time;
-        icetStateSetDouble(ICET_RENDER_TIME, render_time);
     }
+
+    icetTimingBufferReadEnd();
+
+    /* Start render timer again.  It's going to be shut off immediately on
+       return anyway, but the calling function expects it to be running. */
+    icetTimingRenderBegin();
 }
