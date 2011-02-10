@@ -15,6 +15,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef ICET_USE_MPE
+#include <mpe_log.h>
+
+static void icetEventBegin(IceTEnum pname);
+static void icetEventEnd(IceTEnum pname);
+
+#else
+
+#define icetEventBegin(pname)
+#define icetEventEnd(pname)
+
+#endif
+
 void icetStateResetTiming(void)
 {
     icetStateSetDouble(ICET_RENDER_TIME, 0.0);
@@ -37,6 +50,8 @@ static void icetTimingBegin(IceTEnum start_pname,
                             const char *name)
 {
     icetRaiseDebug1("Beginning %s", name);
+
+    icetEventBegin(result_pname);
 
     {
         IceTInt current_id;
@@ -62,6 +77,8 @@ static void icetTimingEnd(IceTEnum start_pname,
                           const char *name)
 {
     icetRaiseDebug1("Ending %s", name);
+
+    icetEventEnd(result_pname);
 
     {
         IceTInt current_id;
@@ -176,3 +193,115 @@ void icetTimingDrawFrameEnd(void)
                   ICET_TOTAL_DRAW_TIME,
                   "draw frame");
 }
+
+#ifdef ICET_USE_MPE
+
+typedef struct IceTEventInfoStruct {
+    IceTEnum pname;
+    int mpe_event_begin;
+    int mpe_event_end;
+    struct IceTEventInfoStruct *next;
+} IceTEventInfo;
+
+static const IceTEventInfo *icetEventFind(IceTEnum pname)
+{
+    static IceTEventInfo *events = NULL;
+
+    if (events == NULL) {
+        IceTEventInfo *new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_RENDER_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "render",
+                           "lawn green");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_BUFFER_READ_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "buffer read",
+                           "dark green");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_BUFFER_WRITE_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "buffer write",
+                           "dark olive green");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_COMPRESS_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "compress/decompress",
+                           "cadet blue");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_BLEND_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "blend",
+                           "cyan");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_TOTAL_DRAW_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "draw frame",
+                           "dark grey");
+        new_event->next = events;
+        events = new_event;
+    }
+
+    {
+        IceTEventInfo *e = events;
+        while ((e != NULL) && (e->pname != pname)) {
+            e = e->next;
+        }
+        return e;
+    }
+}
+
+static void icetEventBegin(IceTEnum pname)
+{
+    const IceTEventInfo *event = icetEventFind(pname);
+
+    if (event) {
+        MPE_Log_event(event->mpe_event_begin, 0, NULL);
+    }
+}
+
+static void icetEventEnd(IceTEnum pname)
+{
+    const IceTEventInfo *event = icetEventFind(pname);
+
+    if (event) {
+        MPE_Log_event(event->mpe_event_end, 0, NULL);
+    }
+}
+
+#endif /*ICET_USE_MPE*/
