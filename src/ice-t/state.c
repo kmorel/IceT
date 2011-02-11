@@ -15,6 +15,7 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevPorting.h>
 #include <IceTDevStrategySelect.h>
+#include <IceTDevTiming.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -653,19 +654,6 @@ IceTTimeStamp icetGetTimeStamp(void)
     static IceTTimeStamp current_time = 0;
 
     return current_time++;
-}
-
-void icetStateResetTiming(void)
-{
-    icetStateSetDouble(ICET_RENDER_TIME, 0.0);
-    icetStateSetDouble(ICET_BUFFER_READ_TIME, 0.0);
-    icetStateSetDouble(ICET_BUFFER_WRITE_TIME, 0.0);
-    icetStateSetDouble(ICET_COMPRESS_TIME, 0.0);
-    icetStateSetDouble(ICET_COMPARE_TIME, 0.0);
-    icetStateSetDouble(ICET_COMPOSITE_TIME, 0.0);
-    icetStateSetDouble(ICET_TOTAL_DRAW_TIME, 0.0);
-
-    icetStateSetInteger(ICET_BYTES_SENT, 0);
 }
 
 void icetStateDump(void)

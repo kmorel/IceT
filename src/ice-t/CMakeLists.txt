@@ -12,6 +12,7 @@ SET(ICET_SRCS
         diagnostics.c
         communication.c
         tiles.c
+	timing.c
         matrix.c
         projections.c
         draw.c

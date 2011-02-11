@@ -74,12 +74,9 @@
 #ifdef DEBUG
     IceTSizeType _totalcount = 0;
 #endif
-    IceTDouble _timer;
-    IceTDouble _compress_time;
     IceTSizeType _compressed_size;
 
-    icetGetDoublev(ICET_COMPRESS_TIME, &_compress_time);
-    _timer = icetWallTime();
+    icetTimingCompressBegin();
 
     _dest = ICET_IMAGE_DATA(CT_COMPRESSED_IMAGE);
 
@@ -220,8 +217,7 @@
     }
 #endif /*DEBUG*/
 
-    _compress_time += icetWallTime() - _timer;
-    icetStateSetDouble(ICET_COMPRESS_TIME, _compress_time);
+    icetTimingCompressEnd();
 
     _compressed_size
         = (IceTSizeType)

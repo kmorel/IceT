@@ -15,6 +15,7 @@
 #include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
 #include <IceTDevMatrix.h>
+#include <IceTDevTiming.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -1592,8 +1593,6 @@ void icetGetTileImage(IceTInt tile, IceTImage image)
     const IceTInt *viewports;
     IceTSizeType width, height;
     IceTImage rendered_image;
-    IceTDouble read_time;
-    IceTDouble timer;
 
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     width = viewports[4*tile+2];
@@ -1602,7 +1601,7 @@ void icetGetTileImage(IceTInt tile, IceTImage image)
 
     rendered_image = renderTile(tile, screen_viewport, target_viewport, image);
 
-    timer = icetWallTime();
+    icetTimingBufferReadBegin();
 
     if (icetImageEqual(rendered_image, image)) {
       /* Check to make sure the screen and target viewports are also equal. */
@@ -1621,9 +1620,7 @@ void icetGetTileImage(IceTInt tile, IceTImage image)
 
     icetImageClearAroundRegion(image, target_viewport);
 
-    icetGetDoublev(ICET_BUFFER_READ_TIME, &read_time);
-    read_time += icetWallTime() - timer;
-    icetStateSetDouble(ICET_BUFFER_READ_TIME, read_time);
+    icetTimingBufferReadEnd();
 }
 
 void icetGetCompressedTileImage(IceTInt tile, IceTSparseImage compressed_image)
@@ -1735,8 +1732,6 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
     IceTSizeType i;
     IceTEnum composite_mode;
     IceTEnum color_format, depth_format;
-    IceTDouble timer;
-    IceTDouble compare_time;
 
     pixels = icetImageGetNumPixels(destBuffer);
     if (pixels != icetImageGetNumPixels(srcBuffer)) {
@@ -1757,8 +1752,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
 
     icetGetEnumv(ICET_COMPOSITE_MODE, &composite_mode);
 
-    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
-    timer = icetWallTime();
+    icetTimingBlendBegin();
 
     if (composite_mode == ICET_COMPOSITE_MODE_Z_BUFFER) {
         if (depth_format == ICET_IMAGE_DEPTH_FLOAT) {
@@ -1849,8 +1843,7 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                        ICET_SANITY_CHECK_FAIL);
     }
 
-    compare_time += icetWallTime() - timer;
-    icetStateSetDouble(ICET_COMPARE_TIME, compare_time);
+    icetTimingBlendEnd();
 }
 
 void icetCompressedComposite(IceTImage destBuffer,
@@ -1869,11 +1862,7 @@ void icetCompressedSubComposite(IceTImage destBuffer,
                                 const IceTSparseImage srcBuffer,
                                 int srcOnTop)
 {
-    IceTDouble timer;
-    IceTDouble compare_time;
-
-    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
-    timer = icetWallTime();
+    icetTimingBlendBegin();
 
     if (srcOnTop) {
 #define INPUT_SPARSE_IMAGE      srcBuffer
@@ -1895,27 +1884,21 @@ void icetCompressedSubComposite(IceTImage destBuffer,
 #include "decompress_func_body.h"
     }
 
-    compare_time += icetWallTime() - timer;
-    icetStateSetDouble(ICET_COMPARE_TIME, compare_time);
+    icetTimingBlendEnd();
 }
 
 void icetCompressedCompressedComposite(const IceTSparseImage front_buffer,
                                        const IceTSparseImage back_buffer,
                                        IceTSparseImage dest_buffer)
 {
-    IceTDouble timer;
-    IceTDouble compare_time;
-
-    icetGetDoublev(ICET_COMPARE_TIME, &compare_time);
-    timer = icetWallTime();
+    icetTimingBlendBegin();
 
 #define FRONT_SPARSE_IMAGE front_buffer
 #define BACK_SPARSE_IMAGE back_buffer
 #define DEST_SPARSE_IMAGE dest_buffer
 #include "cc_composite_func_body.h"
 
-    compare_time += icetWallTime() - timer;
-    icetStateSetInteger(ICET_COMPARE_TIME, compare_time);
+    icetTimingBlendEnd();
 }
 
 static IceTImage renderTile(int tile,
@@ -1930,8 +1913,6 @@ static IceTImage renderTile(int tile,
     IceTBoolean use_floating_viewport;
     IceTDrawCallbackType drawfunc;
     IceTVoid *value;
-    IceTDouble render_time;
-    IceTDouble timer;
     IceTInt readback_viewport[4];
     IceTImage render_buffer;
     IceTDouble projection_matrix[16];
@@ -2137,12 +2118,10 @@ static IceTImage renderTile(int tile,
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     drawfunc = (IceTDrawCallbackType)value;
     icetRaiseDebug("Calling draw function.");
-    timer = icetWallTime();
+    icetTimingRenderBegin();
     (*drawfunc)(projection_matrix, modelview_matrix, background_color,
                 readback_viewport, render_buffer);
-    icetGetDoublev(ICET_RENDER_TIME, &render_time);
-    render_time += icetWallTime() - timer;
-    icetStateSetDouble(ICET_RENDER_TIME, render_time);
+    icetTimingRenderEnd();
 
     return render_buffer;
 }

@@ -15,6 +15,7 @@
 #include <IceTDevMatrix.h>
 #include <IceTDevState.h>
 #include <IceTDevStrategySelect.h>
+#include <IceTDevTiming.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -714,12 +715,10 @@ static void drawCorrectBackground(IceTImage image,
                                   const IceTFloat *background_color,
                                   IceTUInt background_color_word)
 {
-    IceTSizeType pixels =icetImageGetWidth(image)*icetImageGetHeight(image);
+    IceTSizeType pixels = icetImageGetWidth(image)*icetImageGetHeight(image);
     IceTEnum color_format = icetImageGetColorFormat(image);
-    IceTDouble blend_time;
 
-    icetGetDoublev(ICET_BLEND_TIME, &blend_time);
-    blend_time = icetWallTime() - blend_time;
+    icetTimingBlendBegin();
 
     if (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) {
         IceTUByte *color = icetImageGetColorub(image);
@@ -739,8 +738,7 @@ static void drawCorrectBackground(IceTImage image,
                        " with color blending.", ICET_SANITY_CHECK_FAIL);
     }
 
-    blend_time = icetWallTime() - blend_time;
-    icetStateSetDouble(ICET_BLEND_TIME, blend_time);
+    icetTimingBlendEnd();
 }
 
 IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
@@ -769,7 +767,7 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     }
 
     icetStateResetTiming();
-    total_time = icetWallTime();
+    icetTimingDrawFrameBegin();
 
     icetStateSetDoublev(ICET_PROJECTION_MATRIX, 16, projection_matrix);
     icetStateSetDoublev(ICET_MODELVIEW_MATRIX, 16, modelview_matrix);
@@ -811,8 +809,9 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
     icetGetDoublev(ICET_RENDER_TIME, &render_time);
     icetGetDoublev(ICET_BUFFER_READ_TIME, &buf_read_time);
 
-    total_time = icetWallTime() - total_time;
-    icetStateSetDouble(ICET_TOTAL_DRAW_TIME, total_time);
+    icetTimingDrawFrameEnd();
+
+    icetGetDoublev(ICET_TOTAL_DRAW_TIME, &total_time);
 
     compose_time = total_time - render_time - buf_read_time;
     icetStateSetDouble(ICET_COMPOSITE_TIME, compose_time);

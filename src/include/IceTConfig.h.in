@@ -125,4 +125,6 @@ typedef IceTInt64 IceTPointerArithmetic;
 
 #define ICET_MAGIC_K_DEFAULT    @ICET_MAGIC_K@
 
+#cmakedefine ICET_USE_MPE
+
 #endif /*__IceTConfig_h*/

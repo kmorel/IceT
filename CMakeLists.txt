@@ -24,6 +24,11 @@ SET(ICET_LIBRARY_DIR ${LIBRARY_OUTPUT_PATH})
 SET(ICET_EXECUTABLE_DIR ${EXECUTABLE_OUTPUT_PATH})
 SET(C_TEST_PATH ${EXECUTABLE_OUTPUT_PATH})
 
+SET(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  ${CMAKE_SOURCE_DIR}/cmake
+  )
+
 # Turn shared libraries on or off.
 OPTION(BUILD_SHARED_LIBS "Build IceT with shared libraries." OFF)
 SET(ICET_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
@@ -46,6 +51,12 @@ SET(ICET_MAGIC_K ${initial_magic_k} CACHE STRING
 IF (NOT ${ICET_MAGIC_K} GREATER 1)
   MESSAGE(SEND_ERROR "ICET_MAGIC_K must be set to a number greater than 1.")
 ENDIF (NOT ${ICET_MAGIC_K} GREATER 1)
+
+# Configure MPE support
+IF (ICET_USE_MPI)
+  OPTION(ICET_USE_MPE "Use MPE to trace MPI communications.  This is helpful for developers trying to measure the performance of parallel compositing algorithms." OFF)
+  MARK_AS_ADVANCED(ICET_USE_MPE)
+ENDIF (ICET_USE_MPI)
 
 # Configure testing support.
 INCLUDE(Dart)
@@ -115,6 +126,12 @@ IF (ICET_USE_MPI)
   MARK_AS_ADVANCED(ICET_MPI_MAX_NUMPROCS)
   SEPARATE_ARGUMENTS(ICET_MPI_PREFLAGS)
   SEPARATE_ARGUMENTS(ICET_MPI_POSTFLAGS)
+
+  IF (ICET_USE_MPE)
+    FIND_PACKAGE(MPE REQUIRED)
+    INCLUDE_DIRECTORIES(${MPE_LOG_INCLUDE_PATH})
+    SET(ICET_MPI_LIBRARIES ${MPE_LOG_LIBRARIES} ${ICET_MPI_LIBRARIES})
+  ENDIF (ICET_USE_MPE)
 ENDIF (ICET_USE_MPI)
 
 # Add extra warnings when possible.  The IceT build should be clean.  I expect
