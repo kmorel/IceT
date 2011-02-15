@@ -589,7 +589,7 @@ static int SimpleTimingRun()
     icetSingleImageStrategy(g_single_image_strategy);
 
     /* Set up the projection matrix. */
-    icetMatrixFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0,
+    icetMatrixFrustum(-0.65*aspect, 0.65*aspect, -0.65, 0.65, 3.0, 5.0,
                       projection_matrix);
 
     if (rank%8 != 0) {
@@ -632,7 +632,7 @@ static int SimpleTimingRun()
         icetMatrixIdentity(modelview_matrix);
 
         /* Move geometry back so that it can be seen by the camera. */
-        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -2.0);
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -4.0);
 
         /* Rotate to some random view. */
         icetMatrixMultiplyRotate(modelview_matrix,
