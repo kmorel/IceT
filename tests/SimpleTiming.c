@@ -47,6 +47,29 @@ typedef struct {
     IceTDouble frame_time;
 } timings_type;
 
+/* Array for quick opacity lookups. */
+#define OPACITY_LOOKUP_SIZE 4096
+#define OPACITY_MAX_DT 4
+#define OPACITY_COMPUTE_VALUE(dt) (1.0 - pow(M_E, -(dt)))
+#define OPACITY_DT_2_INDEX(dt) \
+    (  ((dt) < OPACITY_MAX_DT) \
+     ? (int)((dt)*(OPACITY_LOOKUP_SIZE/OPACITY_MAX_DT)) \
+     : OPACITY_LOOKUP_SIZE )
+#define OPACITY_INDEX_2_DT(index) \
+    ((index)*((double)OPACITY_MAX_DT/OPACITY_LOOKUP_SIZE))
+static IceTDouble g_opacity_lookup[OPACITY_LOOKUP_SIZE+1];
+#define QUICK_OPACITY(dt) (g_opacity_lookup[OPACITY_DT_2_INDEX(dt)])
+
+static void init_opacity_lookup(void)
+{
+    IceTSizeType index;
+
+    for (index = 0; index < OPACITY_LOOKUP_SIZE+1; index++) {
+        IceTDouble distance_times_tau = OPACITY_INDEX_2_DT(index);
+        g_opacity_lookup[index] = OPACITY_COMPUTE_VALUE(distance_times_tau);
+    }
+}
+
 /* Program arguments. */
 static int g_num_tiles_x;
 static int g_num_tiles_y;
@@ -290,7 +313,7 @@ static void draw(const IceTDouble *projection_matrix,
                 if (g_transparent) {
                     /* Modify color by an opacity determined by thickness. */
                     IceTDouble thickness = far_distance - near_distance;
-                    IceTDouble opacity = 1.0 - pow(M_E, -4.0*thickness);
+                    IceTDouble opacity = QUICK_OPACITY(4.0*thickness);
                     color[0] *= (IceTFloat)opacity;
                     color[1] *= (IceTFloat)opacity;
                     color[2] *= (IceTFloat)opacity;
@@ -494,6 +517,8 @@ static int SimpleTimingRun()
      * calling function (i.e. icetTests_mpi.c).  See the init_mpi_comm in
      * mpi_comm.h for an example.
      */
+
+    init_opacity_lookup();
 
     /* If we had set up the communication layer ourselves, we could have gotten
      * these parameters directly from it.  Since we did not, this provides an
