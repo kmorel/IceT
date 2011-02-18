@@ -332,6 +332,7 @@ ICET_EXPORT void icetDiagnostics(IceTBitField mask);
 #define ICET_ORDERED_COMPOSITE  (ICET_STATE_ENABLE_START | (IceTEnum)0x0002)
 #define ICET_CORRECT_COLORED_BACKGROUND (ICET_STATE_ENABLE_START | (IceTEnum)0x0003)
 #define ICET_COMPOSITE_ONE_BUFFER (ICET_STATE_ENABLE_START | (IceTEnum)0x0004)
+#define ICET_INTERLACE_IMAGES   (ICET_STATE_ENABLE_START | (IceTEnum)0x0005)
 
 /* This set of enable state variables are reserved for the rendering layer. */
 #define ICET_RENDER_LAYER_ENABLE_START (ICET_STATE_ENABLE_START | (IceTEnum)0x0030)

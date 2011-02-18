@@ -21,7 +21,11 @@ Revision 2.1:
 	 Changed the single image compositing methods to work strictly with
 	 compressed images.  This prevents having to pad images with
 	 background only to then test that same background later during
-	 compressiong.
+	 compression.
+
+	 Added interlace images option that provides a hint to the
+	 compositing algorithms to try shuffling the pixels in images to
+	 better load balance the active pixels during compositing.
 
 Revision 2.0: A major restructuring of the IceT code comprising the
 	following changes:

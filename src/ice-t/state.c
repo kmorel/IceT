@@ -171,6 +171,7 @@ void icetStateSetDefaults(void)
     icetDisable(ICET_ORDERED_COMPOSITE);
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);
+    icetEnable(ICET_INTERLACE_IMAGES);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
     icetStateSetBoolean(ICET_RENDER_BUFFER_SIZE, 0);
