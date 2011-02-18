@@ -222,7 +222,9 @@ static int TestSparseImageSplit(const IceTImage image)
     width = icetImageGetWidth(image);
     height = icetImageGetHeight(image);
     num_partition_pixels
-        = icetSparseImageSplitPartitionNumPixels(width*height, NUM_PARTITIONS);
+        = icetSparseImageSplitPartitionNumPixels(width*height,
+                                                 NUM_PARTITIONS,
+                                                 NUM_PARTITIONS);
 
     full_sparse_buffer = malloc(icetSparseImageBufferSize(width, height));
     full_sparse = icetSparseImageAssignBuffer(full_sparse_buffer,width,height);
@@ -246,6 +248,7 @@ static int TestSparseImageSplit(const IceTImage image)
     printf("Spliting image %d times\n", NUM_PARTITIONS);
     icetSparseImageSplit(full_sparse,
                          NUM_PARTITIONS,
+                         NUM_PARTITIONS,
                          sparse_partition,
                          offsets);
     for (partition = 0; partition < NUM_PARTITIONS; partition++) {
@@ -265,6 +268,7 @@ static int TestSparseImageSplit(const IceTImage image)
            NUM_PARTITIONS);
     sparse_partition[0] = full_sparse;
     icetSparseImageSplit(full_sparse,
+                         NUM_PARTITIONS,
                          NUM_PARTITIONS,
                          sparse_partition,
                          offsets);

@@ -111,11 +111,13 @@ ICET_EXPORT void icetSparseImageCopyPixels(const IceTSparseImage in_image,
 
 ICET_EXPORT void icetSparseImageSplit(const IceTSparseImage in_image,
                                       IceTInt num_partitions,
+                                      IceTInt eventual_num_partitions,
                                       IceTSparseImage *out_images,
                                       IceTSizeType *offsets);
 ICET_EXPORT IceTSizeType icetSparseImageSplitPartitionNumPixels(
-                                                  IceTSizeType input_num_pixels,
-                                                  IceTInt num_partitions);
+                                               IceTSizeType input_num_pixels,
+                                               IceTInt num_partitions,
+                                               IceTInt eventual_num_partitions);
 
 ICET_EXPORT void icetClearImage(IceTImage image);
 ICET_EXPORT void icetClearSparseImage(IceTSparseImage image);

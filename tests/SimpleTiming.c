@@ -62,11 +62,11 @@ static IceTDouble g_opacity_lookup[OPACITY_LOOKUP_SIZE+1];
 
 static void init_opacity_lookup(void)
 {
-    IceTSizeType index;
+    IceTSizeType idx;
 
-    for (index = 0; index < OPACITY_LOOKUP_SIZE+1; index++) {
-        IceTDouble distance_times_tau = OPACITY_INDEX_2_DT(index);
-        g_opacity_lookup[index] = OPACITY_COMPUTE_VALUE(distance_times_tau);
+    for (idx = 0; idx < OPACITY_LOOKUP_SIZE+1; idx++) {
+        IceTDouble distance_times_tau = OPACITY_INDEX_2_DT(idx);
+        g_opacity_lookup[idx] = OPACITY_COMPUTE_VALUE(distance_times_tau);
     }
 }
 
