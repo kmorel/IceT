@@ -1,0 +1,55 @@
+Describe radix-k algorithm.
+
+ietAddTile raises ICET_INVALID_VALUE if you try to create a tile with no
+pixels.
+
+icetFindRankInGroup, icetFindMyRankInGroup
+
+The following state variables are not set with sequential strategy:
+ICET_ALL_CONTAINED_TILES_MASKS, ICET_TILE_CONTRIB_COUNTS, and
+ICET_TOTAL_IMAGE_COUNT.
+
+Suggest using sequential strategy for single tile (because it skips some
+allgathers).
+
+icetCommBarrier
+
+icetImageAssignBuffer, icetSingleImageAssignBuffer
+
+icetWaitany returns index to finished request - different than MPI.
+
+icetCommGather, icetCommGatherV
+
+ICET_IN_PLACE_COLLECT
+
+ICET_SIZE_TYPE (list of types in implement new strategy -> Communications).
+
+const array for compose_group in single image strategy functions.
+
+icetSingleImageCompose interface change.
+
+icetSingleImageCollect.
+
+General change to single image strategy functions.
+
+ICET_MAGIC_K state variable, CMake variable, and environment variable.
+
+icetCompressedCompressedComposite
+
+icetSparseImageCopyPixels
+
+icetSparseImageSplit
+
+icetSparseImageSplitPartitionNumPixels
+
+icetImageEqual, icetSparseImageEqual
+
+icetDecompressSubImage
+
+icetRenderTransferSparseImages
+
+icetSparseImageNull, icetSparseImageIsNull
+
+icetUnsafeStateGet* now return const
+
+todo: correct background before gather
