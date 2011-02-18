@@ -274,7 +274,7 @@ static const IceTEventInfo *icetEventFind(IceTEnum pname)
         MPE_Describe_state(new_event->mpe_event_begin,
                            new_event->mpe_event_end,
                            "draw frame",
-                           "dark grey");
+                           "blue");
         new_event->next = events;
         events = new_event;
     }

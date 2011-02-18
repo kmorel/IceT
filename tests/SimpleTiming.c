@@ -47,14 +47,41 @@ typedef struct {
     IceTDouble frame_time;
 } timings_type;
 
+/* Array for quick opacity lookups. */
+#define OPACITY_LOOKUP_SIZE 4096
+#define OPACITY_MAX_DT 4
+#define OPACITY_COMPUTE_VALUE(dt) (1.0 - pow(M_E, -(dt)))
+#define OPACITY_DT_2_INDEX(dt) \
+    (  ((dt) < OPACITY_MAX_DT) \
+     ? (int)((dt)*(OPACITY_LOOKUP_SIZE/OPACITY_MAX_DT)) \
+     : OPACITY_LOOKUP_SIZE )
+#define OPACITY_INDEX_2_DT(index) \
+    ((index)*((double)OPACITY_MAX_DT/OPACITY_LOOKUP_SIZE))
+static IceTDouble g_opacity_lookup[OPACITY_LOOKUP_SIZE+1];
+#define QUICK_OPACITY(dt) (g_opacity_lookup[OPACITY_DT_2_INDEX(dt)])
+
+static void init_opacity_lookup(void)
+{
+    IceTSizeType index;
+
+    for (index = 0; index < OPACITY_LOOKUP_SIZE+1; index++) {
+        IceTDouble distance_times_tau = OPACITY_INDEX_2_DT(index);
+        g_opacity_lookup[index] = OPACITY_COMPUTE_VALUE(distance_times_tau);
+    }
+}
+
+/* Used to signal the first render of a frame. */
+static IceTBoolean g_first_render;
+
 /* Program arguments. */
-static int g_num_tiles_x;
-static int g_num_tiles_y;
-static int g_num_frames;
-static int g_seed;
-static int g_transparent;
-static int g_colored_background;
-static int g_write_image;
+static IceTInt g_num_tiles_x;
+static IceTInt g_num_tiles_y;
+static IceTInt g_num_frames;
+static IceTInt g_seed;
+static IceTBoolean g_transparent;
+static IceTBoolean g_colored_background;
+static IceTBoolean g_sync_render;
+static IceTBoolean g_write_image;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
 
@@ -67,10 +94,11 @@ static void parse_arguments(int argc, char *argv[])
     g_num_tiles_x = 1;
     g_num_tiles_y = 1;
     g_num_frames = 2;
-    g_seed = (int)time(NULL);
-    g_transparent = 0;
-    g_colored_background = 0;
-    g_write_image = 0;
+    g_seed = (IceTInt)time(NULL);
+    g_transparent = ICET_FALSE;
+    g_colored_background = ICET_FALSE;
+    g_sync_render = ICET_FALSE;
+    g_write_image = ICET_FALSE;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
 
@@ -88,11 +116,13 @@ static void parse_arguments(int argc, char *argv[])
             arg++;
             g_seed = atoi(argv[arg]);
         } else if (strcmp(argv[arg], "-transparent") == 0) {
-            g_transparent = 1;
+            g_transparent = ICET_TRUE;
         } else if (strcmp(argv[arg], "-colored-background") == 0) {
-            g_colored_background = 1;
+            g_colored_background = ICET_TRUE;
+        } else if (strcmp(argv[arg], "-sync-render") == 0) {
+            g_sync_render = ICET_TRUE;
         } else if (strcmp(argv[arg], "-write-image") == 0) {
-            g_write_image = 1;
+            g_write_image = ICET_TRUE;
         } else if (strcmp(argv[arg], "-reduce") == 0) {
             g_strategy = ICET_STRATEGY_REDUCE;
         } else if (strcmp(argv[arg], "-vtree") == 0) {
@@ -290,7 +320,7 @@ static void draw(const IceTDouble *projection_matrix,
                 if (g_transparent) {
                     /* Modify color by an opacity determined by thickness. */
                     IceTDouble thickness = far_distance - near_distance;
-                    IceTDouble opacity = 1.0 - pow(M_E, -4.0*thickness);
+                    IceTDouble opacity = QUICK_OPACITY(4.0*thickness);
                     color[0] *= (IceTFloat)opacity;
                     color[1] *= (IceTFloat)opacity;
                     color[2] *= (IceTFloat)opacity;
@@ -323,6 +353,25 @@ static void draw(const IceTDouble *projection_matrix,
                 depth_dest[0] = depth;
             }
         }
+    }
+
+    if (g_first_render) {
+        if (g_sync_render) {
+            /* The rendering we are using here is pretty crummy.  It is not
+               meant to be practical but to create reasonable images to
+               composite.  One problem with it is that the render times are not
+               well balanced even though everyone renders roughly the same sized
+               object.  If you want to time the composite performance, this can
+               interfere with the measurements.  To get around this problem, do
+               a barrier that makes it look as if all rendering finishes at the
+               same time.  Note that there is a remote possibility that not
+               every process will render something, in which case this will
+               deadlock.  Note that we make sure only to sync once to get around
+               the less remote possibility that some, but not all, processes
+               render more than once. */
+            icetCommBarrier();
+        }
+        g_first_render = ICET_FALSE;
     }
 }
 
@@ -495,6 +544,8 @@ static int SimpleTimingRun()
      * mpi_comm.h for an example.
      */
 
+    init_opacity_lookup();
+
     /* If we had set up the communication layer ourselves, we could have gotten
      * these parameters directly from it.  Since we did not, this provides an
      * alternate way. */
@@ -564,7 +615,7 @@ static int SimpleTimingRun()
     icetSingleImageStrategy(g_single_image_strategy);
 
     /* Set up the projection matrix. */
-    icetMatrixFrustum(-0.5*aspect, 0.5*aspect, -0.5, 0.5, 1.0, 3.0,
+    icetMatrixFrustum(-0.65*aspect, 0.65*aspect, -0.65, 0.65, 3.0, 5.0,
                       projection_matrix);
 
     if (rank%8 != 0) {
@@ -607,7 +658,7 @@ static int SimpleTimingRun()
         icetMatrixIdentity(modelview_matrix);
 
         /* Move geometry back so that it can be seen by the camera. */
-        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -2.0);
+        icetMatrixMultiplyTranslate(modelview_matrix, 0.0, 0.0, -4.0);
 
         /* Rotate to some random view. */
         icetMatrixMultiplyRotate(modelview_matrix,
@@ -640,6 +691,7 @@ static int SimpleTimingRun()
       /* Instead of calling draw() directly, call it indirectly through
        * icetDrawFrame().  IceT will automatically handle image
        * compositing. */
+        g_first_render = ICET_TRUE;
         image = icetDrawFrame(projection_matrix,
                               modelview_matrix,
                               background_color);
