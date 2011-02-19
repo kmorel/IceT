@@ -73,6 +73,18 @@ static void ICET_TEST_SPARSE_IMAGE_HEADER(IceTSparseImage image)
 #define MAX(x, y)       ((x) < (y) ? (y) : (x))
 #endif
 
+#define BIT_REVERSE(result, x, max_val_plus_one)                              \
+{                                                                             \
+    int placeholder;                                                          \
+    int input = (x);                                                          \
+    (result) = 0;                                                             \
+    for (placeholder=0x0001; placeholder<max_val_plus_one; placeholder<<=1) { \
+        (result) <<= 1;                                                       \
+        (result) += input & 0x0001;                                           \
+        input >>= 1;                                                          \
+    }                                                                         \
+}
+
 #ifdef _MSC_VER
 #pragma warning(disable:4055)
 #endif
@@ -80,6 +92,11 @@ static void ICET_TEST_SPARSE_IMAGE_HEADER(IceTSparseImage image)
 /* Returns the size, in bytes, of a color/depth value for a single pixel. */
 static IceTSizeType colorPixelSize(IceTEnum color_format);
 static IceTSizeType depthPixelSize(IceTEnum depth_format);
+
+/* Given a sparse image and a pointer to the end of the data, fill in the entry
+   for the actual buffer size. */
+static void icetSparseImageSetActualSize(IceTSparseImage image,
+                                         const IceTVoid *data_end);
 
 /* Given a pointer to a data element in a sparse image data buffer, the amount
    of inactive pixels before this data element, and the number of active pixels
@@ -550,6 +567,19 @@ void icetSparseImageSetDimensions(IceTSparseImage image,
 
   /* Make sure the runlengths are valid. */
     icetClearSparseImage(image);
+}
+
+static void icetSparseImageSetActualSize(IceTSparseImage image,
+                                         const IceTVoid *data_end)
+{
+    /* Compute the actual number of bytes used to store the image. */
+    IceTPointerArithmetic buffer_begin
+        =(IceTPointerArithmetic)ICET_IMAGE_HEADER(image);
+    IceTPointerArithmetic buffer_end
+        =(IceTPointerArithmetic)data_end;
+    IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
+    ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
+        = (IceTInt)compressed_size;
 }
 
 const IceTVoid *icetImageGetColorConstVoid(const IceTImage image,
@@ -1227,16 +1257,7 @@ static void icetSparseImageCopyPixelsInternal(
                               &out_data,
                               NULL);
 
-    {
-        /* Compute the actual number of bytes used to store the image. */
-        IceTPointerArithmetic buffer_begin
-            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(out_image);
-        IceTPointerArithmetic buffer_end
-            =(IceTPointerArithmetic)out_data;
-        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
-        ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-            = (IceTInt)compressed_size;
-    }
+    icetSparseImageSetActualSize(out_image, out_data);
 }
 
 static void icetSparseImageCopyPixelsInPlaceInternal(
@@ -1278,16 +1299,7 @@ static void icetSparseImageCopyPixelsInPlaceInternal(
             -= (IceTUShort)(*active_till_next_runl_p);
     }
 
-    {
-        /* Compute the actual number of bytes used to store the image. */
-        IceTPointerArithmetic buffer_begin
-            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(out_image);
-        IceTPointerArithmetic buffer_end
-            =(IceTPointerArithmetic)(*in_data_p);
-        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
-        ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-            = (IceTInt)compressed_size;
-    }
+    icetSparseImageSetActualSize(out_image, *in_data_p);
 }
 
 void icetSparseImageCopyPixels(const IceTSparseImage in_image,
@@ -1303,11 +1315,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
     IceTSizeType start_inactive;
     IceTSizeType start_active;
 
-    IceTDouble compress_time;
-    IceTDouble timer;
-
-    icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
-    timer = icetWallTime();
+    icetTimingCompressBegin();
 
     color_format = icetSparseImageGetColorFormat(in_image);
     depth_format = icetSparseImageGetDepthFormat(in_image);
@@ -1365,8 +1373,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
                                       pixel_size,
                                       out_image);
 
-    compress_time += icetWallTime() - timer;
-    icetStateSetInteger(ICET_COMPRESS_TIME, compress_time);
+    icetTimingCompressEnd();
 }
 
 IceTSizeType icetSparseImageSplitPartitionNumPixels(
@@ -1438,11 +1445,7 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
 
     IceTInt partition;
 
-    IceTDouble compress_time;
-    IceTDouble timer;
-
-    icetGetDoublev(ICET_COMPRESS_TIME, &compress_time);
-    timer = icetWallTime();
+    icetTimingCompressBegin();
 
     if (num_partitions < 2) {
         icetRaiseError("It does not make sense to call icetSparseImageSplit"
@@ -1513,8 +1516,188 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
     }
 #endif
 
-    compress_time += icetWallTime() - timer;
-    icetStateSetInteger(ICET_COMPRESS_TIME, compress_time);
+    icetTimingCompressEnd();
+}
+
+void icetSparseImageInterlace(const IceTSparseImage in_image,
+                              IceTSparseImage out_image,
+                              IceTInt eventual_num_partitions,
+                              IceTEnum scratch_state_buffer)
+{
+    IceTSizeType num_pixels = icetSparseImageGetNumPixels(in_image);
+    IceTEnum color_format = icetSparseImageGetColorFormat(in_image);
+    IceTEnum depth_format = icetSparseImageGetDepthFormat(in_image);
+    IceTSizeType lower_partition_size = num_pixels/eventual_num_partitions;
+    IceTSizeType remaining_pixels = num_pixels%eventual_num_partitions;
+    IceTSizeType pixel_size;
+    IceTInt original_partition_idx;
+    IceTInt interlaced_partition_idx;
+    const IceTVoid **in_data_array;
+    IceTSizeType *inactive_before_array;
+    IceTSizeType *active_till_next_runl_array;
+    const IceTByte *in_data;
+    IceTByte *out_data;
+    IceTSizeType inactive_before;
+    IceTSizeType active_till_next_runl;
+    IceTVoid *last_run_length;
+
+    /* Special case, nothing to do. */
+    if (eventual_num_partitions < 2) {
+        icetSparseImageCopyPixels(in_image, 0, num_pixels, out_image);
+        return;
+    }
+
+    if (   (color_format != icetSparseImageGetColorFormat(out_image))
+        || (depth_format != icetSparseImageGetDepthFormat(out_image)) ) {
+        icetRaiseError("Cannot copy pixels of images with different formats.",
+                       ICET_INVALID_VALUE);
+        return;
+    }
+
+    pixel_size = colorPixelSize(color_format) + depthPixelSize(depth_format);
+
+    {
+        IceTByte *buffer = icetGetStateBuffer(
+                              scratch_state_buffer,
+                                eventual_num_partitions*sizeof(IceTVoid*)
+                              + 2*eventual_num_partitions*sizeof(IceTSizeType));
+        in_data_array = (const IceTVoid **)buffer;
+        inactive_before_array
+            = (IceTSizeType *)(  buffer
+                               + eventual_num_partitions*sizeof(IceTVoid*));
+        active_till_next_runl_array
+            = inactive_before_array + eventual_num_partitions;
+    }
+
+    /* Run through the input data and figure out where each interlaced
+       partition needs to read from. */
+    in_data = ICET_IMAGE_DATA(in_image);
+    inactive_before = 0;
+    active_till_next_runl = 0;
+    for (original_partition_idx = 0;
+         original_partition_idx < eventual_num_partitions;
+         original_partition_idx++) {
+        IceTSizeType pixels_to_skip;
+
+        BIT_REVERSE(interlaced_partition_idx,
+                    original_partition_idx,
+                    eventual_num_partitions);
+        if (eventual_num_partitions <= interlaced_partition_idx) {
+            interlaced_partition_idx = original_partition_idx;
+        }
+
+        pixels_to_skip = lower_partition_size;
+        if (interlaced_partition_idx < remaining_pixels) {
+            pixels_to_skip += 1;
+        }
+
+        in_data_array[interlaced_partition_idx] = in_data;
+        inactive_before_array[interlaced_partition_idx] = inactive_before;
+        active_till_next_runl_array[interlaced_partition_idx]
+            = active_till_next_runl;
+
+        if (original_partition_idx < eventual_num_partitions-1) {
+            icetSparseImageSkipPixels((const IceTVoid**)&in_data,
+                                      &inactive_before,
+                                      &active_till_next_runl,
+                                      pixels_to_skip,
+                                      pixel_size,
+                                      NULL,
+                                      NULL);
+        }
+    }
+
+    /* Set up output image. */
+    icetSparseImageSetDimensions(out_image,
+                                 icetSparseImageGetWidth(in_image),
+                                 icetSparseImageGetHeight(in_image));
+    out_data = ICET_IMAGE_DATA(out_image);
+    INACTIVE_RUN_LENGTH(out_data) = 0;
+    ACTIVE_RUN_LENGTH(out_data) = 0;
+    last_run_length = out_data;
+    out_data += RUN_LENGTH_SIZE;
+
+    for (interlaced_partition_idx = 0;
+         interlaced_partition_idx < eventual_num_partitions;
+         interlaced_partition_idx++) {
+        IceTSizeType pixels_left;
+
+        pixels_left = lower_partition_size;
+        if (interlaced_partition_idx < remaining_pixels) {
+            pixels_left += 1;
+        }
+
+        in_data = in_data_array[interlaced_partition_idx];
+        inactive_before = inactive_before_array[interlaced_partition_idx];
+        active_till_next_runl
+            = active_till_next_runl_array[interlaced_partition_idx];
+
+        /* One problem with breaking up sparse images is that maximum run
+           lengths can get broken up.  Check for that here and zip them up. */
+        while (   (inactive_before > 0)
+               && (ACTIVE_RUN_LENGTH(last_run_length) == 0)
+               && (pixels_left > 0) ) {
+            IceTSizeType inactive
+                = inactive_before + INACTIVE_RUN_LENGTH(last_run_length);
+            while (inactive > 0xFFFF) {
+                INACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
+                inactive -= 0xFFFF;
+                pixels_left -= 0xFFFF;
+                last_run_length = out_data;
+                out_data += RUN_LENGTH_SIZE;
+                INACTIVE_RUN_LENGTH(last_run_length) = 0;
+                ACTIVE_RUN_LENGTH(last_run_length) = 0;
+            }
+            INACTIVE_RUN_LENGTH(last_run_length) = inactive;
+            pixels_left -= inactive;
+            if (active_till_next_runl == 0) {
+                inactive_before = INACTIVE_RUN_LENGTH(in_data);
+                active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
+                in_data += RUN_LENGTH_SIZE;
+            } else {
+                inactive_before = 0;
+            }
+        }
+
+        while (   (inactive_before == 0)
+               && (active_till_next_runl > 0)
+               && (pixels_left > 0) ) {
+            IceTSizeType active = active_till_next_runl;
+            while (active + ACTIVE_RUN_LENGTH(last_run_length) > 0xFFFF) {
+                IceTSizeType num_to_copy
+                    = 0xFFFF - ACTIVE_RUN_LENGTH(last_run_length);
+                memcpy(out_data, in_data, num_to_copy*pixel_size);
+                out_data += num_to_copy*pixel_size;
+                in_data += num_to_copy*pixel_size;
+                ACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
+                active -= num_to_copy;
+                pixels_left -= num_to_copy;
+                last_run_length = out_data;
+                out_data += RUN_LENGTH_SIZE;
+                INACTIVE_RUN_LENGTH(last_run_length) = 0;
+                ACTIVE_RUN_LENGTH(last_run_length) = 0;
+            }
+            memcpy(out_data, in_data, active*pixel_size);
+            out_data += active*pixel_size;
+            in_data += active*pixel_size;
+            ACTIVE_RUN_LENGTH(last_run_length) += active;
+            pixels_left -= active;
+
+            inactive_before = INACTIVE_RUN_LENGTH(in_data);
+            active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
+            in_data += RUN_LENGTH_SIZE;
+        }
+
+        /* At this point we should be ready to start a new run length, so
+           let icetSparseImageSkipPixels copy the rest. */
+        icetSparseImageSkipPixels((const IceTVoid **)&in_data,
+                                  &inactive_before,
+                                  &active_till_next_runl,
+                                  pixels_left,
+                                  pixel_size,
+                                  (IceTVoid **)&out_data,
+                                  &last_run_length);
+    }
 }
 
 void icetClearImage(IceTImage image)
@@ -1546,16 +1729,7 @@ void icetClearSparseImage(IceTSparseImage image)
     INACTIVE_RUN_LENGTH(data) = (IceTUShort)p;
     ACTIVE_RUN_LENGTH(data) = 0;
 
-    {
-        /* Compute the actual number of bytes used to store the image. */
-        IceTPointerArithmetic buffer_begin
-            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(image);
-        IceTPointerArithmetic buffer_end
-            =(IceTPointerArithmetic)(data+RUN_LENGTH_SIZE);
-        IceTPointerArithmetic compressed_size = buffer_end - buffer_begin;
-        ICET_IMAGE_HEADER(image)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-            = (IceTInt)compressed_size;
-    }
+    icetSparseImageSetActualSize(image, data+RUN_LENGTH_SIZE);
 }
 
 void icetSetColorFormat(IceTEnum color_format)

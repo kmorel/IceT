@@ -55,3 +55,5 @@ icetUnsafeStateGet* now return const
 todo: correct background before gather
 
 ICET_INTERLACE_IMAGES
+
+icetSparseImageInterlace
