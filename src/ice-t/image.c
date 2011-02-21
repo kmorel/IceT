@@ -1637,20 +1637,23 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
         while (   (inactive_before > 0)
                && (ACTIVE_RUN_LENGTH(last_run_length) == 0)
                && (pixels_left > 0) ) {
-            IceTSizeType inactive
-                = inactive_before + INACTIVE_RUN_LENGTH(last_run_length);
-            while (inactive > 0xFFFF) {
+            IceTSizeType inactive = MIN(inactive_before, pixels_left);
+            while (inactive + INACTIVE_RUN_LENGTH(last_run_length) > 0xFFFF) {
+                IceTSizeType num_to_copy
+                    = 0xFFFF - INACTIVE_RUN_LENGTH(last_run_length);
                 INACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
-                inactive -= 0xFFFF;
-                pixels_left -= 0xFFFF;
+                inactive -= num_to_copy;
+                pixels_left -= num_to_copy;
+                inactive_before -= num_to_copy;
                 last_run_length = out_data;
                 out_data += RUN_LENGTH_SIZE;
                 INACTIVE_RUN_LENGTH(last_run_length) = 0;
                 ACTIVE_RUN_LENGTH(last_run_length) = 0;
             }
-            INACTIVE_RUN_LENGTH(last_run_length) = inactive;
+            INACTIVE_RUN_LENGTH(last_run_length) += inactive;
             pixels_left -= inactive;
-            if (active_till_next_runl == 0) {
+            inactive_before -= inactive;
+            if ((inactive_before == 0) && (active_till_next_runl == 0)) {
                 inactive_before = INACTIVE_RUN_LENGTH(in_data);
                 active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
                 in_data += RUN_LENGTH_SIZE;
@@ -1662,7 +1665,7 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
         while (   (inactive_before == 0)
                && (active_till_next_runl > 0)
                && (pixels_left > 0) ) {
-            IceTSizeType active = active_till_next_runl;
+            IceTSizeType active = MIN(active_till_next_runl, pixels_left);
             while (active + ACTIVE_RUN_LENGTH(last_run_length) > 0xFFFF) {
                 IceTSizeType num_to_copy
                     = 0xFFFF - ACTIVE_RUN_LENGTH(last_run_length);
@@ -1672,6 +1675,7 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
                 ACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
                 active -= num_to_copy;
                 pixels_left -= num_to_copy;
+                active_till_next_runl -= num_to_copy;
                 last_run_length = out_data;
                 out_data += RUN_LENGTH_SIZE;
                 INACTIVE_RUN_LENGTH(last_run_length) = 0;
@@ -1682,21 +1686,38 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
             in_data += active*pixel_size;
             ACTIVE_RUN_LENGTH(last_run_length) += active;
             pixels_left -= active;
+            active_till_next_runl -= active;
 
-            inactive_before = INACTIVE_RUN_LENGTH(in_data);
-            active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
-            in_data += RUN_LENGTH_SIZE;
+            if (active_till_next_runl == 0) {
+                inactive_before = INACTIVE_RUN_LENGTH(in_data);
+                active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
+                in_data += RUN_LENGTH_SIZE;
+            }
         }
 
         /* At this point we should be ready to start a new run length, so
            let icetSparseImageSkipPixels copy the rest. */
-        icetSparseImageSkipPixels((const IceTVoid **)&in_data,
-                                  &inactive_before,
-                                  &active_till_next_runl,
-                                  pixels_left,
-                                  pixel_size,
-                                  (IceTVoid **)&out_data,
-                                  &last_run_length);
+        if (pixels_left > 0) {
+            if (   (INACTIVE_RUN_LENGTH(last_run_length) == 0)
+                && (ACTIVE_RUN_LENGTH(last_run_length) == 0) ) {
+                /* We didn't record any data.  Back up out_data pointer. */
+                out_data = last_run_length;
+            }
+            icetSparseImageSkipPixels((const IceTVoid **)&in_data,
+                                      &inactive_before,
+                                      &active_till_next_runl,
+                                      pixels_left,
+                                      pixel_size,
+                                      (IceTVoid **)&out_data,
+                                      &last_run_length);
+        } else if (pixels_left == 0) {
+            /* Do nothing.  We already copied all necessary pixels.  If we
+               tried to call icetSparseImageSkipPixels, it would loose the
+               last_run_length. */
+        } else /* pixels_left < 0 */ {
+            icetRaiseError("Oops.  Copied more pixels than I was supposed to.",
+                           ICET_SANITY_CHECK_FAIL);
+        }
     }
 }
 
