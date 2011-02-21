@@ -119,6 +119,11 @@ ICET_EXPORT IceTSizeType icetSparseImageSplitPartitionNumPixels(
                                                IceTInt num_partitions,
                                                IceTInt eventual_num_partitions);
 
+ICET_EXPORT void icetSparseImageInterlace(const IceTSparseImage in_image,
+                                          IceTInt eventual_num_partitions,
+                                          IceTEnum scratch_state_buffer,
+                                          IceTSparseImage out_image);
+
 ICET_EXPORT void icetClearImage(IceTImage image);
 ICET_EXPORT void icetClearSparseImage(IceTSparseImage image);
 

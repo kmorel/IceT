@@ -1520,9 +1520,9 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
 }
 
 void icetSparseImageInterlace(const IceTSparseImage in_image,
-                              IceTSparseImage out_image,
                               IceTInt eventual_num_partitions,
-                              IceTEnum scratch_state_buffer)
+                              IceTEnum scratch_state_buffer,
+                              IceTSparseImage out_image)
 {
     IceTSizeType num_pixels = icetSparseImageGetNumPixels(in_image);
     IceTEnum color_format = icetSparseImageGetColorFormat(in_image);
