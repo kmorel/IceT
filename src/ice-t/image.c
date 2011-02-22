@@ -1323,6 +1323,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
         || (depth_format != icetSparseImageGetDepthFormat(out_image)) ) {
         icetRaiseError("Cannot copy pixels of images with different formats.",
                        ICET_INVALID_VALUE);
+        icetTimingCompressEnd();
         return;
     }
 
@@ -1341,6 +1342,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
             icetRaiseError("Cannot set an image size to greater than what the"
                            " image was originally created.",
                            ICET_INVALID_VALUE);
+            icetTimingCompressEnd();
             return;
         }
 
@@ -1351,6 +1353,7 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
         ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_MAX_NUM_PIXELS_INDEX]
             = max_pixels;
 
+        icetTimingCompressEnd();
         return;
     }
 
@@ -1451,6 +1454,7 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
         icetRaiseError("It does not make sense to call icetSparseImageSplit"
                        " with less than 2 partitions.",
                        ICET_INVALID_VALUE);
+        icetTimingCompressEnd();
         return;
     }
 
@@ -1477,6 +1481,7 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
             icetRaiseError("Cannot copy pixels of images with different"
                            " formats.",
                            ICET_INVALID_VALUE);
+            icetTimingCompressEnd();
             return;
         }
 
