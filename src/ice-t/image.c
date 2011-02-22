@@ -1282,6 +1282,7 @@ static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
                 ADVANCE_OUT_RUN_LENGTH();
                 inactive_before -= num_to_copy;
                 pixels_left -= num_to_copy;
+                count -= num_to_copy;
             }
             INACTIVE_RUN_LENGTH(last_out_run_length) += count;
             inactive_before -= count;
@@ -1303,6 +1304,7 @@ static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
                 ADVANCE_OUT_RUN_LENGTH();
                 active_till_next_runl -= num_to_copy;
                 pixels_left -= num_to_copy;
+                count -= num_to_copy;
             }
             ACTIVE_RUN_LENGTH(last_out_run_length) += count;
             memcpy(out_data, in_data, count*pixel_size);
