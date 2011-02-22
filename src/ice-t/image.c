@@ -1721,6 +1721,56 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
     }
 }
 
+IceTSizeType icetGetInterlaceOffset(IceTInt partition_index,
+                                    IceTInt eventual_num_partitions,
+                                    IceTSizeType original_image_size)
+{
+    IceTSizeType lower_partition_size;
+    IceTSizeType remaining_pixels;
+    IceTSizeType offset;
+    IceTInt original_partition_idx;
+
+    if ((partition_index < 0) || (eventual_num_partitions <= partition_index)) {
+        icetRaiseError("Invalid partition for interlace offset",
+                       ICET_INVALID_VALUE);
+        return 0;
+    }
+
+    lower_partition_size = original_image_size/eventual_num_partitions;
+    remaining_pixels = original_image_size%eventual_num_partitions;
+
+    offset = 0;
+    for (original_partition_idx = 0;
+         original_partition_idx < eventual_num_partitions;
+         original_partition_idx++) {
+        IceTInt interlaced_partition_idx;
+        IceTSizeType partition_size;
+
+        BIT_REVERSE(interlaced_partition_idx,
+                    original_partition_idx,
+                    eventual_num_partitions);
+        if (eventual_num_partitions <= interlaced_partition_idx) {
+            interlaced_partition_idx = original_partition_idx;
+        }
+
+        if (interlaced_partition_idx == partition_index) {
+            /* Found any partitions before this one. */
+            return offset;
+        }
+
+        partition_size = lower_partition_size;
+        if (interlaced_partition_idx < remaining_pixels) {
+            partition_size += 1;
+        }
+
+        offset += partition_size;
+    }
+
+    /* Should never get here. */
+    icetRaiseError("Could not find partition index.", ICET_SANITY_CHECK_FAIL);
+    return 0;
+}
+
 void icetClearImage(IceTImage image)
 {
     IceTInt region[4] = {0, 0, 0, 0};

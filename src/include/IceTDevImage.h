@@ -124,6 +124,11 @@ ICET_EXPORT void icetSparseImageInterlace(const IceTSparseImage in_image,
                                           IceTEnum scratch_state_buffer,
                                           IceTSparseImage out_image);
 
+ICET_EXPORT IceTSizeType icetGetInterlaceOffset(
+                                              IceTInt partition_index,
+                                              IceTInt eventual_num_partitions,
+                                              IceTSizeType original_image_size);
+
 ICET_EXPORT void icetClearImage(IceTImage image);
 ICET_EXPORT void icetClearSparseImage(IceTSparseImage image);
 
