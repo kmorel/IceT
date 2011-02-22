@@ -99,22 +99,56 @@ static void icetSparseImageSetActualSize(IceTSparseImage image,
                                          const IceTVoid *data_end);
 
 /* Given a pointer to a data element in a sparse image data buffer, the amount
-   of inactive pixels before this data element, and the number of active pixels
-   until the next run length, advance the pointer for the number of pixels given
-   and update the inactive and active parameters.  Note that the pointer may
-   point to a run length entry if the number of active is set to zero.  If
-   out_data_p is non-NULL, the data will also be written, in sparse format, to
-   the data pointed there and advanced.  It is up to the calling method to
-   handle the sparse image header. */
-static void icetSparseImageSkipPixels(const IceTVoid **data_p,
+ * of inactive pixels before this data element, and the number of active pixels
+ * until the next run length, advance the pointer for the number of pixels given
+ * and update the inactive and active parameters.  Note that the pointer may
+ * point to a run length entry if the number of active is set to zero.  If
+ * out_data_p is non-NULL, the data will also be written, in sparse format, to
+ * the data pointed there and advanced.  It is up to the calling method to
+ * handle the sparse image header.  The parameters mean the following.
+ *
+ * in_data_p (input/output): Points to the data part of a sparse image.
+ *     This is where data will be read from.  When this function returns,
+ *     this parameter will be set after the last data point read.
+ * inactive_before_p (input/output): The input may be in the middle of a
+ *     run length.  The number of inactive to be considered before in_data_p
+ *     should be passed here.  Likewise, this parameter will be set based on
+ *     where the data lies upon completion.
+ * active_till_next_runl_p (input/output): The input may be in the middle of
+ *     a run length.  The number of active pixels the advance in_data_p
+ *     before getting to the next run length is passed in here.  If this is
+ *     set to 0, then in_data_p must point to a run length (or be passed the
+ *     edge of the image).  This parameter will be set based on where the
+ *     data lies upon completion.
+ * last_in_run_length_p (output): If non-NULL, the location of the last run
+ *     length read from the input is stored here.  The intention is that
+ *     an in-place copy may need to modify this run length.
+ * pixels_to_skip (input): The number of pixels to advance (and optionally
+ *     copy) in_data_p (and inactive_before_p and active_till_next_runl_p).
+ * pixel_size (input): The size, in bytes, for the data of each pixel.
+ * out_data_p (input/output): If the intention is to copy the data, this
+ *     points to the end of a data part of another sparse image.  The
+ *     scanned pixels will be copied to this buffer.  This parameter will
+ *     be set to the location after where the portion of data is copied.
+ *     This parameter is optional.  If set to NULL, it is ignored and no
+ *     data is copied.
+ * out_run_length_p (input/output): The output may be in the middle of a
+ *     run length.  If so, this parameter can point to the last run length
+ *     already in the output.  Likewise, this parameter will be set to point
+ *     to the last run length.  This parameter is optional.  If set to NULL,
+ *     it is assumed that out_data_p will initially point to a run length.
+ *     This parameter is ignored if out_data_p is NULL.
+ */   
+static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
                                       IceTSizeType *inactive_before_p,
                                       IceTSizeType *active_till_next_runl_p,
+                                      IceTVoid **last_in_run_length_p,
                                       IceTSizeType pixels_to_skip,
                                       IceTSizeType pixel_size,
                                       IceTVoid **out_data_p,
-                                      IceTVoid **last_run_length_p);
+                                      IceTVoid **out_run_length_p);
 
-/* Similar calling structure as icetSparseImageSkipPixels except that the
+/* Similar calling structure as icetSparseImageScanPixels except that the
    data is also copied to out_image. */
 static void icetSparseImageCopyPixelsInternal(
                                           const IceTVoid **data_p,
@@ -1188,53 +1222,114 @@ IceTBoolean icetSparseImageEqual(const IceTSparseImage image1,
     return image1.opaque_internals == image2.opaque_internals;
 }
 
-static void icetSparseImageSkipPixels(const IceTVoid **data_p,
+static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
                                       IceTSizeType *inactive_before_p,
                                       IceTSizeType *active_till_next_runl_p,
+                                      IceTVoid **last_in_run_length_p,
                                       IceTSizeType pixels_to_skip,
                                       IceTSizeType pixel_size,
                                       IceTVoid **out_data_p,
-                                      IceTVoid **last_run_length_p)
+                                      IceTVoid **out_run_length_p)
 {
-    const IceTByte *data = *data_p; /* IceTByte for byte-pointer arithmetic. */
+    const IceTByte *in_data = *in_data_p; /* IceTByte for byte-pointer arithmetic. */
     IceTSizeType inactive_before = *inactive_before_p;
     IceTSizeType active_till_next_runl = *active_till_next_runl_p;
     IceTSizeType pixels_left = pixels_to_skip;
-    IceTByte *out_data = (out_data_p ? *out_data_p : NULL);
-    const IceTVoid *last_run_length = NULL;
+    const IceTVoid *last_in_run_length = NULL;
+    IceTByte *out_data;
+    IceTVoid *last_out_run_length;
+
+    if (pixels_left < 1) { return; }    /* Nothing to do. */
+
+#define ADVANCE_OUT_RUN_LENGTH()                        \
+    {                                                   \
+        last_out_run_length = out_data;                 \
+        out_data += RUN_LENGTH_SIZE;                    \
+        INACTIVE_RUN_LENGTH(last_out_run_length) = 0;   \
+        ACTIVE_RUN_LENGTH(last_out_run_length) = 0;     \
+    }        
+
+    if (out_data_p != NULL) {
+        out_data = *out_data_p;
+        if (out_run_length_p != NULL) {
+            last_out_run_length = *out_run_length_p;
+        } else /* out_run_length_p == NULL */ {
+            ADVANCE_OUT_RUN_LENGTH();
+        }
+    } else /* out_data_p == NULL */ {
+        out_data = NULL;
+        last_out_run_length = NULL;
+    }
 
     while (pixels_left > 0) {
         IceTSizeType count;
         if ((inactive_before == 0) && (active_till_next_runl == 0)) {
-            last_run_length = data;
-            inactive_before = INACTIVE_RUN_LENGTH(data);
-            active_till_next_runl = ACTIVE_RUN_LENGTH(data);
-            data += RUN_LENGTH_SIZE;
+            last_in_run_length = in_data;
+            inactive_before = INACTIVE_RUN_LENGTH(in_data);
+            active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
+            in_data += RUN_LENGTH_SIZE;
         }
 
         count = MIN(inactive_before, pixels_left);
-        inactive_before -= count;
-        pixels_left -= count;
-        if (out_data) {
-            INACTIVE_RUN_LENGTH(out_data) = count;
+        if (out_data != NULL) {
+            if (ACTIVE_RUN_LENGTH(last_out_run_length) > 0) {
+                ADVANCE_OUT_RUN_LENGTH();
+            }
+            while (count + INACTIVE_RUN_LENGTH(last_out_run_length) > 0xFFFF) {
+                IceTSizeType num_to_copy
+                    = 0xFFFF - INACTIVE_RUN_LENGTH(last_out_run_length);
+                INACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
+                ADVANCE_OUT_RUN_LENGTH();
+                inactive_before -= num_to_copy;
+                pixels_left -= num_to_copy;
+            }
+            INACTIVE_RUN_LENGTH(last_out_run_length) += count;
+            inactive_before -= count;
+            pixels_left -= count;
+        } else /* out_data == NULL */ {
+            inactive_before -= count;
+            pixels_left -= count;
         }
 
         count = MIN(active_till_next_runl, pixels_left);
-        active_till_next_runl -= count;
-        pixels_left -= count;
-        if (out_data) {
-            ACTIVE_RUN_LENGTH(out_data) = count;
-            out_data += RUN_LENGTH_SIZE;
-            memcpy(out_data, data, pixel_size * count);
-            out_data += pixel_size * count;
+        if (out_data != NULL) {
+            while (count + ACTIVE_RUN_LENGTH(last_out_run_length) > 0xFFFF) {
+                IceTSizeType num_to_copy
+                    = 0xFFFF - ACTIVE_RUN_LENGTH(last_out_run_length);
+                memcpy(out_data, in_data, num_to_copy*pixel_size);
+                out_data += num_to_copy*pixel_size;
+                in_data += num_to_copy*pixel_size;
+                ACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
+                ADVANCE_OUT_RUN_LENGTH();
+                active_till_next_runl -= num_to_copy;
+                pixels_left -= num_to_copy;
+            }
+            ACTIVE_RUN_LENGTH(last_out_run_length) += count;
+            memcpy(out_data, in_data, count*pixel_size);
+            out_data += count*pixel_size;
+            in_data += count*pixel_size;
+            active_till_next_runl -= count;
+            pixels_left -= count;
+        } else /* out_data == NULL */ {
+            in_data += count*pixel_size;
+            active_till_next_runl -= count;
+            pixels_left -= count;
         }
-        data += pixel_size * count;
     }
-    *data_p = data;
+    *in_data_p = in_data;
     *inactive_before_p = inactive_before;
     *active_till_next_runl_p = active_till_next_runl;
-    if (out_data_p) { *out_data_p = out_data; }
-    if (last_run_length_p) { *last_run_length_p = (IceTVoid *)last_run_length; }
+    if (last_in_run_length_p) {
+        *last_in_run_length_p = (IceTVoid *)last_in_run_length;
+    }
+    if (out_data_p) {
+        *out_data_p = out_data;
+    }
+    if (out_run_length_p) {
+        *out_run_length_p = last_out_run_length;
+    }
+
+#undef ADVANCE_OUT_RUN_LENGTH
 }
 
 static void icetSparseImageCopyPixelsInternal(
@@ -1249,9 +1344,10 @@ static void icetSparseImageCopyPixelsInternal(
 
     icetSparseImageSetDimensions(out_image, pixels_to_copy, 1);
 
-    icetSparseImageSkipPixels(in_data_p,
+    icetSparseImageScanPixels(in_data_p,
                               inactive_before_p,
                               active_till_next_runl_p,
+                              NULL,
                               pixels_to_copy,
                               pixel_size,
                               &out_data,
@@ -1280,13 +1376,14 @@ static void icetSparseImageCopyPixelsInPlaceInternal(
     }
 #endif
 
-    icetSparseImageSkipPixels(in_data_p,
+    icetSparseImageScanPixels(in_data_p,
                               inactive_before_p,
                               active_till_next_runl_p,
+                              &last_run_length,
                               pixels_to_copy,
                               pixel_size,
                               NULL,
-                              &last_run_length);
+                              NULL);
 
     ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_WIDTH_INDEX]
         = (IceTInt)pixels_to_copy;
@@ -1361,9 +1458,10 @@ void icetSparseImageCopyPixels(const IceTSparseImage in_image,
 
     in_data = ICET_IMAGE_DATA(in_image);
     start_inactive = start_active = 0;
-    icetSparseImageSkipPixels(&in_data,
+    icetSparseImageScanPixels(&in_data,
                               &start_inactive,
                               &start_active,
+                              NULL,
                               in_offset,
                               pixel_size,
                               NULL,
@@ -1602,9 +1700,10 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
             = active_till_next_runl;
 
         if (original_partition_idx < eventual_num_partitions-1) {
-            icetSparseImageSkipPixels((const IceTVoid**)&in_data,
+            icetSparseImageScanPixels((const IceTVoid**)&in_data,
                                       &inactive_before,
                                       &active_till_next_runl,
+                                      NULL,
                                       pixels_to_skip,
                                       pixel_size,
                                       NULL,
@@ -1637,92 +1736,14 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
         active_till_next_runl
             = active_till_next_runl_array[interlaced_partition_idx];
 
-        /* One problem with breaking up sparse images is that maximum run
-           lengths can get broken up.  Check for that here and zip them up. */
-        while (   (inactive_before > 0)
-               && (ACTIVE_RUN_LENGTH(last_run_length) == 0)
-               && (pixels_left > 0) ) {
-            IceTSizeType inactive = MIN(inactive_before, pixels_left);
-            while (inactive + INACTIVE_RUN_LENGTH(last_run_length) > 0xFFFF) {
-                IceTSizeType num_to_copy
-                    = 0xFFFF - INACTIVE_RUN_LENGTH(last_run_length);
-                INACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
-                inactive -= num_to_copy;
-                pixels_left -= num_to_copy;
-                inactive_before -= num_to_copy;
-                last_run_length = out_data;
-                out_data += RUN_LENGTH_SIZE;
-                INACTIVE_RUN_LENGTH(last_run_length) = 0;
-                ACTIVE_RUN_LENGTH(last_run_length) = 0;
-            }
-            INACTIVE_RUN_LENGTH(last_run_length) += inactive;
-            pixels_left -= inactive;
-            inactive_before -= inactive;
-            if ((inactive_before == 0) && (active_till_next_runl == 0)) {
-                inactive_before = INACTIVE_RUN_LENGTH(in_data);
-                active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
-                in_data += RUN_LENGTH_SIZE;
-            } else {
-                inactive_before = 0;
-            }
-        }
-
-        while (   (inactive_before == 0)
-               && (active_till_next_runl > 0)
-               && (pixels_left > 0) ) {
-            IceTSizeType active = MIN(active_till_next_runl, pixels_left);
-            while (active + ACTIVE_RUN_LENGTH(last_run_length) > 0xFFFF) {
-                IceTSizeType num_to_copy
-                    = 0xFFFF - ACTIVE_RUN_LENGTH(last_run_length);
-                memcpy(out_data, in_data, num_to_copy*pixel_size);
-                out_data += num_to_copy*pixel_size;
-                in_data += num_to_copy*pixel_size;
-                ACTIVE_RUN_LENGTH(last_run_length) = 0xFFFF;
-                active -= num_to_copy;
-                pixels_left -= num_to_copy;
-                active_till_next_runl -= num_to_copy;
-                last_run_length = out_data;
-                out_data += RUN_LENGTH_SIZE;
-                INACTIVE_RUN_LENGTH(last_run_length) = 0;
-                ACTIVE_RUN_LENGTH(last_run_length) = 0;
-            }
-            memcpy(out_data, in_data, active*pixel_size);
-            out_data += active*pixel_size;
-            in_data += active*pixel_size;
-            ACTIVE_RUN_LENGTH(last_run_length) += active;
-            pixels_left -= active;
-            active_till_next_runl -= active;
-
-            if (active_till_next_runl == 0) {
-                inactive_before = INACTIVE_RUN_LENGTH(in_data);
-                active_till_next_runl = ACTIVE_RUN_LENGTH(in_data);
-                in_data += RUN_LENGTH_SIZE;
-            }
-        }
-
-        /* At this point we should be ready to start a new run length, so
-           let icetSparseImageSkipPixels copy the rest. */
-        if (pixels_left > 0) {
-            if (   (INACTIVE_RUN_LENGTH(last_run_length) == 0)
-                && (ACTIVE_RUN_LENGTH(last_run_length) == 0) ) {
-                /* We didn't record any data.  Back up out_data pointer. */
-                out_data = last_run_length;
-            }
-            icetSparseImageSkipPixels((const IceTVoid **)&in_data,
-                                      &inactive_before,
-                                      &active_till_next_runl,
-                                      pixels_left,
-                                      pixel_size,
-                                      (IceTVoid **)&out_data,
-                                      &last_run_length);
-        } else if (pixels_left == 0) {
-            /* Do nothing.  We already copied all necessary pixels.  If we
-               tried to call icetSparseImageSkipPixels, it would loose the
-               last_run_length. */
-        } else /* pixels_left < 0 */ {
-            icetRaiseError("Oops.  Copied more pixels than I was supposed to.",
-                           ICET_SANITY_CHECK_FAIL);
-        }
+        icetSparseImageScanPixels((const IceTVoid **)&in_data,
+                                  &inactive_before,
+                                  &active_till_next_runl,
+                                  NULL,
+                                  pixels_left,
+                                  pixel_size,
+                                  (IceTVoid **)&out_data,
+                                  &last_run_length);
     }
 }
 
