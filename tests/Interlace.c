@@ -315,6 +315,7 @@ static int TestInterlaceSplit(const IceTImage image)
 
     printf("Splitting image %d times\n", NUM_PARTITIONS);
     icetSparseImageSplit(interlaced_sparse,
+                         0,
                          NUM_PARTITIONS,
                          NUM_PARTITIONS,
                          sparse_partition,

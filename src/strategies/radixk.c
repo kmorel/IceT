@@ -378,6 +378,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
         image_pieces[i] = partners[i].sendImage;
     }
     icetSparseImageSplit(image,
+                         start_offset,
                          current_k,
                          remaining_partitions,
                          image_pieces,
@@ -392,7 +393,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
        composite first. */
     BEGIN_PIVOT_FOR(i, 0, current_partition_index, current_k) {
         radixkPartnerInfo *p = &partners[i];
-        p->offset = start_offset + piece_offsets[i];
+        p->offset = piece_offsets[i];
         if (i != current_partition_index) {
             IceTVoid *package_buffer;
             IceTSizeType package_size;

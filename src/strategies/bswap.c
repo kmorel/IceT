@@ -253,6 +253,7 @@ static void bswapSendFromUpperGroup(const IceTInt *lower_group,
         }
 
         icetSparseImageSplit(working_image,
+                             0,
                              num_pieces,
                              eventual_num_pieces,
                              image_partitions,
@@ -403,6 +404,7 @@ static void bswapComposePow2(const IceTInt *compose_group,
                 = icetGetStateBufferSparseImage(BSWAP_OUTGOING_IMAGES_BUFFER,
                                                 piece_num_pixels, 1);
             icetSparseImageSplit(image_data,
+                                 *piece_offset,
                                  2,
                                  group_size/bitmask,
                                  outgoing_images,
@@ -416,12 +418,12 @@ static void bswapComposePow2(const IceTInt *compose_group,
             if (group_rank < pair) {
                 send_image = outgoing_images[1];
                 keep_image = outgoing_images[0];
-                *piece_offset += outgoing_offsets[0];
+                *piece_offset = outgoing_offsets[0];
                 inOnTop = 0;
             } else {
                 send_image = outgoing_images[0];
                 keep_image = outgoing_images[1];
-                *piece_offset += outgoing_offsets[1];
+                *piece_offset = outgoing_offsets[1];
                 inOnTop = 1;
             }
         }

@@ -247,6 +247,7 @@ static int TestSparseImageSplit(const IceTImage image)
 
     printf("Spliting image %d times\n", NUM_PARTITIONS);
     icetSparseImageSplit(full_sparse,
+                         0,
                          NUM_PARTITIONS,
                          NUM_PARTITIONS,
                          sparse_partition,
@@ -268,6 +269,7 @@ static int TestSparseImageSplit(const IceTImage image)
            NUM_PARTITIONS);
     sparse_partition[0] = full_sparse;
     icetSparseImageSplit(full_sparse,
+                         0,
                          NUM_PARTITIONS,
                          NUM_PARTITIONS,
                          sparse_partition,

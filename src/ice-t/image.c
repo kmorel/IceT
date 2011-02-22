@@ -179,10 +179,12 @@ static void icetSparseImageCopyPixelsInPlaceInternal(
    creating 2 partitions and then recursively creating 2 more partitions.  If
    the size does not split evenly by 4, the remainder will be divided amongst
    the partitions in the same way. */
-static void icetSparseImageSplitChoosePartitions(IceTInt num_partitions,
-                                                 IceTSizeType start_offset,
-                                                 IceTSizeType size,
-                                                 IceTSizeType *offsets);
+static void icetSparseImageSplitChoosePartitions(
+                                           IceTInt num_partitions,
+                                           IceTSizeType eventual_num_partitions,
+                                           IceTSizeType size,
+                                           IceTSizeType first_offset,
+                                           IceTSizeType *offsets);
 
 /* Renders the geometry for a tile and returns an image of the rendered data.
    If IceT determines that it is most efficient to render the data directly to
@@ -1501,12 +1503,13 @@ static void icetSparseImageSplitChoosePartitions(
                                                 IceTInt num_partitions,
                                                 IceTInt eventual_num_partitions,
                                                 IceTSizeType size,
+                                                IceTSizeType first_offset,
                                                 IceTSizeType *offsets)
 {
     IceTSizeType remainder = size%eventual_num_partitions;
     IceTInt sub_partitions = eventual_num_partitions/num_partitions;
     IceTSizeType partition_lower_size = size/num_partitions;
-    IceTSizeType this_offset = 0;
+    IceTSizeType this_offset = first_offset;
     IceTInt partition_idx;
 
 #ifdef DEBUG
@@ -1531,6 +1534,7 @@ static void icetSparseImageSplitChoosePartitions(
 }
 
 void icetSparseImageSplit(const IceTSparseImage in_image,
+                          IceTSizeType in_image_offset,
                           IceTInt num_partitions,
                           IceTInt eventual_num_partitions,
                           IceTSparseImage *out_images,
@@ -1570,6 +1574,7 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
     icetSparseImageSplitChoosePartitions(num_partitions,
                                          eventual_num_partitions,
                                          total_num_pixels,
+                                         in_image_offset,
                                          offsets);
 
     for (partition = 0; partition < num_partitions; partition++) {
@@ -1588,7 +1593,8 @@ void icetSparseImageSplit(const IceTSparseImage in_image,
         if (partition < num_partitions-1) {
             partition_num_pixels = offsets[partition+1] - offsets[partition];
         } else {
-            partition_num_pixels = total_num_pixels - offsets[partition];
+            partition_num_pixels
+                = total_num_pixels + in_image_offset - offsets[partition];
         }
 
         if (icetSparseImageEqual(in_image, out_image)) {
