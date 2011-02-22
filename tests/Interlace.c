@@ -149,6 +149,8 @@ static IceTBoolean CompareImageColors(const IceTImage image_a,
     IceTSizeType height;
     IceTUByte *data_a;
     IceTUByte *data_b;
+    IceTUByte *data_a_start;
+    IceTUByte *data_b_start;
     IceTSizeType x;
     IceTSizeType y;
 
@@ -158,7 +160,7 @@ static IceTBoolean CompareImageColors(const IceTImage image_a,
     }
 
     if (   (icetImageGetWidth(image_a) != icetImageGetWidth(image_b))
-        || (icetImageGetHeight(image_a) != icetImageGetWidth(image_b)) ) {
+        || (icetImageGetHeight(image_a) != icetImageGetHeight(image_b)) ) {
         printf("ERROR: Images have different dimensions.\n");
         return ICET_FALSE;
     }
@@ -171,10 +173,10 @@ static IceTBoolean CompareImageColors(const IceTImage image_a,
     width = icetImageGetWidth(image_a);
     height = icetImageGetHeight(image_a);
 
-    data_a = malloc(width*height*4);
+    data_a = data_a_start = malloc(width*height*4);
     icetImageCopyColorub(image_a, data_a, ICET_IMAGE_COLOR_RGBA_UBYTE);
 
-    data_b = malloc(width*height*4);
+    data_b = data_b_start = malloc(width*height*4);
     icetImageCopyColorub(image_b, data_b, ICET_IMAGE_COLOR_RGBA_UBYTE);
 
     for (y = 0; y < height; y++) {
@@ -195,8 +197,8 @@ static IceTBoolean CompareImageColors(const IceTImage image_a,
         }
     }
 
-    free(data_a);
-    free(data_b);
+    free(data_a_start);
+    free(data_b_start);
 
     return ICET_TRUE;
 }
@@ -208,6 +210,8 @@ static IceTBoolean CompareImageDepths(const IceTImage image_a,
     IceTSizeType height;
     IceTFloat *data_a;
     IceTFloat *data_b;
+    IceTFloat *data_a_start;
+    IceTFloat *data_b_start;
     IceTSizeType x;
     IceTSizeType y;
 
@@ -217,7 +221,7 @@ static IceTBoolean CompareImageDepths(const IceTImage image_a,
     }
 
     if (   (icetImageGetWidth(image_a) != icetImageGetWidth(image_b))
-        || (icetImageGetHeight(image_a) != icetImageGetWidth(image_b)) ) {
+        || (icetImageGetHeight(image_a) != icetImageGetHeight(image_b)) ) {
         printf("ERROR: Images have different dimensions.\n");
         return ICET_FALSE;
     }
@@ -230,10 +234,10 @@ static IceTBoolean CompareImageDepths(const IceTImage image_a,
     width = icetImageGetWidth(image_a);
     height = icetImageGetHeight(image_a);
 
-    data_a = malloc(width*height*4);
+    data_a = data_a_start = malloc(width*height*4);
     icetImageCopyDepthf(image_a, data_a, ICET_IMAGE_DEPTH_FLOAT);
 
-    data_b = malloc(width*height*4);
+    data_b = data_b_start = malloc(width*height*4);
     icetImageCopyDepthf(image_b, data_b, ICET_IMAGE_DEPTH_FLOAT);
 
     for (y = 0; y < height; y++) {
@@ -248,8 +252,8 @@ static IceTBoolean CompareImageDepths(const IceTImage image_a,
         }
     }
 
-    free(data_a);
-    free(data_b);
+    free(data_a_start);
+    free(data_b_start);
 
     return ICET_TRUE;
 }
