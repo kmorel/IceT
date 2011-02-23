@@ -35,13 +35,14 @@
 #define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
 #define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
 #define RADIXK_SPARE_BUFFER                     ICET_SI_STRATEGY_BUFFER_2
-#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_3
-#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_4
-#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_5
-#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_6
-#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_7
-#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_8
-#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_9
+#define RADIXK_INTERLACED_IMAGE_BUFFER          ICET_SI_STRATEGY_BUFFER_3
+#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_4
+#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_5
+#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_6
+#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_7
+#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_8
+#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_9
+#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_10
 
 typedef struct radixkPartnerInfoStruct {
     int rank; /* Rank of partner. */
@@ -519,6 +520,8 @@ void icetRadixkCompose(const IceTInt *compose_group,
     int num_rounds;
     int* k_array;
 
+    IceTBoolean use_interlace;
+
     IceTSizeType my_offset;
     int *partition_indices; /* My round vector [round0 pos, round1 pos, ...] */
     int current_round;
@@ -553,6 +556,19 @@ void icetRadixkCompose(const IceTInt *compose_group,
     /* num_rounds > 0 is assumed several places throughout this function */
     if (num_rounds <= 0) {
         icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
+    }
+
+    use_interlace = (num_rounds > 1) && icetIsEnabled(ICET_INTERLACE_IMAGES);
+    if (use_interlace) {
+        IceTSparseImage interlaced_image = icetGetStateBufferSparseImage(
+                                       RADIXK_INTERLACED_IMAGE_BUFFER,
+                                       icetSparseImageGetWidth(working_image),
+                                       icetSparseImageGetHeight(working_image));
+        icetSparseImageInterlace(working_image,
+                                 group_size,
+                                 RADIXK_PARTITION_INDICES_BUFFER,
+                                 interlaced_image);
+        working_image = interlaced_image;
     }
 
     /* initialize size, my round vector, my offset */
@@ -612,7 +628,19 @@ void icetRadixkCompose(const IceTInt *compose_group,
     } /* for all rounds */
 
     *result_image = working_image;
-    *piece_offset = my_offset;
+    if (use_interlace) {
+        int global_partition = partition_indices[0];
+        for (current_round = 1; current_round < num_rounds; current_round++) {
+            global_partition *= k_array[current_round - 1];
+            global_partition += partition_indices[current_round];
+        }
+        *piece_offset
+            = icetGetInterlaceOffset(global_partition,
+                                     group_size,
+                                     icetSparseImageGetNumPixels(input_image));
+    } else {
+        *piece_offset = my_offset;
+    }
 
     return;
 }
