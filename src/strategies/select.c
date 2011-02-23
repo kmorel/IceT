@@ -103,6 +103,9 @@ IceTBoolean icetStrategySupportsOrdering(IceTEnum strategy)
 
 IceTImage icetInvokeStrategy(IceTEnum strategy)
 {
+    icetRaiseDebug1("Invoking strategy %s",
+                    icetStrategyNameFromEnum(strategy));
+
     switch (strategy) {
       case ICET_STRATEGY_DIRECT:        return icetDirectCompose();
       case ICET_STRATEGY_SEQUENTIAL:    return icetSequentialCompose();
@@ -156,6 +159,9 @@ void icetInvokeSingleImageStrategy(IceTEnum strategy,
                                    IceTSparseImage *result_image,
                                    IceTSizeType *piece_offset)
 {
+    icetRaiseDebug1("Invoking single image strategy %s",
+                    icetSingleImageStrategyNameFromEnum(strategy));
+
     switch(strategy) {
       case ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC:
           icetAutomaticCompose(compose_group,
