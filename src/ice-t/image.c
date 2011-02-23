@@ -1273,53 +1273,63 @@ static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
         }
 
         count = MIN(inactive_before, pixels_left);
-        if (out_data != NULL) {
-            if (ACTIVE_RUN_LENGTH(last_out_run_length) > 0) {
-                ADVANCE_OUT_RUN_LENGTH();
+        if (count > 0) {
+            if (out_data != NULL) {
+                if (ACTIVE_RUN_LENGTH(last_out_run_length) > 0) {
+                    ADVANCE_OUT_RUN_LENGTH();
+                }
+                while (  count + INACTIVE_RUN_LENGTH(last_out_run_length)
+                       > 0xFFFF) {
+                    IceTSizeType num_to_copy
+                        = 0xFFFF - INACTIVE_RUN_LENGTH(last_out_run_length);
+                    INACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
+                    ADVANCE_OUT_RUN_LENGTH();
+                    inactive_before -= num_to_copy;
+                    pixels_left -= num_to_copy;
+                    count -= num_to_copy;
+                }
+                INACTIVE_RUN_LENGTH(last_out_run_length) += count;
+                inactive_before -= count;
+                pixels_left -= count;
+            } else /* out_data == NULL */ {
+                inactive_before -= count;
+                pixels_left -= count;
             }
-            while (count + INACTIVE_RUN_LENGTH(last_out_run_length) > 0xFFFF) {
-                IceTSizeType num_to_copy
-                    = 0xFFFF - INACTIVE_RUN_LENGTH(last_out_run_length);
-                INACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
-                ADVANCE_OUT_RUN_LENGTH();
-                inactive_before -= num_to_copy;
-                pixels_left -= num_to_copy;
-                count -= num_to_copy;
-            }
-            INACTIVE_RUN_LENGTH(last_out_run_length) += count;
-            inactive_before -= count;
-            pixels_left -= count;
-        } else /* out_data == NULL */ {
-            inactive_before -= count;
-            pixels_left -= count;
         }
 
         count = MIN(active_till_next_runl, pixels_left);
-        if (out_data != NULL) {
-            while (count + ACTIVE_RUN_LENGTH(last_out_run_length) > 0xFFFF) {
-                IceTSizeType num_to_copy
-                    = 0xFFFF - ACTIVE_RUN_LENGTH(last_out_run_length);
-                memcpy(out_data, in_data, num_to_copy*pixel_size);
-                out_data += num_to_copy*pixel_size;
-                in_data += num_to_copy*pixel_size;
-                ACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
-                ADVANCE_OUT_RUN_LENGTH();
-                active_till_next_runl -= num_to_copy;
-                pixels_left -= num_to_copy;
-                count -= num_to_copy;
+        if (count > 0) {
+            if (out_data != NULL) {
+                while (  count + ACTIVE_RUN_LENGTH(last_out_run_length)
+                       > 0xFFFF) {
+                    IceTSizeType num_to_copy
+                        = 0xFFFF - ACTIVE_RUN_LENGTH(last_out_run_length);
+                    memcpy(out_data, in_data, num_to_copy*pixel_size);
+                    out_data += num_to_copy*pixel_size;
+                    in_data += num_to_copy*pixel_size;
+                    ACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
+                    ADVANCE_OUT_RUN_LENGTH();
+                    active_till_next_runl -= num_to_copy;
+                    pixels_left -= num_to_copy;
+                    count -= num_to_copy;
+                }
+                ACTIVE_RUN_LENGTH(last_out_run_length) += count;
+                memcpy(out_data, in_data, count*pixel_size);
+                out_data += count*pixel_size;
+                in_data += count*pixel_size;
+                active_till_next_runl -= count;
+                pixels_left -= count;
+            } else /* out_data == NULL */ {
+                in_data += count*pixel_size;
+                active_till_next_runl -= count;
+                pixels_left -= count;
             }
-            ACTIVE_RUN_LENGTH(last_out_run_length) += count;
-            memcpy(out_data, in_data, count*pixel_size);
-            out_data += count*pixel_size;
-            in_data += count*pixel_size;
-            active_till_next_runl -= count;
-            pixels_left -= count;
-        } else /* out_data == NULL */ {
-            in_data += count*pixel_size;
-            active_till_next_runl -= count;
-            pixels_left -= count;
         }
     }
+    if (pixels_left < 0) {
+        icetRaiseError("Miscounted pixels", ICET_SANITY_CHECK_FAIL);
+    }
+
     *in_data_p = in_data;
     *inactive_before_p = inactive_before;
     *active_till_next_runl_p = active_till_next_runl;
@@ -1753,6 +1763,8 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
                                   (IceTVoid **)&out_data,
                                   &last_run_length);
     }
+
+    icetSparseImageSetActualSize(out_image, out_data);
 }
 
 IceTSizeType icetGetInterlaceOffset(IceTInt partition_index,
