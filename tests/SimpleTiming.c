@@ -80,6 +80,7 @@ static IceTInt g_num_frames;
 static IceTInt g_seed;
 static IceTBoolean g_transparent;
 static IceTBoolean g_colored_background;
+static IceTBoolean g_no_interlace;
 static IceTBoolean g_sync_render;
 static IceTBoolean g_write_image;
 static IceTEnum g_strategy;
@@ -98,6 +99,7 @@ static void parse_arguments(int argc, char *argv[])
     g_transparent = ICET_FALSE;
     g_colored_background = ICET_FALSE;
     g_sync_render = ICET_FALSE;
+    g_no_interlace = ICET_FALSE;
     g_write_image = ICET_FALSE;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
@@ -119,6 +121,8 @@ static void parse_arguments(int argc, char *argv[])
             g_transparent = ICET_TRUE;
         } else if (strcmp(argv[arg], "-colored-background") == 0) {
             g_colored_background = ICET_TRUE;
+        } else if (strcmp(argv[arg], "-no-interlace") == 0) {
+            g_no_interlace = ICET_TRUE;
         } else if (strcmp(argv[arg], "-sync-render") == 0) {
             g_sync_render = ICET_TRUE;
         } else if (strcmp(argv[arg], "-write-image") == 0) {
@@ -577,6 +581,12 @@ static int SimpleTimingRun()
         icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
         icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    }
+
+    if (g_no_interlace) {
+        icetDisable(ICET_INTERLACE_IMAGES);
+    } else {
+        icetEnable(ICET_INTERLACE_IMAGES);
     }
 
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
