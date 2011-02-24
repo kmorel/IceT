@@ -57,3 +57,5 @@ todo: correct background before gather
 ICET_INTERLACE_IMAGES
 
 icetSparseImageInterlace
+
+ICET_MAGIC_K environment variable
