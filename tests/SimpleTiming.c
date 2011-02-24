@@ -10,6 +10,7 @@
 *****************************************************************************/
 
 #include <IceTDevCommunication.h>
+#include <IceTDevContext.h>
 #include <IceTDevMatrix.h>
 #include "test-util.h"
 #include "test_codes.h"
@@ -84,6 +85,8 @@ static IceTBoolean g_sync_render;
 static IceTBoolean g_write_image;
 static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
+static IceTBoolean g_do_magic_k_study;
+static IceTInt g_max_magic_k;
 
 static float g_color[4];
 
@@ -101,6 +104,8 @@ static void parse_arguments(int argc, char *argv[])
     g_write_image = ICET_FALSE;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
+    g_do_magic_k_study = ICET_FALSE;
+    g_max_magic_k = 0;
 
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-tilesx") == 0) {
@@ -135,6 +140,11 @@ static void parse_arguments(int argc, char *argv[])
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
         } else if (strcmp(argv[arg], "-tree") == 0) {
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+        } else if (strcmp(argv[arg], "-magic-k-study") == 0) {
+            g_do_magic_k_study = ICET_TRUE;
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
+            arg++;
+            g_max_magic_k = atoi(argv[arg]);
         } else {
             printf("Unknown option `%s'.\n", argv[arg]);
             exit(1);
@@ -521,7 +531,7 @@ static void find_composite_order(const IceTDouble *projection,
     free(process_ranks);
 }
 
-static int SimpleTimingRun()
+static int SimpleTimingDoRender()
 {
     IceTInt rank;
     IceTInt num_proc;
@@ -752,25 +762,6 @@ static int SimpleTimingRun()
             si_strategy_name = icetGetSingleImageStrategyName();
         }
 
-        if (rank == 0) {
-            printf("HEADER,"
-                   "num processes,"
-                   "multi-tile strategy,"
-                   "single-image strategy,"
-                   "tiles x,"
-                   "tiles y,"
-                   "frame,"
-                   "render time,"
-                   "buffer read time,"
-                   "buffer write time,"
-                   "compress time,"
-                   "blend time,"
-                   "draw time,"
-                   "composite time,"
-                   "bytes sent,"
-                   "frame time\n");
-        }
-
         for (frame = 0; frame < g_num_frames; frame++) {
             timings_type *timing = &timing_array[frame];
 
@@ -827,6 +818,64 @@ static int SimpleTimingRun()
     icetCommBarrier();
 
     return TEST_PASSED;
+}
+
+int SimpleTimingRun()
+{
+    IceTInt rank;
+
+    icetGetIntegerv(ICET_RANK, &rank);
+
+    if (rank == 0) {
+        printf("HEADER,"
+               "num processes,"
+               "multi-tile strategy,"
+               "single-image strategy,"
+               "tiles x,"
+               "tiles y,"
+               "frame,"
+               "render time,"
+               "buffer read time,"
+               "buffer write time,"
+               "compress time,"
+               "blend time,"
+               "draw time,"
+               "composite time,"
+               "bytes sent,"
+               "frame time\n");
+    }
+
+    if (g_do_magic_k_study) {
+        IceTContext original_context = icetGetContext();
+        IceTInt magic_k;
+        for (magic_k = 2; magic_k <= g_max_magic_k; magic_k *= 2) {
+            char k_string[32];
+            int retval;
+            sprintf(k_string, "%d", magic_k);
+            setenv("ICET_MAGIC_K", k_string, ICET_TRUE);
+
+            /* This is a bit hackish.  The magic k value is set when the IceT
+               context is initialized.  Thus, for the environment to take
+               effect, we need to make a new context.  (Another benefit:
+               resetting buffers.)  To make a new context, we need to get the
+               communiator. */
+            {
+                IceTCommunicator comm = icetGetCommunicator();
+                icetCreateContext(comm);
+            }
+
+            retval = SimpleTimingDoRender();
+
+            /* We no longer need the context we just created. */
+            icetDestroyContext(icetGetContext());
+            icetSetContext(original_context);
+
+            if (retval != TEST_PASSED) { return retval; }
+        }
+        return TEST_PASSED;
+    } else {
+        return SimpleTimingDoRender();
+    }
 }
 
 int SimpleTiming(int argc, char * argv[])
