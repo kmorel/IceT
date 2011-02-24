@@ -345,37 +345,25 @@ static void bswapReceiveFromUpperGroup(const IceTInt *lower_group,
 static void bswapComposePow2(const IceTInt *compose_group,
                              IceTInt group_size,
                              IceTSparseImage working_image,
+                             IceTSparseImage spare_image,
                              IceTSparseImage *result_image,
                              IceTSizeType *piece_offset,
-                             IceTSparseImage *spare_image)
+                             IceTSparseImage *unused_image)
 {
     IceTInt bitmask;
     IceTInt group_rank;
     IceTSparseImage image_data = working_image;
-    IceTSparseImage available_image;
+    IceTSparseImage available_image = spare_image;
 
     *piece_offset = 0;
 
     if (group_size < 2) {
         *result_image = image_data;
-        if (spare_image) { *spare_image = icetSparseImageNull(); }
+        if (unused_image) { *unused_image = icetSparseImageNull(); }
         return;
     }
 
     group_rank = icetFindMyRankInGroup(compose_group, group_size);
-
-    /* Allocate available image. */
-    {
-        IceTSizeType total_num_pixels
-            = icetSparseImageGetNumPixels(working_image);
-        IceTSizeType piece_num_pixels
-            = icetSparseImageSplitPartitionNumPixels(total_num_pixels,
-                                                     2,
-                                                     group_size);
-        available_image
-            = icetGetStateBufferSparseImage(BSWAP_SPARE_WORKING_IMAGE_BUFFER,
-                                            piece_num_pixels, 1);
-    }
 
     /* To do the ordering correct, at iteration i we must swap with a
      * process 2^i units away.  The easiest way to find the process to
@@ -479,7 +467,7 @@ static void bswapComposePow2(const IceTInt *compose_group,
     }
 
     *result_image = image_data;
-    if (spare_image) { *spare_image = available_image; }
+    if (unused_image) { *unused_image = available_image; }
 }
 
 /* Does binary swap, but does not combine the images in the end.  Instead,
@@ -504,12 +492,13 @@ static void bswapComposeNoCombine(const IceTInt *compose_group,
     IceTInt extra_proc = group_size - pow2size;
     IceTInt extra_pow2size = bswapFindPower2(extra_proc);
 
+    /* Fix largest group size if necessary. */
+    if (largest_group_size == -1) {
+        largest_group_size = pow2size;
+    }
+
     if (group_rank >= pow2size) {
         IceTInt upper_group_rank = group_rank - pow2size;
-        /* Fix largest group size if necessary. */
-        if (largest_group_size == -1) {
-            largest_group_size = pow2size;
-        }
         /* I am part of the extra stuff.  Recurse to run bswap on my part. */
         bswapComposeNoCombine(compose_group + pow2size,
                               extra_proc,
@@ -531,12 +520,47 @@ static void bswapComposeNoCombine(const IceTInt *compose_group,
         *piece_offset = 0;
         return;
     } else {
+        IceTSparseImage input_image;
+        IceTSparseImage available_image;
         IceTSparseImage spare_image;
+        IceTBoolean use_interlace;
+        IceTSizeType total_num_pixels
+            = icetSparseImageGetNumPixels(working_image);
+
+        use_interlace
+            = (largest_group_size > 2) && icetIsEnabled(ICET_INTERLACE_IMAGES);
+        if (use_interlace) {
+            IceTSparseImage interlaced_image = icetGetStateBufferSparseImage(
+                                       BSWAP_SPARE_WORKING_IMAGE_BUFFER,
+                                       icetSparseImageGetWidth(working_image),
+                                       icetSparseImageGetHeight(working_image));
+            icetSparseImageInterlace(working_image,
+                                     largest_group_size,
+                                     BSWAP_DUMMY_ARRAY,
+                                     interlaced_image);
+            input_image = interlaced_image;
+            available_image = working_image;
+        } else if (pow2size > 1) {
+            /* Allocate available image. */
+            IceTSizeType piece_num_pixels
+                = icetSparseImageSplitPartitionNumPixels(total_num_pixels,
+                                                         2,
+                                                         largest_group_size);
+            available_image
+                = icetGetStateBufferSparseImage(BSWAP_SPARE_WORKING_IMAGE_BUFFER,
+                                                piece_num_pixels, 1);
+            input_image = working_image;
+        } else {
+            input_image = working_image;
+            available_image = icetSparseImageNull();
+        }
+            
 
         /* I am part of the lower group.  Do the actual binary swap. */
         bswapComposePow2(compose_group,
                          pow2size,
-                         working_image,
+                         input_image,
+                         available_image,
                          result_image,
                          piece_offset,
                          &spare_image);
@@ -549,6 +573,16 @@ static void bswapComposeNoCombine(const IceTInt *compose_group,
                                    *result_image,
                                    &spare_image);
         *result_image = spare_image;
+
+        if (use_interlace) {
+           /* piece_offset happens to be ignored if this group is not the
+              highest group. */
+            IceTInt global_partition;
+            BIT_REVERSE(global_partition, group_rank, largest_group_size);
+            *piece_offset = icetGetInterlaceOffset(global_partition,
+                                                   largest_group_size,
+                                                   total_num_pixels);
+        }
     }
 }
 
