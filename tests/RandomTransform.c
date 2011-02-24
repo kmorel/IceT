@@ -328,6 +328,19 @@ static void RandomTransformDoRender(IceTBoolean transparent,
     check_results(result);
 }
 
+static void RandomTransformTryInterlace(IceTBoolean transparent,
+                                        IceTSizeType local_width,
+                                        IceTSizeType local_height)
+{
+    printf("\nTurning image interlace on.\n");
+    icetEnable(ICET_INTERLACE_IMAGES);
+    RandomTransformDoRender(transparent, local_width, local_height);
+
+    printf("\nTurning image interlace off.\n");
+    icetDisable(ICET_INTERLACE_IMAGES);
+    RandomTransformDoRender(transparent, local_width, local_height);
+}
+
 static void RandomTransformTryStrategy()
 {
     IceTSizeType local_width = SCREEN_WIDTH/g_tile_dim;
@@ -377,7 +390,7 @@ static void RandomTransformTryStrategy()
     icetDisable(ICET_COMPOSITE_ONE_BUFFER);
     icetDisable(ICET_ORDERED_COMPOSITE);
 
-    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+    RandomTransformTryInterlace(ICET_FALSE, local_width, local_height);
 
     printf("\nDoing float color buffer.\n");
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
@@ -386,7 +399,7 @@ static void RandomTransformTryStrategy()
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);
     icetDisable(ICET_ORDERED_COMPOSITE);
 
-    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+    RandomTransformTryInterlace(ICET_FALSE, local_width, local_height);
 
     printf("\nDoing depth buffer.\n");
     icetSetColorFormat(ICET_IMAGE_COLOR_NONE);
@@ -394,7 +407,7 @@ static void RandomTransformTryStrategy()
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     icetDisable(ICET_ORDERED_COMPOSITE);
 
-    RandomTransformDoRender(ICET_FALSE, local_width, local_height);
+    RandomTransformTryInterlace(ICET_FALSE, local_width, local_height);
 
     if (test_ordering) {
         printf("\nDoing blended color buffer.\n");
@@ -403,7 +416,7 @@ static void RandomTransformTryStrategy()
         icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
         icetEnable(ICET_ORDERED_COMPOSITE);
 
-        RandomTransformDoRender(ICET_TRUE, local_width, local_height);
+        RandomTransformTryInterlace(ICET_TRUE, local_width, local_height);
 
         printf("\nDoing blended float color buffer.\n");
         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
@@ -411,7 +424,7 @@ static void RandomTransformTryStrategy()
         icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
         icetEnable(ICET_ORDERED_COMPOSITE);
 
-        RandomTransformDoRender(ICET_TRUE, local_width, local_height);
+        RandomTransformTryInterlace(ICET_TRUE, local_width, local_height);
     } else {
         printf("\nStrategy does not support ordering, skipping.\n");
     }
