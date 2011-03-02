@@ -14,6 +14,7 @@
 #include <IceTDevDiagnostics.h>
 #include <IceTDevState.h>
 #include <IceTDevStrategySelect.h>
+#include <IceTDevTiming.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -473,6 +474,12 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
         offsets = NULL;
         sizes = NULL;
     }
+    /* Technically, these gathers are part of the collection process and should
+       therefore be timed.  However, unless the compositing is very well load
+       balanced (and typically it is not), different processes will arrive here
+       at different times.  These gathers act something like a barrier that
+       helps separate the time spent collecting final pixels from the time spent
+       in transferring and compositing fragments. */
     icetCommGather(&piece_offset, 1, ICET_SIZE_TYPE, offsets, dest);
     icetCommGather(&piece_size, 1, ICET_SIZE_TYPE, sizes, dest);
 
@@ -515,6 +522,8 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
     /* Adjust image for output as some buffers, such as depth, might be
        dropped. */
     icetImageAdjustForOutput(result_image);
+
+    icetTimingCollectBegin();
 
     color_format = icetImageGetColorFormat(result_image);
     depth_format = icetImageGetDepthFormat(result_image);
@@ -583,4 +592,6 @@ void icetSingleImageCollect(const IceTSparseImage input_image,
                             dest);
         }
     }
+
+    icetTimingCollectEnd();
 }

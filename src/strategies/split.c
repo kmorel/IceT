@@ -8,10 +8,11 @@
  */
 
 #include <IceT.h>
-#include <IceTDevImage.h>
 #include <IceTDevCommunication.h>
-#include <IceTDevState.h>
 #include <IceTDevDiagnostics.h>
+#include <IceTDevImage.h>
+#include <IceTDevState.h>
+#include <IceTDevTiming.h>
 #include "common.h"
 
 #include <stdlib.h>
@@ -279,6 +280,8 @@ IceTImage icetSplitCompose(void)
     color_format = icetImageGetColorFormat(imageFragment);
     depth_format = icetImageGetDepthFormat(imageFragment);
 
+    icetTimingCollectBegin();
+
     if (color_format != ICET_IMAGE_COLOR_NONE) {
         IceTVoid *outgoing_data = icetImageGetColorVoid(imageFragment,
                                                         &pixel_size);
@@ -347,6 +350,8 @@ IceTImage icetSplitCompose(void)
     if (depth_format != ICET_IMAGE_DEPTH_NONE) {
         icetCommWait(&requests[1]);
     }
+
+    icetTimingCollectEnd();
 
     free(tile_groups);
 
