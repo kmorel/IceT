@@ -144,6 +144,8 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     IceTSizeType imagesize;
     IceTSparseImage compressedimage;
     IceTVoid *compressedbuffer;
+    IceTSparseImage interlacedimage;
+    IceTVoid *interlacedbuffer;
     IceTSizeType compressedsize;
     IceTSizeType color_pixel_size;
     IceTSizeType depth_pixel_size;
@@ -175,6 +177,11 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
                                                   SCREEN_WIDTH,
                                                   SCREEN_HEIGHT);
 
+    interlacedbuffer = malloc(compressedsize);
+    interlacedimage = icetSparseImageAssignBuffer(interlacedbuffer,
+                                                  SCREEN_WIDTH,
+                                                  SCREEN_HEIGHT);
+
   /* Get the number of bytes per pixel.  This is used in checking the
      size of compressed images. */
     icetImageGetColorVoid(image, &color_pixel_size);
@@ -198,6 +205,21 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
         result = TEST_FAILED;
     }
 
+    printf("Interlacing image.\n");
+    icetSparseImageInterlace(compressedimage,
+                             97,
+                             ICET_SI_STRATEGY_BUFFER_0,
+                             interlacedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
+    printf("Expected size: %d.  Actual size: %d\n",
+           (int)(pixel_size*(pixels/2) + 2*sizeof(IceTUShort)*(pixels/2)),
+           (int)size);
+    if (   (size > compressedsize)
+        || (size < pixel_size*(pixels/2)) ) {
+        printf("*** Size differs from expected size!\n");
+        result = TEST_FAILED;
+    }
+
     printf("\nCreating a different worst possible image.\n");
     InitActiveImage(image);
     printf("Compressing image.\n");
@@ -206,6 +228,21 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Expected size: %d.  Actual size: %d\n",
            (int)compressedsize, (int)size);
     if ((size > compressedsize) || (size < pixel_size*pixels)) {
+        printf("*** Size differs from expected size!\n");
+        result = TEST_FAILED;
+    }
+
+    printf("Interlacing image.\n");
+    icetSparseImageInterlace(compressedimage,
+                             97,
+                             ICET_SI_STRATEGY_BUFFER_0,
+                             interlacedimage);
+    size = icetSparseImageGetCompressedBufferSize(compressedimage);
+    printf("Expected size: %d.  Actual size: %d\n",
+           (int)(pixel_size*(pixels/2) + 2*sizeof(IceTUShort)*(pixels/2)),
+           (int)size);
+    if (   (size > compressedsize)
+        || (size < pixel_size*(pixels/2)) ) {
         printf("*** Size differs from expected size!\n");
         result = TEST_FAILED;
     }
@@ -249,6 +286,7 @@ static int DoCompressionTest(IceTEnum color_format, IceTEnum depth_format,
     printf("Cleaning up.\n");
     free(imagebuffer);
     free(compressedbuffer);
+    free(interlacedbuffer);
     return result;
 }
 

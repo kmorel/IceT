@@ -35,13 +35,14 @@
 #define RADIXK_RECEIVE_BUFFER                   ICET_SI_STRATEGY_BUFFER_0
 #define RADIXK_SEND_BUFFER                      ICET_SI_STRATEGY_BUFFER_1
 #define RADIXK_SPARE_BUFFER                     ICET_SI_STRATEGY_BUFFER_2
-#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_3
-#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_4
-#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_5
-#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_6
-#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_7
-#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_8
-#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_9
+#define RADIXK_INTERLACED_IMAGE_BUFFER          ICET_SI_STRATEGY_BUFFER_3
+#define RADIXK_PARTITION_INDICES_BUFFER         ICET_SI_STRATEGY_BUFFER_4
+#define RADIXK_PARTITION_INFO_BUFFER            ICET_SI_STRATEGY_BUFFER_5
+#define RADIXK_RECEIVE_REQUEST_BUFFER           ICET_SI_STRATEGY_BUFFER_6
+#define RADIXK_SEND_REQUEST_BUFFER              ICET_SI_STRATEGY_BUFFER_7
+#define RADIXK_FACTORS_ARRAY_BUFFER             ICET_SI_STRATEGY_BUFFER_8
+#define RADIXK_SPLIT_OFFSET_ARRAY_BUFFER        ICET_SI_STRATEGY_BUFFER_9
+#define RADIXK_SPLIT_IMAGE_ARRAY_BUFFER         ICET_SI_STRATEGY_BUFFER_10
 
 typedef struct radixkPartnerInfoStruct {
     int rank; /* Rank of partner. */
@@ -216,6 +217,8 @@ static void radixkGetPartitionIndices(int num_rounds,
     k_array: vector of k values
     current_round: current round number (0 to num_rounds - 1)
     partition_index: image partition to collect (0 to k[current_round] - 1)
+    remainging_partitions: Number of pieces the image will be split into by
+        the end of the algorithm.
     compose_group: array of world ranks representing the group of processes
         participating in compositing (passed into icetRadixkCompose)
     group_rank: Index in compose_group that represents me
@@ -229,6 +232,7 @@ static void radixkGetPartitionIndices(int num_rounds,
 static radixkPartnerInfo *radixkGetPartners(const int *k_array,
                                             int current_round,
                                             int partition_index,
+                                            int remaining_partitions,
                                             const int *compose_group,
                                             int group_rank,
                                             IceTSizeType start_size)
@@ -251,8 +255,10 @@ static radixkPartnerInfo *radixkGetPartners(const int *k_array,
     }
 
     /* Allocate arrays that can be used as send/receive buffers. */
-    partition_num_pixels = icetSparseImageSplitPartitionNumPixels(start_size,
-                                                                  current_k);
+    partition_num_pixels
+      = icetSparseImageSplitPartitionNumPixels(start_size,
+                                               current_k,
+                                               remaining_partitions);
     sparse_image_size = icetSparseImageBufferSize(partition_num_pixels, 1);
     recv_buf_pool = icetGetStateBuffer(RADIXK_RECEIVE_BUFFER,
                                        sparse_image_size * current_k);
@@ -298,6 +304,7 @@ static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
                                            int current_k,
                                            int current_round,
                                            int current_partition_index,
+                                           int remaining_partitions,
                                            IceTSizeType start_size)
 {
     IceTCommRequest *receive_requests;
@@ -312,8 +319,10 @@ static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
     receive_requests = icetGetStateBuffer(RADIXK_RECEIVE_REQUEST_BUFFER,
                                           current_k * sizeof(IceTCommRequest));
 
-    partition_num_pixels = icetSparseImageSplitPartitionNumPixels(start_size,
-                                                                  current_k);
+    partition_num_pixels
+      = icetSparseImageSplitPartitionNumPixels(start_size,
+                                               current_k,
+                                               remaining_partitions);
     sparse_image_size = icetSparseImageBufferSize(partition_num_pixels, 1);
 
     tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
@@ -346,6 +355,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
                                         int current_k,
                                         int current_round,
                                         int current_partition_index,
+                                        int remaining_partitions,
                                         IceTSizeType start_offset,
                                         const IceTSparseImage image)
 {
@@ -368,7 +378,12 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
     for (i = 0; i < current_k; i++) {
         image_pieces[i] = partners[i].sendImage;
     }
-    icetSparseImageSplit(image, current_k, image_pieces, piece_offsets);
+    icetSparseImageSplit(image,
+                         start_offset,
+                         current_k,
+                         remaining_partitions,
+                         image_pieces,
+                         piece_offsets);
 
 
     tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
@@ -379,7 +394,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
        composite first. */
     BEGIN_PIVOT_FOR(i, 0, current_partition_index, current_k) {
         radixkPartnerInfo *p = &partners[i];
-        p->offset = start_offset + piece_offsets[i];
+        p->offset = piece_offsets[i];
         if (i != current_partition_index) {
             IceTVoid *package_buffer;
             IceTSizeType package_size;
@@ -505,9 +520,12 @@ void icetRadixkCompose(const IceTInt *compose_group,
     int num_rounds;
     int* k_array;
 
+    IceTBoolean use_interlace;
+
     IceTSizeType my_offset;
     int *partition_indices; /* My round vector [round0 pos, round1 pos, ...] */
     int current_round;
+    int remaining_partitions;
 
     IceTSparseImage working_image = input_image;
 
@@ -540,6 +558,19 @@ void icetRadixkCompose(const IceTInt *compose_group,
         icetRaiseError("Radix-k has no rounds?", ICET_SANITY_CHECK_FAIL);
     }
 
+    use_interlace = (num_rounds > 1) && icetIsEnabled(ICET_INTERLACE_IMAGES);
+    if (use_interlace) {
+        IceTSparseImage interlaced_image = icetGetStateBufferSparseImage(
+                                       RADIXK_INTERLACED_IMAGE_BUFFER,
+                                       icetSparseImageGetWidth(working_image),
+                                       icetSparseImageGetHeight(working_image));
+        icetSparseImageInterlace(working_image,
+                                 group_size,
+                                 RADIXK_PARTITION_INDICES_BUFFER,
+                                 interlaced_image);
+        working_image = interlaced_image;
+    }
+
     /* initialize size, my round vector, my offset */
     partition_indices = icetGetStateBuffer(RADIXK_PARTITION_INDICES_BUFFER,
                                            sizeof(int) * num_rounds);
@@ -553,6 +584,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
        calculate the current round's peer sizes based on our current size and
        the k_array[i] info. */
     my_offset = 0;
+    remaining_partitions = group_size;
 
     for (current_round = 0; current_round < num_rounds; current_round++) {
         IceTSizeType my_size = icetSparseImageGetNumPixels(working_image);
@@ -561,6 +593,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
         radixkPartnerInfo *partners = radixkGetPartners(k_array,
                                                         current_round,
                                                         current_partition_index,
+                                                        remaining_partitions,
                                                         compose_group,
                                                         group_rank,
                                                         my_size);
@@ -571,12 +604,14 @@ void icetRadixkCompose(const IceTInt *compose_group,
                                               current_k,
                                               current_round,
                                               current_partition_index,
+                                              remaining_partitions,
                                               my_size);
 
         send_requests = radixkPostSends(partners,
                                         current_k,
                                         current_round,
                                         current_partition_index,
+                                        remaining_partitions,
                                         my_offset,
                                         working_image);
 
@@ -589,10 +624,23 @@ void icetRadixkCompose(const IceTInt *compose_group,
         icetCommWaitall(current_k, send_requests);
 
         my_offset = partners[current_partition_index].offset;
+        remaining_partitions /= current_k;
     } /* for all rounds */
 
     *result_image = working_image;
-    *piece_offset = my_offset;
+    if (use_interlace) {
+        int global_partition = partition_indices[0];
+        for (current_round = 1; current_round < num_rounds; current_round++) {
+            global_partition *= k_array[current_round - 1];
+            global_partition += partition_indices[current_round];
+        }
+        *piece_offset
+            = icetGetInterlaceOffset(global_partition,
+                                     group_size,
+                                     icetSparseImageGetNumPixels(input_image));
+    } else {
+        *piece_offset = my_offset;
+    }
 
     return;
 }
