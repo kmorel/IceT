@@ -1656,8 +1656,8 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
     const IceTVoid **in_data_array;
     IceTSizeType *inactive_before_array;
     IceTSizeType *active_till_next_runl_array;
-    const IceTByte *in_data;
-    IceTByte *out_data;
+    const IceTVoid *in_data;
+    IceTVoid *out_data;
     IceTSizeType inactive_before;
     IceTSizeType active_till_next_runl;
     IceTVoid *last_run_length;
@@ -1737,7 +1737,7 @@ void icetSparseImageInterlace(const IceTSparseImage in_image,
     INACTIVE_RUN_LENGTH(out_data) = 0;
     ACTIVE_RUN_LENGTH(out_data) = 0;
     last_run_length = out_data;
-    out_data += RUN_LENGTH_SIZE;
+    out_data = (IceTByte*)out_data + RUN_LENGTH_SIZE;
 
     for (interlaced_partition_idx = 0;
          interlaced_partition_idx < eventual_num_partitions;
