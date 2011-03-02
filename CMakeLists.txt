@@ -138,7 +138,6 @@ ENDIF (ICET_USE_MPI)
 # no warnings when bulding this code.
 IF (CMAKE_COMPILER_IS_GNUCC)
   SET(ICET_C_FLAGS_WARN "-ansi -Wall -Wno-long-long -Wcast-align -Wextra -Wformat-security -Wshadow -Wunused -Wreturn-type -Wpointer-arith -Wdeclaration-after-statement")
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ICET_C_FLAGS_WARN}")
 ENDIF (CMAKE_COMPILER_IS_GNUCC)
 
 # Configure testing support.
@@ -200,6 +199,26 @@ CONFIGURE_FILE(${ICET_SOURCE_DIR}/src/include/IceTConfig.h.in
 # Point to IceT include files.
 INCLUDE_DIRECTORIES(${ICET_SOURCE_DIR}/src/include)
 INCLUDE_DIRECTORIES(${ICET_BINARY_DIR}/src/include)
+
+# When creating one of the IceT libraries, we want special instructions
+# for building and installing.
+MACRO(ICET_ADD_LIBRARY library_name)
+  SET(icet_library_sources ${ARGN})
+  ADD_LIBRARY(${library_name} ${icet_library_sources})
+  IF (ICET_C_FLAGS_WARN)
+    SET_SOURCE_FILES_PROPERTIES(${icet_library_sources}
+      PROPERTIES COMPILE_FLAGS ${ICET_C_FLAGS_WARN}
+      )
+  ENDIF (ICET_C_FLAGS_WARN)
+  IF(NOT ICET_INSTALL_NO_LIBRARIES)
+    INSTALL(TARGETS ${library_name}
+      EXPORT ${ICET_INSTALL_EXPORT_NAME}
+      RUNTIME DESTINATION ${ICET_INSTALL_BIN_DIR} COMPONENT RuntimeLibraries
+      LIBRARY DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
+      ARCHIVE DESTINATION ${ICET_INSTALL_LIB_DIR} COMPONENT RuntimeLibraries
+      )
+  ENDIF(NOT ICET_INSTALL_NO_LIBRARIES)
+ENDMACRO(ICET_ADD_LIBRARY)
 
 ADD_SUBDIRECTORY(src)
 
