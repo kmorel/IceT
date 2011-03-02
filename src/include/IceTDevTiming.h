@@ -35,6 +35,9 @@ ICET_EXPORT void icetTimingCompressEnd(void);
 ICET_EXPORT void icetTimingBlendBegin(void);
 ICET_EXPORT void icetTimingBlendEnd(void);
 
+ICET_EXPORT void icetTimingCollectBegin(void);
+ICET_EXPORT void icetTimingCollectEnd(void);
+
 ICET_EXPORT void icetTimingDrawFrameBegin(void);
 ICET_EXPORT void icetTimingDrawFrameEnd(void);
 

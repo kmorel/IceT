@@ -36,6 +36,7 @@ void icetStateResetTiming(void)
     icetStateSetDouble(ICET_COMPRESS_TIME, 0.0);
     icetStateSetDouble(ICET_BLEND_TIME, 0.0);
     icetStateSetDouble(ICET_COMPOSITE_TIME, 0.0);
+    icetStateSetDouble(ICET_COLLECT_TIME, 0.0);
     icetStateSetDouble(ICET_TOTAL_DRAW_TIME, 0.0);
 
     icetStateSetInteger(ICET_DRAW_TIME_ID, 0);
@@ -181,6 +182,22 @@ void icetTimingBlendEnd(void)
                   "blend");
 }
 
+void icetTimingCollectBegin(void)
+{
+    icetTimingBegin(ICET_SUBFUNC_START_TIME,
+                    ICET_SUBFUNC_TIME_ID,
+                    ICET_COLLECT_TIME,
+                    "collect");
+}
+
+void icetTimingCollectEnd(void)
+{
+    icetTimingEnd(ICET_SUBFUNC_START_TIME,
+                  ICET_SUBFUNC_TIME_ID,
+                  ICET_COLLECT_TIME,
+                  "collect");
+}
+
 void icetTimingDrawFrameBegin(void)
 {
     icetTimingBegin(ICET_DRAW_START_TIME,
@@ -264,6 +281,17 @@ static const IceTEventInfo *icetEventFind(IceTEnum pname)
                            new_event->mpe_event_end,
                            "blend",
                            "cyan");
+        new_event->next = events;
+        events = new_event;
+
+        new_event = malloc(sizeof(IceTEventInfo));
+        new_event->pname = ICET_COLLECT_TIME;
+        MPE_Log_get_state_eventIDs(&new_event->mpe_event_begin,
+                                   &new_event->mpe_event_end);
+        MPE_Describe_state(new_event->mpe_event_begin,
+                           new_event->mpe_event_end,
+                           "collect",
+                           "royal blue");
         new_event->next = events;
         events = new_event;
 

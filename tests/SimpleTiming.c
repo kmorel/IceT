@@ -44,6 +44,7 @@ typedef struct {
     IceTDouble blend_time;
     IceTDouble draw_time;
     IceTDouble composite_time;
+    IceTDouble collect_time;
     IceTInt bytes_sent;
     IceTDouble frame_time;
 } timings_type;
@@ -736,6 +737,8 @@ static int SimpleTimingDoRender()
                        &timing_array[frame].draw_time);
         icetGetDoublev(ICET_COMPOSITE_TIME,
                        &timing_array[frame].composite_time);
+        icetGetDoublev(ICET_COLLECT_TIME,
+                       &timing_array[frame].collect_time);
         icetGetIntegerv(ICET_BYTES_SENT,
                         &timing_array[frame].bytes_sent);
         timing_array[frame].frame_time = elapsed_time;
@@ -794,12 +797,13 @@ static int SimpleTimingDoRender()
                     UPDATE_MAX(blend_time);
                     UPDATE_MAX(draw_time);
                     UPDATE_MAX(composite_time);
+                    UPDATE_MAX(collect_time);
                     UPDATE_MAX(bytes_sent);
                     UPDATE_MAX(frame_time);
                     total_bytes_sent += timing_collection[p].bytes_sent;
                 }
 
-                printf("LOG,%d,%s,%s,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
+                printf("LOG,%d,%s,%s,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
                        num_proc,
                        strategy_name,
                        si_strategy_name,
@@ -813,6 +817,7 @@ static int SimpleTimingDoRender()
                        timing->blend_time,
                        timing->draw_time,
                        timing->composite_time,
+                       timing->collect_time,
                        (long int)total_bytes_sent,
                        timing->frame_time);
             }
@@ -851,6 +856,7 @@ int SimpleTimingRun()
                "blend time,"
                "draw time,"
                "composite time,"
+               "collect time,"
                "bytes sent,"
                "frame time\n");
     }

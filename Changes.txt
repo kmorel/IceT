@@ -59,3 +59,6 @@ ICET_INTERLACE_IMAGES
 icetSparseImageInterlace
 
 ICET_MAGIC_K environment variable
+
+ICET_COLELCT_TIME: The fraction of ICET_COMPOSITE_TIME spent in collecting
+image fragments to display process.
