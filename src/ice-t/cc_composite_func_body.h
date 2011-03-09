@@ -71,10 +71,10 @@
     pointer += sizeof(IceTUInt);                \
     depth = (IceTFloat *)pointer;               \
     pointer += sizeof(IceTFloat);
-#define DT_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
-#define DT_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
-#define DT_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
-#define DT_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)          \
+#define CCC_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
+#define CCC_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
+#define CCC_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
+#define CCC_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)         \
     {                                                                   \
         const IceTUInt *src1_color;                                     \
         const IceTFloat *src1_depth;                                    \
@@ -93,7 +93,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define DT_COPY(src_pointer, dest_pointer)                              \
+#define CCC_COPY(src_pointer, dest_pointer)                             \
     {                                                                   \
         const IceTUInt *src_color;                                      \
         const IceTFloat *src_depth;                                     \
@@ -112,10 +112,10 @@
     pointer += 4*sizeof(IceTUInt);              \
     depth = (IceTFloat *)pointer;               \
     pointer += sizeof(IceTFloat);
-#define DT_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
-#define DT_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
-#define DT_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
-#define DT_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)          \
+#define CCC_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
+#define CCC_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
+#define CCC_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
+#define CCC_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)         \
     {                                                                   \
         const IceTFloat *src1_color;                                    \
         const IceTFloat *src1_depth;                                    \
@@ -140,7 +140,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define DT_COPY(src_pointer, dest_pointer)                              \
+#define CCC_COPY(src_pointer, dest_pointer)                             \
     {                                                                   \
         const IceTFloat *src_color;                                     \
         const IceTFloat *src_depth;                                     \
@@ -160,10 +160,10 @@
 #define UNPACK_PIXEL(pointer, depth)            \
     depth = (IceTFloat *)pointer;               \
     pointer += sizeof(IceTFloat);
-#define DT_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
-#define DT_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
-#define DT_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
-#define DT_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)          \
+#define CCC_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
+#define CCC_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
+#define CCC_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
+#define CCC_COMPOSITE(src1_pointer, src2_pointer, dest_pointer)         \
     {                                                                   \
         const IceTFloat *src1_depth;                                    \
         const IceTFloat *src2_depth;                                    \
@@ -177,7 +177,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define DT_COPY(src_pointer, dest_pointer)                              \
+#define CCC_COPY(src_pointer, dest_pointer)                              \
     {                                                                   \
         const IceTFloat *src_depth;                                     \
         IceTFloat *dest_depth;                                          \
@@ -205,10 +205,10 @@
 #define UNPACK_PIXEL(pointer, color)            \
     color = (IceTUInt *)pointer;                \
     pointer += sizeof(IceTUInt);
-#define DT_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
-#define DT_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
-#define DT_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
-#define DT_COMPOSITE(front_pointer, back_pointer, dest_pointer)         \
+#define CCC_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
+#define CCC_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
+#define CCC_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
+#define CCC_COMPOSITE(front_pointer, back_pointer, dest_pointer)        \
     {                                                                   \
         const IceTUInt *front_color;                                    \
         const IceTUInt *back_color;                                     \
@@ -220,7 +220,7 @@
                          (const IceTUByte *)back_color,                 \
                          (IceTUByte *)dest_color);                      \
     }
-#define DT_COPY(src_pointer, dest_pointer)                              \
+#define CCC_COPY(src_pointer, dest_pointer)                             \
     {                                                                   \
         const IceTUInt *src_color;                                      \
         IceTUInt *dest_color;                                           \
@@ -234,10 +234,10 @@
 #define UNPACK_PIXEL(pointer, color)            \
     color = (IceTFloat *)pointer;               \
     pointer += 4*sizeof(IceTUInt);
-#define DT_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
-#define DT_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
-#define DT_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
-#define DT_COMPOSITE(front_pointer, back_pointer, dest_pointer)         \
+#define CCC_FRONT_COMPRESSED_IMAGE FRONT_SPARSE_IMAGE
+#define CCC_BACK_COMPRESSED_IMAGE BACK_SPARSE_IMAGE
+#define CCC_DEST_COMPRESSED_IMAGE DEST_SPARSE_IMAGE
+#define CCC_COMPOSITE(front_pointer, back_pointer, dest_pointer)        \
     {                                                                   \
         const IceTFloat *front_color;                                   \
         const IceTFloat *back_color;                                    \
@@ -247,7 +247,7 @@
         UNPACK_PIXEL(dest_pointer, dest_color);                         \
         ICET_BLEND_FLOAT(front_color, back_color, dest_color);          \
     }
-#define DT_COPY(src_pointer, dest_pointer)                              \
+#define CCC_COPY(src_pointer, dest_pointer)                             \
     {                                                                   \
         const IceTFloat *src_color;                                     \
         IceTFloat *dest_color;                                          \
