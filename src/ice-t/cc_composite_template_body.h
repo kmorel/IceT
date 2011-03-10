@@ -21,8 +21,8 @@
  *      CCC_COMPOSITE(front_pointer, back_pointer, dest_pointer) - given
  *              pointers to actual data in the three buffers, perform the
  *              actual compositing operation and increment the pointers.
- *      CCC_COPY(src_pointer, dest_pointer) - copy a pixel from the src
- *              pointer the the dest pointer and increment both pointers.
+ *      CCC_PIXEL_SIZE - the number of bytes required to store the data
+ *              for one pixel.
  *
  * All of the above macros are undefined at the end of this file.
  */
@@ -116,30 +116,42 @@
             }
         }
 
-#define CCC_INCREMENT_DEST_NUM_ACTIVE()                                 \
-    _dest_num_active++;                                                 \
-    _pixel++;
+        /* At this point, either the front or back (or both) have no inactive
+           pixels. */
 
-        while ((0 < _front_num_inactive) && (0 < _back_num_active)) {
-            CCC_INCREMENT_DEST_NUM_ACTIVE();
-            CCC_COPY(_back, _dest);
-            _front_num_inactive--;
-            _back_num_active--;
+        if ((0 < _front_num_inactive) && (0 < _back_num_active)) {
+            IceTSizeType _num_to_copy
+                = CCC_MIN(_front_num_inactive, _back_num_active);
+            _front_num_inactive -= _num_to_copy;
+            _back_num_active -= _num_to_copy;
+            _dest_num_active += _num_to_copy;
+            _pixel += _num_to_copy;
+            memcpy(_dest, _back, CCC_PIXEL_SIZE*_num_to_copy);
+            _dest += CCC_PIXEL_SIZE*_num_to_copy;
+            _back += CCC_PIXEL_SIZE*_num_to_copy;
         }
 
-        while ((0 < _back_num_inactive) && (0 < _front_num_active)) {
-            CCC_INCREMENT_DEST_NUM_ACTIVE();
-            CCC_COPY(_front, _dest);
-            _back_num_inactive--;
-            _front_num_active--;
+        if ((0 < _back_num_inactive) && (0 < _front_num_active)) {
+            IceTSizeType _num_to_copy
+                = CCC_MIN(_back_num_inactive, _front_num_active);
+            _back_num_inactive -= _num_to_copy;
+            _front_num_active -= _num_to_copy;
+            _dest_num_active += _num_to_copy;
+            _pixel += _num_to_copy;
+            memcpy(_dest, _front, CCC_PIXEL_SIZE*_num_to_copy);
+            _dest += CCC_PIXEL_SIZE*_num_to_copy;
+            _front += CCC_PIXEL_SIZE*_num_to_copy;
         }
 
         if ((_front_num_inactive == 0) && (_back_num_inactive == 0)) {
-            while ((0 < _front_num_active) && (0 < _back_num_active)) {
-                CCC_INCREMENT_DEST_NUM_ACTIVE();
+            IceTSizeType _num_to_composite
+                = CCC_MIN(_front_num_active, _back_num_active);
+            _front_num_active -= _num_to_composite;
+            _back_num_active -= _num_to_composite;
+            _dest_num_active += _num_to_composite;
+            _pixel += _num_to_composite;
+            for ( ; 0 < _num_to_composite; _num_to_composite--) {
                 CCC_COMPOSITE(_front, _back, _dest);
-                _front_num_active--;
-                _back_num_active--;
             }
         }
     }
@@ -169,4 +181,4 @@
 #undef CCC_BACK_COMPRESSED_IMAGE
 #undef CCC_DEST_COMPRESSED_IMAGE
 #undef CCC_COMPOSITE
-#undef CCC_COPY
+#undef CCC_PIXEL_SIZE

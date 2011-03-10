@@ -93,17 +93,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define CCC_COPY(src_pointer, dest_pointer)                             \
-    {                                                                   \
-        const IceTUInt *src_color;                                      \
-        const IceTFloat *src_depth;                                     \
-        IceTUInt *dest_color;                                           \
-        IceTFloat *dest_depth;                                          \
-        UNPACK_PIXEL(src_pointer, src_color, src_depth);                \
-        UNPACK_PIXEL(dest_pointer, dest_color, dest_depth);             \
-        dest_color[0] = src_color[0];                                   \
-        dest_depth[0] = src_depth[0];                                   \
-    }
+#define CCC_PIXEL_SIZE (sizeof(IceTUInt) + sizeof(IceTFloat))
 #include "cc_composite_template_body.h"
 #undef UNPACK_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -140,20 +130,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define CCC_COPY(src_pointer, dest_pointer)                             \
-    {                                                                   \
-        const IceTFloat *src_color;                                     \
-        const IceTFloat *src_depth;                                     \
-        IceTFloat *dest_color;                                          \
-        IceTFloat *dest_depth;                                          \
-        UNPACK_PIXEL(src_pointer, src_color, src_depth);                \
-        UNPACK_PIXEL(dest_pointer, dest_color, dest_depth);             \
-        dest_color[0] = src_color[0];                                   \
-        dest_color[1] = src_color[1];                                   \
-        dest_color[2] = src_color[2];                                   \
-        dest_color[3] = src_color[3];                                   \
-        dest_depth[0] = src_depth[0];                                   \
-    }
+#define CCC_PIXEL_SIZE (5*sizeof(IceTFloat))
 #include "cc_composite_template_body.h"
 #undef UNPACK_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
@@ -177,14 +154,7 @@
             dest_depth[0] = src2_depth[0];                              \
         }                                                               \
     }
-#define CCC_COPY(src_pointer, dest_pointer)                              \
-    {                                                                   \
-        const IceTFloat *src_depth;                                     \
-        IceTFloat *dest_depth;                                          \
-        UNPACK_PIXEL(src_pointer, src_depth);                           \
-        UNPACK_PIXEL(dest_pointer, dest_depth);                         \
-        dest_depth[0] = src_depth[0];                                   \
-    }
+#define CCC_PIXEL_SIZE (sizeof(IceTFloat))
 #include "cc_composite_template_body.h"
 #undef UNPACK_PIXEL
             } else {
@@ -220,14 +190,7 @@
                          (const IceTUByte *)back_color,                 \
                          (IceTUByte *)dest_color);                      \
     }
-#define CCC_COPY(src_pointer, dest_pointer)                             \
-    {                                                                   \
-        const IceTUInt *src_color;                                      \
-        IceTUInt *dest_color;                                           \
-        UNPACK_PIXEL(src_pointer, src_color);                           \
-        UNPACK_PIXEL(dest_pointer, dest_color);                         \
-        dest_color[0] = src_color[0];                                   \
-    }
+#define CCC_PIXEL_SIZE (sizeof(IceTUInt))
 #include "cc_composite_template_body.h"
 #undef UNPACK_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) {
@@ -247,17 +210,7 @@
         UNPACK_PIXEL(dest_pointer, dest_color);                         \
         ICET_BLEND_FLOAT(front_color, back_color, dest_color);          \
     }
-#define CCC_COPY(src_pointer, dest_pointer)                             \
-    {                                                                   \
-        const IceTFloat *src_color;                                     \
-        IceTFloat *dest_color;                                          \
-        UNPACK_PIXEL(src_pointer, src_color);                           \
-        UNPACK_PIXEL(dest_pointer, dest_color);                         \
-        dest_color[0] = src_color[0];                                   \
-        dest_color[1] = src_color[1];                                   \
-        dest_color[2] = src_color[2];                                   \
-        dest_color[3] = src_color[3];                                   \
-    }
+#define CCC_PIXEL_SIZE (4*sizeof(IceTFloat))
 #include "cc_composite_template_body.h"
 #undef UNPACK_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
