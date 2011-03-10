@@ -96,8 +96,7 @@
                 /* Record active pixel count.  (Special case on first iteration
                  * where there is no runlength and no place to put it.) */
                 if (_dest_runlengths != NULL) {
-                    ACTIVE_RUN_LENGTH(_dest_runlengths)
-                        = (IceTUShort)(_dest_num_active);
+                    ACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_active;
                     _dest_num_active = 0;
                 }
                 _dest_runlengths = _dest;
@@ -106,15 +105,7 @@
                 _pixel += _dest_num_inactive;
                 _front_num_inactive -= _dest_num_inactive;
                 _back_num_inactive -= _dest_num_inactive;
-                while (0xFFFF < _dest_num_inactive) {
-                    INACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;
-                    ACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
-                    _dest_runlengths = _dest;
-                    _dest += RUN_LENGTH_SIZE;
-                    _dest_num_inactive -= 0xFFFF;
-                }
-                INACTIVE_RUN_LENGTH(_dest_runlengths)
-                    = (IceTUShort)(_dest_num_inactive);
+                INACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_inactive;
             } else {
                 /* Handle special case where first pixel is active. */
                 if (_dest_runlengths == NULL) {
@@ -127,14 +118,7 @@
 
 #define CCC_INCREMENT_DEST_NUM_ACTIVE()                                 \
     _dest_num_active++;                                                 \
-    _pixel++;                                                           \
-    if (0xFFFF < _dest_num_active) {                                    \
-        ACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;                   \
-        _dest_num_active -= 0xFFFF;                                     \
-        _dest_runlengths = _dest;                                       \
-        _dest += RUN_LENGTH_SIZE;                                       \
-        INACTIVE_RUN_LENGTH(_dest_runlengths) = 0;                      \
-    }
+    _pixel++;
 
         while ((0 < _front_num_inactive) && (0 < _back_num_active)) {
             CCC_INCREMENT_DEST_NUM_ACTIVE();
@@ -161,7 +145,7 @@
     }
 
     if (_dest_runlengths != NULL) {
-        ACTIVE_RUN_LENGTH(_dest_runlengths) = (IceTUShort)(_dest_num_active);
+        ACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_active;
     }
 
     if (_pixel != _num_pixels) {

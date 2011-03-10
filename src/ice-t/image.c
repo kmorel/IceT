@@ -36,9 +36,11 @@
 #define ICET_IMAGE_DATA(image) \
     ((IceTVoid *)&(ICET_IMAGE_HEADER(image)[ICET_IMAGE_DATA_START_INDEX]))
 
-#define INACTIVE_RUN_LENGTH(rl) (((IceTUShort *)(rl))[0])
-#define ACTIVE_RUN_LENGTH(rl)   (((IceTUShort *)(rl))[1])
-#define RUN_LENGTH_SIZE         (2*sizeof(IceTUShort))
+typedef IceTUnsignedInt32 IceTRunLengthType;
+
+#define INACTIVE_RUN_LENGTH(rl) (((IceTRunLengthType *)(rl))[0])
+#define ACTIVE_RUN_LENGTH(rl)   (((IceTRunLengthType *)(rl))[1])
+#define RUN_LENGTH_SIZE         ((IceTSizeType)(2*sizeof(IceTRunLengthType)))
 
 #ifdef DEBUG
 static void ICET_TEST_IMAGE_HEADER(IceTImage image)
@@ -268,20 +270,30 @@ IceTSizeType icetSparseImageBufferSizeType(IceTEnum color_format,
                                            IceTSizeType width,
                                            IceTSizeType height)
 {
-  /* Sparse images are designed to never take more than the same size of a full
-     image plus the space of 2 run lengths per 0xFFFF (65,535) pixels.  This
-     occurs when there are no inactive pixels (hence all data is stored plus the
-     necessary run lengths, where the largest run length is 0xFFFF so it can fit
-     into a 16-bit integer).  We also add 2 more run lengths to that: one for
-     the first run length and another because the sparse image copy commands can
-     split the first run length unevenly.
+    IceTSizeType size;
+    IceTSizeType pixel_size;
 
-     Even in the pathalogical case where every run length is 1, we are still
-     never any more than that because the 2 active/inactive run lengths are
-     packed into 2-bit shorts, which total takes no more space than a color or
-     depth value for a single pixel. */
-    return (  2*sizeof(IceTUShort)*((width*height)/0xFFFF + 2)
+    /* A sparse image full of active pixels will be the same size as a full
+       image plus a set of run lengths. */
+    size = (  RUN_LENGTH_SIZE
             + icetImageBufferSizeType(color_format,depth_format,width,height) );
+
+    /* For most common image formats, this is as large as the sparse image may
+       be.  When the size of the run length pair is no bigger than the size of a
+       pixel (the amount of data saved by writing the run lengths), then even in
+       the pathological case of every other pixel being active.  However, it is
+       possible that the run lengths take more space to store than the pixel
+       data.  Thus, if there is an inactive run length of one, it is possible to
+       have the data set a little bigger.  It is extremely unlikely to need this
+       much memory, but we will have to allocate it just in case.  I suppose we
+       could change the compress functions to not allow run lengths of size 1,
+       but that could increase the time to compress and would definitely
+       increase the complexity of the code. */
+    pixel_size = colorPixelSize(color_format) + depthPixelSize(depth_format);
+    if (pixel_size < RUN_LENGTH_SIZE) {
+        size += (RUN_LENGTH_SIZE - pixel_size)*((width*height+1)/2);
+    }
+    return size;
 }
 
 IceTImage icetGetStateBufferImage(IceTEnum pname,
@@ -1278,52 +1290,22 @@ static void icetSparseImageScanPixels(const IceTVoid **in_data_p,
                 if (ACTIVE_RUN_LENGTH(last_out_run_length) > 0) {
                     ADVANCE_OUT_RUN_LENGTH();
                 }
-                while (  count + INACTIVE_RUN_LENGTH(last_out_run_length)
-                       > 0xFFFF) {
-                    IceTSizeType num_to_copy
-                        = 0xFFFF - INACTIVE_RUN_LENGTH(last_out_run_length);
-                    INACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
-                    ADVANCE_OUT_RUN_LENGTH();
-                    inactive_before -= num_to_copy;
-                    pixels_left -= num_to_copy;
-                    count -= num_to_copy;
-                }
                 INACTIVE_RUN_LENGTH(last_out_run_length) += count;
-                inactive_before -= count;
-                pixels_left -= count;
-            } else /* out_data == NULL */ {
-                inactive_before -= count;
-                pixels_left -= count;
             }
+            inactive_before -= count;
+            pixels_left -= count;
         }
 
         count = MIN(active_till_next_runl, pixels_left);
         if (count > 0) {
             if (out_data != NULL) {
-                while (  count + ACTIVE_RUN_LENGTH(last_out_run_length)
-                       > 0xFFFF) {
-                    IceTSizeType num_to_copy
-                        = 0xFFFF - ACTIVE_RUN_LENGTH(last_out_run_length);
-                    memcpy(out_data, in_data, num_to_copy*pixel_size);
-                    out_data += num_to_copy*pixel_size;
-                    in_data += num_to_copy*pixel_size;
-                    ACTIVE_RUN_LENGTH(last_out_run_length) = 0xFFFF;
-                    ADVANCE_OUT_RUN_LENGTH();
-                    active_till_next_runl -= num_to_copy;
-                    pixels_left -= num_to_copy;
-                    count -= num_to_copy;
-                }
                 ACTIVE_RUN_LENGTH(last_out_run_length) += count;
                 memcpy(out_data, in_data, count*pixel_size);
                 out_data += count*pixel_size;
-                in_data += count*pixel_size;
-                active_till_next_runl -= count;
-                pixels_left -= count;
-            } else /* out_data == NULL */ {
-                in_data += count*pixel_size;
-                active_till_next_runl -= count;
-                pixels_left -= count;
             }
+            in_data += count*pixel_size;
+            active_till_next_runl -= count;
+            pixels_left -= count;
         }
     }
     if (pixels_left < 0) {
@@ -1404,10 +1386,8 @@ static void icetSparseImageCopyPixelsInPlaceInternal(
     ICET_IMAGE_HEADER(out_image)[ICET_IMAGE_HEIGHT_INDEX] = (IceTInt)1;
 
     if (last_run_length != NULL) {
-        INACTIVE_RUN_LENGTH(last_run_length)
-            -= (IceTUShort)(*inactive_before_p);
-        ACTIVE_RUN_LENGTH(last_run_length)
-            -= (IceTUShort)(*active_till_next_runl_p);
+        INACTIVE_RUN_LENGTH(last_run_length) -= *inactive_before_p;
+        ACTIVE_RUN_LENGTH(last_run_length) -= *active_till_next_runl_p;
     }
 
     icetSparseImageSetActualSize(out_image, *in_data_p);
@@ -1826,7 +1806,6 @@ void icetClearImage(IceTImage image)
 void icetClearSparseImage(IceTSparseImage image)
 {
     IceTByte *data;
-    IceTSizeType p;
 
     ICET_TEST_SPARSE_IMAGE_HEADER(image);
 
@@ -1834,16 +1813,7 @@ void icetClearSparseImage(IceTSparseImage image)
 
     /* Use IceTByte for byte-based pointer arithmetic. */
     data = ICET_IMAGE_DATA(image);
-    p = icetSparseImageGetNumPixels(image);
-
-    while (p > 0xFFFF) {
-        INACTIVE_RUN_LENGTH(data) = 0xFFFF;
-        ACTIVE_RUN_LENGTH(data) = 0;
-        data += RUN_LENGTH_SIZE;
-        p -= 0xFFFF;
-    }
-
-    INACTIVE_RUN_LENGTH(data) = (IceTUShort)p;
+    INACTIVE_RUN_LENGTH(data) = icetSparseImageGetNumPixels(image);
     ACTIVE_RUN_LENGTH(data) = 0;
 
     icetSparseImageSetActualSize(image, data+RUN_LENGTH_SIZE);

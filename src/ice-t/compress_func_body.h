@@ -340,24 +340,13 @@
 #include "compress_template_body.h"
         } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
             IceTUInt *_out;
-            IceTSizeType _runlength;
             icetRaiseWarning("Compressing image with no data.",
                              ICET_INVALID_OPERATION);
             _out = ICET_IMAGE_DATA(OUTPUT_SPARSE_IMAGE);
-            _runlength = _pixel_count;
-            while (_runlength > 0xFFFF) {
-                INACTIVE_RUN_LENGTH(_out) = 0xFFFF;
-                ACTIVE_RUN_LENGTH(_out) = 0;
-                _out++;
-                _runlength -= 0xFFFF;
-            }
-            INACTIVE_RUN_LENGTH(_out) = (IceTUShort)_runlength;
+            INACTIVE_RUN_LENGTH(_out) = _pixel_count;
             ACTIVE_RUN_LENGTH(_out) = 0;
             _out++;
-            ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE)[ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
-                = (IceTInt)
-                  (  (IceTPointerArithmetic)_out
-                   - (IceTPointerArithmetic)ICET_IMAGE_HEADER(OUTPUT_SPARSE_IMAGE));
+            icetSparseImageSetActualSize(OUTPUT_SPARSE_IMAGE, _out);
         } else {
             icetRaiseError("Encountered invalid color format.",
                            ICET_SANITY_CHECK_FAIL);
