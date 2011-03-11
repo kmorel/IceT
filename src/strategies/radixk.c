@@ -50,8 +50,7 @@ typedef struct radixkPartnerInfoStruct {
     IceTVoid *receiveBuffer; /* A buffer for receiving data from partner. */
     IceTSparseImage sendImage; /* A buffer to hold data being sent to partner */
     IceTSparseImage receiveImage; /* Hold for received non-composited image. */
-    IceTBoolean hasArrived; /* True when message arrives. */
-    IceTBoolean isComposited; /* True when received image is composited. */
+    IceTInt compositeLevel; /* Level in compositing tree for round. */
 } radixkPartnerInfo;
 
 /* BEGIN_PIVOT_FOR(loop_var, low, pivot, high)...END_PIVOT_FOR() provides a
@@ -291,8 +290,7 @@ static radixkPartnerInfo *radixkGetPartners(const int *k_array,
 
         p->receiveImage = icetSparseImageNull();
 
-        p->hasArrived = ICET_FALSE;
-        p->isComposited = ICET_FALSE;
+        p->compositeLevel = -1;
     }
 
     return partners;
@@ -335,14 +333,12 @@ static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
                                                 ICET_BYTE,
                                                 p->rank,
                                                 tag);
-            p->hasArrived = ICET_FALSE;
-            p->isComposited = ICET_FALSE;
+            p->compositeLevel = -1;
         } else {
             /* No need to send to myself. */
             receive_requests[i] = ICET_COMM_REQUEST_NULL;
             p->receiveImage = p->sendImage;
-            p->hasArrived = ICET_TRUE;
-            p->isComposited = ICET_FALSE;
+            p->compositeLevel = 0;
         }
     }
 
@@ -390,8 +386,8 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
 
     /* The pivot for loop arranges the sends to happen in an order such that
        those to be composited first in their destinations will be sent first.
-       The idea is that a process will hopefully receive images that they can
-       composite first. */
+       This serves little purpose other than to try to stagger the order of
+       sending images so that no everyone sends to the same process first. */
     BEGIN_PIVOT_FOR(i, 0, current_partition_index, current_k) {
         radixkPartnerInfo *p = &partners[i];
         p->offset = piece_offsets[i];
@@ -416,6 +412,69 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
     return send_requests;
 }
 
+/* When compositing incoming images, we pair up the images and composite in
+   a tree.  This minimizes the amount of times non-overlapping pixels need
+   to be copied.  Returns true when all images are composited */
+static IceTBoolean radixkTryCompositeIncoming(radixkPartnerInfo *partners,
+                                              int current_k,
+                                              int incoming_index,
+                                              IceTSparseImage *spare_image_p,
+                                              IceTSparseImage final_image)
+{
+    IceTSparseImage spare_image = *spare_image_p;
+    IceTInt to_composite_index = incoming_index;
+
+    while (ICET_TRUE) {
+        IceTInt level = partners[to_composite_index].compositeLevel;
+        IceTInt dist_to_sibling = (1 << level);
+        IceTInt subtree_size = (dist_to_sibling << 1);
+        IceTInt front_index;
+        IceTInt back_index;
+
+        if (to_composite_index%subtree_size == 0) {
+            front_index = to_composite_index;
+            back_index = to_composite_index + dist_to_sibling;
+
+            if (back_index >= current_k) {
+                /* This image has no partner at this level.  Just promote
+                   the level and continue. */
+                if (front_index == 0) {
+                    /* Special case.  When index 0 has no partner, we must
+                       be at the top of the tree and we are done. */
+                    break;
+                }
+                partners[to_composite_index].compositeLevel++;
+                continue;
+            }
+        } else {
+            back_index = to_composite_index;
+            front_index = to_composite_index - dist_to_sibling;
+        }
+
+        if (   partners[front_index].compositeLevel
+            != partners[back_index].compositeLevel ) {
+            /* Paired images are not on the same level.  Cannot composite
+               until more images come in.  We are done for now. */
+            break;
+        }
+
+        if ((front_index == 0) && (subtree_size >= current_k)) {
+            /* This will be the last image composited.  Composite to final
+               location. */
+            spare_image = final_image;
+        }
+        icetCompressedCompressedComposite(partners[front_index].receiveImage,
+                                          partners[back_index].receiveImage,
+                                          spare_image);
+        radixkSwapImages(&partners[front_index].receiveImage, &spare_image);
+        partners[front_index].compositeLevel++;
+        to_composite_index = front_index;
+    }
+
+    *spare_image_p = spare_image;
+    return ((1 << partners[0].compositeLevel) >= current_k);
+}
+
 static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                                           IceTCommRequest *receive_requests,
                                           int current_k,
@@ -423,22 +482,23 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                                           IceTSparseImage image)
 {
     const radixkPartnerInfo *me = &partners[current_partition_index];
-    IceTBoolean ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
 
     IceTSparseImage spare_image;
-    IceTInt remaining_composites;
+    IceTInt total_composites;
 
     IceTSizeType width;
     IceTSizeType height;
 
-    /* Regardless of order, there are k-1 composite operations to perform. */
-    remaining_composites = current_k-1;
+    IceTBoolean composites_done;
 
-    /* We will be reusing buffers like crazy, but we'll need at least one
-       more for the first composite. */
+    /* Regardless of order, there are k-1 composite operations to perform. */
+    total_composites = current_k-1;
+
+    /* We will be reusing buffers like crazy, but we'll need at least one more
+       for the first composite, assuming we have at least two composites. */
     width = icetSparseImageGetWidth(me->sendImage);
     height = icetSparseImageGetHeight(me->sendImage);
-    if (remaining_composites > 1) {
+    if (total_composites >= 2) {
         spare_image = icetGetStateBufferSparseImage(RADIXK_SPARE_BUFFER,
                                                     width,
                                                     height);
@@ -446,15 +506,15 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
         spare_image = icetSparseImageNull();
     }
 
-    while (remaining_composites > 0) {
+    composites_done = ICET_FALSE;
+    while (!composites_done) {
         int receive_idx;
         radixkPartnerInfo *receiver;
-        int partner_idx;
 
         /* Wait for an image to come in. */
         receive_idx = icetCommWaitany(current_k, receive_requests);
         receiver = &partners[receive_idx];
-        receiver->hasArrived = ICET_TRUE;
+        receiver->compositeLevel = 0;
         receiver->receiveImage
             = icetSparseImageUnpackageFromReceive(receiver->receiveBuffer);
         if (   (icetSparseImageGetWidth(receiver->receiveImage) != width)
@@ -463,50 +523,12 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
                            ICET_SANITY_CHECK_FAIL);
         }
 
-        /* Check adjacent image to see if there is anything adjacent to
-           composite to. */
-        for (partner_idx = receive_idx - 1; partner_idx >= 0; partner_idx--) {
-            radixkPartnerInfo *partner = &partners[partner_idx];
-            if (partner->hasArrived && !partner->isComposited) {
-                if (remaining_composites == 1) {
-                    /* Place last composite in destination image. */
-                    spare_image = image;
-                }
-                icetCompressedCompressedComposite(partner->receiveImage,
-                                                  receiver->receiveImage,
-                                                  spare_image);
-                partner->isComposited = ICET_TRUE;
-                radixkSwapImages(&receiver->receiveImage, &spare_image);
-                remaining_composites--;
-            } else if (!partner->hasArrived && ordered_composite) {
-                break;
-            } else {
-                /* Either already composited or not received (and not ordered.)
-                   Do nothing. */
-            }
-        }
-        for (partner_idx = receive_idx + 1;
-             partner_idx < current_k;
-             partner_idx++) {
-            radixkPartnerInfo *partner = &partners[partner_idx];
-            if (partner->hasArrived && !partner->isComposited) {
-                if (remaining_composites == 1) {
-                    /* Place last composite in destination image. */
-                    spare_image = image;
-                }
-                icetCompressedCompressedComposite(receiver->receiveImage,
-                                                  partner->receiveImage,
-                                                  spare_image);
-                partner->isComposited = ICET_TRUE;
-                radixkSwapImages(&receiver->receiveImage, &spare_image);
-                remaining_composites--;
-            } else if (!partner->hasArrived && ordered_composite) {
-                break;
-            } else {
-                /* Either already composited or not received (and not ordered.)
-                   Do nothing. */
-            }
-        }
+        /* Try to composite that image. */
+        composites_done = radixkTryCompositeIncoming(partners,
+                                                     current_k,
+                                                     receive_idx,
+                                                     &spare_image,
+                                                     image);
     }
 }
 
