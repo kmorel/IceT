@@ -506,7 +506,15 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
         spare_image = icetSparseImageNull();
     }
 
-    composites_done = ICET_FALSE;
+    /* Start by trying to composite the implicit receive from myself.  It won't
+       actually composite anything, but it may change the composite level.  It
+       will also defensively set composites_done correctly. */
+    composites_done = radixkTryCompositeIncoming(partners,
+                                                 current_k,
+                                                 current_partition_index,
+                                                 &spare_image,
+                                                 image);
+
     while (!composites_done) {
         int receive_idx;
         radixkPartnerInfo *receiver;
