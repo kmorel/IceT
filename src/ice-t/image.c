@@ -1518,7 +1518,8 @@ static void icetSparseImageSplitChoosePartitions(
 {
     IceTSizeType remainder = size%eventual_num_partitions;
     IceTInt sub_partitions = eventual_num_partitions/num_partitions;
-    IceTSizeType partition_lower_size = size/num_partitions;
+    IceTSizeType partition_lower_size
+        = (size/eventual_num_partitions)*sub_partitions;
     IceTSizeType this_offset = first_offset;
     IceTInt partition_idx;
 

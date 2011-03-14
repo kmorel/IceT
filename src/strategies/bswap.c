@@ -344,6 +344,7 @@ static void bswapReceiveFromUpperGroup(const IceTInt *lower_group,
  * composite into that buffer and return that as a resulting image. */
 static void bswapComposePow2(const IceTInt *compose_group,
                              IceTInt group_size,
+                             IceTInt largest_group_size,
                              IceTSparseImage working_image,
                              IceTSparseImage spare_image,
                              IceTSparseImage *result_image,
@@ -384,9 +385,8 @@ static void bswapComposePow2(const IceTInt *compose_group,
             IceTSizeType total_num_pixels
                 = icetSparseImageGetNumPixels(image_data);
             IceTSizeType piece_num_pixels
-                = icetSparseImageSplitPartitionNumPixels(total_num_pixels,
-                                                         2,
-                                                         group_size/bitmask);
+                = icetSparseImageSplitPartitionNumPixels(
+                               total_num_pixels, 2, largest_group_size/bitmask);
             outgoing_images[0] = image_data;
             outgoing_images[1]
                 = icetGetStateBufferSparseImage(BSWAP_OUTGOING_IMAGES_BUFFER,
@@ -394,7 +394,7 @@ static void bswapComposePow2(const IceTInt *compose_group,
             icetSparseImageSplit(image_data,
                                  *piece_offset,
                                  2,
-                                 group_size/bitmask,
+                                 largest_group_size/bitmask,
                                  outgoing_images,
                                  outgoing_offsets);
         }
@@ -559,6 +559,7 @@ static void bswapComposeNoCombine(const IceTInt *compose_group,
         /* I am part of the lower group.  Do the actual binary swap. */
         bswapComposePow2(compose_group,
                          pow2size,
+                         largest_group_size,
                          input_image,
                          available_image,
                          result_image,

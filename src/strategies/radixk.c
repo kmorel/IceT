@@ -661,7 +661,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
     if (use_interlace) {
         int global_partition = partition_indices[0];
         for (current_round = 1; current_round < num_rounds; current_round++) {
-            global_partition *= k_array[current_round - 1];
+            global_partition *= k_array[current_round];
             global_partition += partition_indices[current_round];
         }
         *piece_offset
