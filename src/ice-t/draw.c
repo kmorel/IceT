@@ -798,6 +798,25 @@ IceTImage icetDrawFrame(const IceTDouble *projection_matrix,
         }
     }
 
+    {
+        IceTInt tile_displayed;
+        icetGetIntegerv(ICET_TILE_DISPLAYED, &tile_displayed);
+
+        if (tile_displayed >= 0) {
+            const IceTInt *tile_viewports
+                = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
+            IceTInt num_pixels = (  tile_viewports[4*tile_displayed+2]
+                                  * tile_viewports[4*tile_displayed+3] );
+            icetStateSetInteger(ICET_VALID_PIXELS_TILE, tile_displayed);
+            icetStateSetInteger(ICET_VALID_PIXELS_OFFSET, 0);
+            icetStateSetInteger(ICET_VALID_PIXELS_NUM, num_pixels);
+        } else {
+            icetStateSetInteger(ICET_VALID_PIXELS_TILE, -1);
+            icetStateSetInteger(ICET_VALID_PIXELS_OFFSET, 0);
+            icetStateSetInteger(ICET_VALID_PIXELS_NUM, 0);
+        }
+    }
+
     image = drawInvokeStrategy();
 
     /* Correct background color where applicable. */

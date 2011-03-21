@@ -144,7 +144,7 @@ static void usage(char **argv)
     printf("              makes identifying errors and warnings easier.\n");
     printf("  -redirect   Redirect standard output to log.????, where ???? is the rank\n");
     printf("  --          Parse no more arguments.\n");
-    printf("  -h          This help message.\n");
+    printf("  -h, -help   This help message.\n");
 }
 
 void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
@@ -184,7 +184,8 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
             diag_level &= ICET_DIAG_WARNINGS | ICET_DIAG_ALL_NODES;
         } else if (strcmp(argv[arg], "-redirect") == 0) {
             redirect = 1;
-        } else if (strcmp(argv[arg], "-h") == 0) {
+        } else if (   (strcmp(argv[arg], "-h") == 0)
+                   || (strcmp(argv[arg], "-help") == 0) ) {
             usage(argv);
             exit(0);
         } else if (   (strcmp(argv[arg], "-R") == 0)
