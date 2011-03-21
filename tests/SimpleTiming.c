@@ -83,6 +83,7 @@ static IceTInt g_seed;
 static IceTBoolean g_transparent;
 static IceTBoolean g_colored_background;
 static IceTBoolean g_no_interlace;
+static IceTBoolean g_no_collect;
 static IceTBoolean g_sync_render;
 static IceTBoolean g_write_image;
 static IceTEnum g_strategy;
@@ -91,6 +92,32 @@ static IceTBoolean g_do_magic_k_study;
 static IceTInt g_max_magic_k;
 
 static float g_color[4];
+
+static void usage(char *argv[])
+{
+    printf("\nUSAGE: %s [testargs]\n", argv[0]);
+    printf("\nWhere  testargs are:\n");
+    printf("  -tilesx <num>  Sets the number of tiles horizontal (default 1).\n");
+    printf("  -tilesy <num>  Sets the number of tiles vertical (default 1).\n");
+    printf("  -frames        Sets the number of frames to render (default 2).\n");
+    printf("  -seed <num>    Use the given number as the random seed.\n");
+    printf("  -transparent   Render transparent images.  (Uses 4 floats for colors.)\n");
+    printf("  -colored-background Use a color for the background and correct as necessary.\n");
+    printf("  -no-interlace  Turn off the image interlacing optimization.\n");
+    printf("  -no-collect    Turn off image collection.\n");
+    printf("  -sync-render   Synchronize rendering by adding a barrier to the draw callback.\n");
+    printf("  -write-image   Write an image on the first frame.\n");
+    printf("  -reduce        Use the reduce strategy (default).\n");
+    printf("  -vtree         Use the virtual trees strategy.\n");
+    printf("  -sequential    Use the sequential strategy.\n");
+    printf("  -bswap         Use the binary-swap single-image strategy.\n");
+    printf("  -radixk        Use the radix-k single-image strategy.\n");
+    printf("  -tree          Use the tree single-image strategy.\n");
+    printf("  -magic-k-study Use the radix-k single-image strategy and repeate for multiple\n"
+           "                 values of k.\n");
+    printf("  -h, -help      Print this help message.\n");
+    printf("\nFor general testing options, try -h or -help before test name.\n");
+}
 
 static void parse_arguments(int argc, char *argv[])
 {
@@ -104,6 +131,7 @@ static void parse_arguments(int argc, char *argv[])
     g_colored_background = ICET_FALSE;
     g_sync_render = ICET_FALSE;
     g_no_interlace = ICET_FALSE;
+    g_no_collect = ICET_FALSE;
     g_write_image = ICET_FALSE;
     g_strategy = ICET_STRATEGY_REDUCE;
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
@@ -129,6 +157,8 @@ static void parse_arguments(int argc, char *argv[])
             g_colored_background = ICET_TRUE;
         } else if (strcmp(argv[arg], "-no-interlace") == 0) {
             g_no_interlace = ICET_TRUE;
+        } else if (strcmp(argv[arg], "-no-collect") == 0) {
+            g_no_collect = ICET_TRUE;
         } else if (strcmp(argv[arg], "-sync-render") == 0) {
             g_sync_render = ICET_TRUE;
         } else if (strcmp(argv[arg], "-write-image") == 0) {
@@ -150,8 +180,13 @@ static void parse_arguments(int argc, char *argv[])
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
             arg++;
             g_max_magic_k = atoi(argv[arg]);
+        } else if (   (strcmp(argv[arg], "-h") == 0)
+                   || (strcmp(argv[arg], "-help")) ) {
+            usage(argv);
+            exit(0);
         } else {
             printf("Unknown option `%s'.\n", argv[arg]);
+            usage(argv);
             exit(1);
         }
     }
@@ -600,6 +635,12 @@ static int SimpleTimingDoRender()
         icetEnable(ICET_INTERLACE_IMAGES);
     }
 
+    if (g_no_collect) {
+        icetDisable(ICET_COLLECT_IMAGES);
+    } else {
+        icetEnable(ICET_COLLECT_IMAGES);
+    }
+
     /* Give IceT the bounds of the polygons that will be drawn.  Note that IceT
      * will take care of any transformation that gets passed to
      * icetDrawFrame. */
@@ -803,12 +844,14 @@ static int SimpleTimingDoRender()
                     total_bytes_sent += timing_collection[p].bytes_sent;
                 }
 
-                printf("LOG,%d,%s,%s,%d,%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%ld,%lf\n",
+                printf("LOG,%d,%s,%s,%d,%d,%s,%s,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%ld,%lg\n",
                        num_proc,
                        strategy_name,
                        si_strategy_name,
                        g_num_tiles_x,
                        g_num_tiles_y,
+                       g_no_interlace ? "no" : "yes",
+                       g_no_collect ? "no" : "yes",
                        frame,
                        timing->render_time,
                        timing->buffer_read_time,
@@ -848,6 +891,8 @@ int SimpleTimingRun()
                "single-image strategy,"
                "tiles x,"
                "tiles y,"
+               "interlacing,"
+               "collection,"
                "frame,"
                "render time,"
                "buffer read time,"
