@@ -172,9 +172,14 @@ void icetStateSetDefaults(void)
     icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);
     icetEnable(ICET_INTERLACE_IMAGES);
+    icetEnable(ICET_COLLECT_IMAGES);
 
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
     icetStateSetBoolean(ICET_RENDER_BUFFER_SIZE, 0);
+
+    icetStateSetInteger(ICET_VALID_PIXELS_TILE, -1);
+    icetStateSetInteger(ICET_VALID_PIXELS_OFFSET, 0);
+    icetStateSetInteger(ICET_VALID_PIXELS_NUM, 0);
 
     icetStateResetTiming();
 }
