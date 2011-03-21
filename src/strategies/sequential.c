@@ -27,6 +27,7 @@ IceTImage icetSequentialCompose(void)
     const IceTInt *display_nodes;
     const IceTInt *tile_viewports;
     IceTBoolean ordered_composite;
+    IceTBoolean image_collect;
     IceTImage my_image;
     IceTInt *compose_group;
     int i;
@@ -37,6 +38,14 @@ IceTImage icetSequentialCompose(void)
     display_nodes = icetUnsafeStateGetInteger(ICET_DISPLAY_NODES);
     tile_viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
     ordered_composite = icetIsEnabled(ICET_ORDERED_COMPOSITE);
+    image_collect = icetIsEnabled(ICET_COLLECT_IMAGES);
+
+    if (!image_collect && (num_tiles > 1)) {
+        icetRaiseWarning("Sequential strategy must collect images with more"
+                         " than one tile.",
+                         ICET_INVALID_OPERATION);
+        image_collect = ICET_TRUE;
+    }
 
     compose_group = icetGetStateBuffer(SEQUENTIAL_COMPOSE_GROUP_BUFFER,
                                        sizeof(IceTInt)*num_proc);
@@ -53,7 +62,6 @@ IceTImage icetSequentialCompose(void)
 
   /* Render and compose every tile. */
     for (i = 0; i < num_tiles; i++) {
-        IceTImage tile_image;
 	int d_node = display_nodes[i];
 	int image_dest;
         IceTSparseImage rendered_image;
@@ -87,24 +95,48 @@ IceTImage icetSequentialCompose(void)
                                &composited_image,
                                &piece_offset);
 
-      /* If this processor is display node, make sure image goes to
-         myColorBuffer. */
-	if (d_node == rank) {
-            tile_image = icetGetStateBufferImage(SEQUENTIAL_FINAL_IMAGE_BUFFER,
-                                                 tile_width, tile_height);
-	} else {
-            tile_image = icetGetStateBufferImage(
+        if (image_collect) {
+            IceTImage tile_image;
+
+            /* If this processor is display node, make sure image goes to
+               myColorBuffer. */
+            if (d_node == rank) {
+                tile_image = icetGetStateBufferImage(
+                                                  SEQUENTIAL_FINAL_IMAGE_BUFFER,
+                                                  tile_width, tile_height);
+            } else {
+                tile_image = icetGetStateBufferImage(
                                            SEQUENTIAL_INTERMEDIATE_IMAGE_BUFFER,
                                            tile_width, tile_height);
-	}
+            }
 
-        icetSingleImageCollect(composited_image,
-                               d_node,
-                               piece_offset,
-                               tile_image);
+            icetSingleImageCollect(composited_image,
+                                   d_node,
+                                   piece_offset,
+                                   tile_image);
 
-        if (d_node == rank) {
-            my_image = tile_image;
+            if (d_node == rank) {
+                my_image = tile_image;
+            }
+        } else { /* !image_collect */
+            IceTSizeType piece_size
+                = icetSparseImageGetNumPixels(composited_image);
+            if (piece_size > 0) {
+                my_image = icetGetStateBufferImage(
+                                                  SEQUENTIAL_FINAL_IMAGE_BUFFER,
+                                                  tile_width, tile_height);
+                icetDecompressSubImage(composited_image,
+                                       piece_offset,
+                                       my_image);
+                icetStateSetInteger(ICET_VALID_PIXELS_TILE, i);
+                icetStateSetInteger(ICET_VALID_PIXELS_OFFSET, piece_offset);
+                icetStateSetInteger(ICET_VALID_PIXELS_NUM, piece_size);
+            } else {
+                my_image = icetImageNull();
+                icetStateSetInteger(ICET_VALID_PIXELS_TILE, -1);
+                icetStateSetInteger(ICET_VALID_PIXELS_OFFSET, 0);
+                icetStateSetInteger(ICET_VALID_PIXELS_NUM, 0);
+            }
         }
     }
 
