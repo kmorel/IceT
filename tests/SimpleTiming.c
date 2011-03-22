@@ -680,13 +680,15 @@ static int SimpleTimingDoRender()
     icetMatrixFrustum(-0.65*aspect, 0.65*aspect, -0.65, 0.65, 3.0, 5.0,
                       projection_matrix);
 
-    if (rank%8 != 0) {
-        g_color[0] = (float)(rank%2);
-        g_color[1] = (float)((rank/2)%2);
-        g_color[2] = (float)((rank/4)%2);
+    if (rank%10 < 7) {
+        IceTInt color_bits = rank%10 + 1;
+        g_color[0] = (float)(color_bits%2);
+        g_color[1] = (float)((color_bits/2)%2);
+        g_color[2] = (float)((color_bits/4)%2);
         g_color[3] = 1.0f;
     } else {
         g_color[0] = g_color[1] = g_color[2] = 0.5f;
+        g_color[rank%10 - 7] = 0.0f;
         g_color[3] = 1.0f;
     }
 
