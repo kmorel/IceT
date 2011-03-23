@@ -46,7 +46,7 @@
     _p = 0;
     while (_p < _pixels) {
 	const IceTVoid *_runlengths;
-	IceTUShort _rl;
+	IceTSizeType _rl;
 
         _runlengths = _src;
         _src += RUN_LENGTH_SIZE;

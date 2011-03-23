@@ -93,39 +93,27 @@
             IceTSizeType _lastx = CT_FULL_WIDTH-CT_SPACE_RIGHT;
             _count += CT_SPACE_LEFT;
             while (ICET_TRUE) {
-                IceTUInt *_runlengths;
+                IceTVoid *_runlengths;
                 while ((_x < _lastx) && (!CT_ACTIVE())) {
                     _x++;
                     _count++;
                     CT_INCREMENT_PIXEL();
                 }
                 if (_x >= _lastx) break;
-                /* Yes, this cast is OK. */
-                _runlengths = (IceTUInt*)_dest;
+                _runlengths = _dest;
                 _dest += RUN_LENGTH_SIZE;
-                while (_count > 0xFFFF) {
-                    INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
-                    ACTIVE_RUN_LENGTH(_runlengths) = 0;
-#ifdef DEBUG
-                    _totalcount += 0xFFFF;
-#endif
-                    _count -= 0xFFFF;
-                    /* Yes, this cast is OK. */
-                    _runlengths = (IceTUInt*)_dest;
-                    _dest += RUN_LENGTH_SIZE;
-                }
-                INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
+                INACTIVE_RUN_LENGTH(_runlengths) = _count;
 #ifdef DEBUG
                 _totalcount += _count;
 #endif
                 _count = 0;
-                while ((_x < _lastx) && CT_ACTIVE() && (_count < 0xFFFF)) {
+                while ((_x < _lastx) && CT_ACTIVE()) {
                     CT_WRITE_PIXEL(_dest);
                     CT_INCREMENT_PIXEL();
                     _count++;
                     _x++;
                 }
-                ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
+                ACTIVE_RUN_LENGTH(_runlengths) = _count;
 #ifdef DEBUG
                 _totalcount += _count;
 #endif
@@ -140,8 +128,7 @@
 
         _p = 0;
         while (_p < _pixels) {
-          /* Yes, this cast is OK. */
-            IceTUInt *_runlengths = (IceTUInt*)_dest;
+            IceTVoid *_runlengths = _dest;
             _dest += RUN_LENGTH_SIZE;
           /* Count background pixels. */
             while ((_p < _pixels) && (!CT_ACTIVE())) {
@@ -149,31 +136,20 @@
                 _count++;
                 CT_INCREMENT_PIXEL();
             }
-            while (_count > 0xFFFF) {
-                INACTIVE_RUN_LENGTH(_runlengths) = 0xFFFF;
-                ACTIVE_RUN_LENGTH(_runlengths) = 0;
-#ifdef DEBUG
-                _totalcount += 0xFFFF;
-#endif
-                _count -= 0xFFFF;
-                /* Yes, this cast is OK. */
-                _runlengths = (IceTUInt*)_dest;
-                _dest += RUN_LENGTH_SIZE;
-            }
-            INACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
+            INACTIVE_RUN_LENGTH(_runlengths) = _count;
 #ifdef DEBUG
             _totalcount += _count;
 #endif
 
           /* Count and store active pixels. */
             _count = 0;
-            while ((_p < _pixels) && CT_ACTIVE() && (_count < 0xFFFF)) {
+            while ((_p < _pixels) && CT_ACTIVE()) {
                 CT_WRITE_PIXEL(_dest);
                 CT_INCREMENT_PIXEL();
                 _count++;
                 _p++;
             }
-            ACTIVE_RUN_LENGTH(_runlengths) = (IceTUShort)_count;
+            ACTIVE_RUN_LENGTH(_runlengths) = _count;
 #ifdef DEBUG
             _totalcount += _count;
 #endif
@@ -185,16 +161,7 @@
 
     _count += CT_SPACE_TOP*CT_FULL_WIDTH;
     if (_count > 0) {
-        while (_count > 0xFFFF) {
-            INACTIVE_RUN_LENGTH(_dest) = 0xFFFF;
-            ACTIVE_RUN_LENGTH(_dest) = 0;
-            _dest += RUN_LENGTH_SIZE;
-#ifdef DEBUG
-            _totalcount += 0xFFFF;
-#endif /*DEBUG*/
-            _count -= 0xFFFF;
-        }
-        INACTIVE_RUN_LENGTH(_dest) = (IceTUShort)_count;
+        INACTIVE_RUN_LENGTH(_dest) = _count;
         ACTIVE_RUN_LENGTH(_dest) = 0;
         _dest += RUN_LENGTH_SIZE;
 #ifdef DEBUG

@@ -15,14 +15,14 @@
  * file with various parameters.
  *
  * The following macros must be defined:
- *      DT_FRONT_COMPRESSED_IMAGE - compressed image to blend in front.
- *      DT_BACK_COMPRESSED_IMAGE - compressed image to blend in back.
- *      DT_DEST_COMPRESSED_IMAGE - the resulting compressed image buffer.
- *      DT_COMPOSITE(front_pointer, back_pointer, dest_pointer) - given
+ *      CCC_FRONT_COMPRESSED_IMAGE - compressed image to blend in front.
+ *      CCC_BACK_COMPRESSED_IMAGE - compressed image to blend in back.
+ *      CCC_DEST_COMPRESSED_IMAGE - the resulting compressed image buffer.
+ *      CCC_COMPOSITE(front_pointer, back_pointer, dest_pointer) - given
  *              pointers to actual data in the three buffers, perform the
  *              actual compositing operation and increment the pointers.
- *      DT_COPY(src_pointer, dest_pointer) - copy a pixel from the src
- *              pointer the the dest pointer and increment both pointers.
+ *      CCC_PIXEL_SIZE - the number of bytes required to store the data
+ *              for one pixel.
  *
  * All of the above macros are undefined at the end of this file.
  */
@@ -53,20 +53,20 @@
     IceTSizeType _back_num_active;
     IceTSizeType _dest_num_active;
 
-    _num_pixels = icetSparseImageGetNumPixels(DT_FRONT_COMPRESSED_IMAGE);
-    if (_num_pixels != icetSparseImageGetNumPixels(DT_BACK_COMPRESSED_IMAGE)) {
+    _num_pixels = icetSparseImageGetNumPixels(CCC_FRONT_COMPRESSED_IMAGE);
+    if (_num_pixels != icetSparseImageGetNumPixels(CCC_BACK_COMPRESSED_IMAGE)) {
         icetRaiseError("Input buffers do not agree for compressed-compressed"
                        " composite.",
                        ICET_SANITY_CHECK_FAIL);
     }
     icetSparseImageSetDimensions(
-                            DT_DEST_COMPRESSED_IMAGE,
-                            icetSparseImageGetWidth(DT_FRONT_COMPRESSED_IMAGE),
-                            icetSparseImageGetHeight(DT_BACK_COMPRESSED_IMAGE));
+                           CCC_DEST_COMPRESSED_IMAGE,
+                           icetSparseImageGetWidth(CCC_FRONT_COMPRESSED_IMAGE),
+                           icetSparseImageGetHeight(CCC_BACK_COMPRESSED_IMAGE));
 
-    _front = ICET_IMAGE_DATA(DT_FRONT_COMPRESSED_IMAGE);
-    _back = ICET_IMAGE_DATA(DT_BACK_COMPRESSED_IMAGE);
-    _dest = ICET_IMAGE_DATA(DT_DEST_COMPRESSED_IMAGE);
+    _front = ICET_IMAGE_DATA(CCC_FRONT_COMPRESSED_IMAGE);
+    _back = ICET_IMAGE_DATA(CCC_BACK_COMPRESSED_IMAGE);
+    _dest = ICET_IMAGE_DATA(CCC_DEST_COMPRESSED_IMAGE);
     _dest_runlengths = NULL;
 
     _pixel = 0;
@@ -96,8 +96,7 @@
                 /* Record active pixel count.  (Special case on first iteration
                  * where there is no runlength and no place to put it.) */
                 if (_dest_runlengths != NULL) {
-                    ACTIVE_RUN_LENGTH(_dest_runlengths)
-                        = (IceTUShort)(_dest_num_active);
+                    ACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_active;
                     _dest_num_active = 0;
                 }
                 _dest_runlengths = _dest;
@@ -106,15 +105,7 @@
                 _pixel += _dest_num_inactive;
                 _front_num_inactive -= _dest_num_inactive;
                 _back_num_inactive -= _dest_num_inactive;
-                while (0xFFFF < _dest_num_inactive) {
-                    INACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;
-                    ACTIVE_RUN_LENGTH(_dest_runlengths) = 0;
-                    _dest_runlengths = _dest;
-                    _dest += RUN_LENGTH_SIZE;
-                    _dest_num_inactive -= 0xFFFF;
-                }
-                INACTIVE_RUN_LENGTH(_dest_runlengths)
-                    = (IceTUShort)(_dest_num_inactive);
+                INACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_inactive;
             } else {
                 /* Handle special case where first pixel is active. */
                 if (_dest_runlengths == NULL) {
@@ -125,43 +116,48 @@
             }
         }
 
-#define DT_INCREMENT_DEST_NUM_ACTIVE()                                  \
-    _dest_num_active++;                                                 \
-    _pixel++;                                                           \
-    if (0xFFFF < _dest_num_active) {                                    \
-        ACTIVE_RUN_LENGTH(_dest_runlengths) = 0xFFFF;                   \
-        _dest_num_active -= 0xFFFF;                                     \
-        _dest_runlengths = _dest;                                       \
-        _dest += RUN_LENGTH_SIZE;                                       \
-        INACTIVE_RUN_LENGTH(_dest_runlengths) = 0;                      \
-    }
+        /* At this point, either the front or back (or both) have no inactive
+           pixels. */
 
-        while ((0 < _front_num_inactive) && (0 < _back_num_active)) {
-            DT_INCREMENT_DEST_NUM_ACTIVE();
-            DT_COPY(_back, _dest);
-            _front_num_inactive--;
-            _back_num_active--;
+        if ((0 < _front_num_inactive) && (0 < _back_num_active)) {
+            IceTSizeType _num_to_copy
+                = CCC_MIN(_front_num_inactive, _back_num_active);
+            _front_num_inactive -= _num_to_copy;
+            _back_num_active -= _num_to_copy;
+            _dest_num_active += _num_to_copy;
+            _pixel += _num_to_copy;
+            memcpy(_dest, _back, CCC_PIXEL_SIZE*_num_to_copy);
+            _dest += CCC_PIXEL_SIZE*_num_to_copy;
+            _back += CCC_PIXEL_SIZE*_num_to_copy;
         }
 
-        while ((0 < _back_num_inactive) && (0 < _front_num_active)) {
-            DT_INCREMENT_DEST_NUM_ACTIVE();
-            DT_COPY(_front, _dest);
-            _back_num_inactive--;
-            _front_num_active--;
+        if ((0 < _back_num_inactive) && (0 < _front_num_active)) {
+            IceTSizeType _num_to_copy
+                = CCC_MIN(_back_num_inactive, _front_num_active);
+            _back_num_inactive -= _num_to_copy;
+            _front_num_active -= _num_to_copy;
+            _dest_num_active += _num_to_copy;
+            _pixel += _num_to_copy;
+            memcpy(_dest, _front, CCC_PIXEL_SIZE*_num_to_copy);
+            _dest += CCC_PIXEL_SIZE*_num_to_copy;
+            _front += CCC_PIXEL_SIZE*_num_to_copy;
         }
 
         if ((_front_num_inactive == 0) && (_back_num_inactive == 0)) {
-            while ((0 < _front_num_active) && (0 < _back_num_active)) {
-                DT_INCREMENT_DEST_NUM_ACTIVE();
-                DT_COMPOSITE(_front, _back, _dest);
-                _front_num_active--;
-                _back_num_active--;
+            IceTSizeType _num_to_composite
+                = CCC_MIN(_front_num_active, _back_num_active);
+            _front_num_active -= _num_to_composite;
+            _back_num_active -= _num_to_composite;
+            _dest_num_active += _num_to_composite;
+            _pixel += _num_to_composite;
+            for ( ; 0 < _num_to_composite; _num_to_composite--) {
+                CCC_COMPOSITE(_front, _back, _dest);
             }
         }
     }
 
     if (_dest_runlengths != NULL) {
-        ACTIVE_RUN_LENGTH(_dest_runlengths) = (IceTUShort)(_dest_num_active);
+        ACTIVE_RUN_LENGTH(_dest_runlengths) = _dest_num_active;
     }
 
     if (_pixel != _num_pixels) {
@@ -171,18 +167,18 @@
     {
         /* Compute the actual number of bytes used to store the image. */
         IceTPointerArithmetic _buffer_begin
-            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(DT_DEST_COMPRESSED_IMAGE);
+            =(IceTPointerArithmetic)ICET_IMAGE_HEADER(CCC_DEST_COMPRESSED_IMAGE);
         IceTPointerArithmetic _buffer_end
             =(IceTPointerArithmetic)_dest;
         IceTPointerArithmetic _compressed_size = _buffer_end - _buffer_begin;
-        ICET_IMAGE_HEADER(DT_DEST_COMPRESSED_IMAGE)
+        ICET_IMAGE_HEADER(CCC_DEST_COMPRESSED_IMAGE)
             [ICET_IMAGE_ACTUAL_BUFFER_SIZE_INDEX]
             = (IceTInt)_compressed_size;
     }
 }
 
-#undef DT_FRONT_COMPRESSED_IMAGE
-#undef DT_BACK_COMPRESSED_IMAGE
-#undef DT_DEST_COMPRESSED_IMAGE
-#undef DT_COMPOSITE
-#undef DT_COPY
+#undef CCC_FRONT_COMPRESSED_IMAGE
+#undef CCC_BACK_COMPRESSED_IMAGE
+#undef CCC_DEST_COMPRESSED_IMAGE
+#undef CCC_COMPOSITE
+#undef CCC_PIXEL_SIZE
