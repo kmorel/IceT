@@ -18,9 +18,12 @@
 #define BSWAP_SPARE_WORKING_IMAGE_BUFFER        ICET_SI_STRATEGY_BUFFER_2
 #define BSWAP_IMAGE_ARRAY                       ICET_SI_STRATEGY_BUFFER_3
 #define BSWAP_DUMMY_ARRAY                       ICET_SI_STRATEGY_BUFFER_4
+#define BSWAP_FOLDED_IMAGE_BUFFER               ICET_SI_STRATEGY_BUFFER_5
+#define BSWAP_SUB_PROCESS_GROUP                 ICET_SI_STRATEGY_BUFFER_6
 
 #define BSWAP_SWAP_IMAGES 21
 #define BSWAP_TELESCOPE 22
+#define BSWAP_FOLD 23
 
 #define BIT_REVERSE(result, x, max_val_plus_one)                              \
 {                                                                             \
@@ -607,4 +610,114 @@ void icetBswapCompose(const IceTInt *compose_group,
                           input_image,
                           result_image,
                           piece_offset);
+}
+
+void icetBswapComposeFold(const IceTInt *compose_group,
+                          IceTInt group_size,
+                          IceTInt image_dest,
+                          IceTSparseImage input_image,
+                          IceTSparseImage *result_image,
+                          IceTSizeType *piece_offset)
+{
+    IceTInt pow2size;
+
+    icetRaiseDebug("In bswapComposeFold");
+
+    pow2size = bswapFindPower2(group_size);
+    if (pow2size == group_size) {
+        /* Regular binary swap will do just fine. */
+        bswapComposeNoCombine(compose_group,
+                              group_size,
+                              -1,
+                              input_image,
+                              result_image,
+                              piece_offset);
+    } else {
+        /* Make a sub group a power of 2 and fold any images outside of that
+           group to inside that group. */
+        IceTInt *sub_group = icetGetStateBuffer(BSWAP_SUB_PROCESS_GROUP,
+                                                pow2size*sizeof(IceTInt));
+        IceTInt num_to_fold = group_size - pow2size;
+        IceTSparseImage new_input_image = input_image;
+        IceTInt cg_rank;
+        IceTInt sg_rank;
+        IceTInt folding_index;
+        IceTInt my_global_rank;
+
+        icetGetIntegerv(ICET_RANK, &my_global_rank);
+
+        cg_rank = 0;
+        sg_rank = 0;
+        for (folding_index = 0; folding_index < num_to_fold; folding_index++) {
+            IceTInt dest_rank;
+            IceTInt src_rank;
+            if (compose_group[cg_rank+1] != image_dest) {
+                dest_rank = compose_group[cg_rank];
+                src_rank = compose_group[cg_rank+1];
+            } else {
+                dest_rank = compose_group[cg_rank+1];
+                src_rank = compose_group[cg_rank];
+            }
+            if (my_global_rank == dest_rank) {
+                IceTSizeType width = icetSparseImageGetWidth(input_image);
+                IceTSizeType height = icetSparseImageGetHeight(input_image);
+                IceTSizeType buffer_size
+                    = icetSparseImageBufferSize(width, height);
+                IceTVoid *incoming_image_buffer
+                    = icetGetStateBuffer(BSWAP_INCOMING_IMAGES_BUFFER,
+                                         buffer_size);
+                IceTSparseImage incoming_image;
+                icetCommRecv(incoming_image_buffer,
+                             buffer_size,
+                             ICET_BYTE,
+                             src_rank,
+                             BSWAP_FOLD);
+                incoming_image = icetSparseImageUnpackageFromReceive(
+                                                         incoming_image_buffer);
+                new_input_image
+                    = icetGetStateBufferSparseImage(BSWAP_FOLDED_IMAGE_BUFFER,
+                                                    width, height);
+                if (compose_group[cg_rank+1] != image_dest) {
+                    icetCompressedCompressedComposite(input_image,
+                                                      incoming_image,
+                                                      new_input_image);
+                } else {
+                    icetCompressedCompressedComposite(incoming_image,
+                                                      input_image,
+                                                      new_input_image);
+                }
+            } else if (my_global_rank == src_rank) {
+                IceTVoid *package_buffer;
+                IceTSizeType package_size;
+                icetSparseImagePackageForSend(input_image,
+                                              &package_buffer,
+                                              &package_size);
+                icetCommSend(package_buffer,
+                             package_size,
+                             ICET_BYTE,
+                             dest_rank,
+                             BSWAP_FOLD);
+                /* We got rid of our data.  Nothing more to do. */
+                *result_image = icetSparseImageNull();
+                *piece_offset = 0;
+                return;
+            } /* else do nothing */
+            sub_group[sg_rank] = dest_rank;
+            cg_rank += 2;
+            sg_rank += 1;
+        }
+
+        /* Copy the rest of the group. */
+        for ( ; cg_rank < group_size; cg_rank++, sg_rank++) {
+            sub_group[sg_rank] = compose_group[cg_rank];
+        }
+
+        /* Now ready to do regular binary swap. */
+        bswapComposeNoCombine(sub_group,
+                              pow2size,
+                              -1,
+                              new_input_image,
+                              result_image,
+                              piece_offset);
+    }
 }

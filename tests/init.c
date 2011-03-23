@@ -49,8 +49,8 @@ IceTEnum strategy_list[5];
 int STRATEGY_LIST_SIZE = 5;
 /* int STRATEGY_LIST_SIZE = 1; */
 
-IceTEnum single_image_strategy_list[4];
-int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 4;
+IceTEnum single_image_strategy_list[5];
+int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 5;
 /* int SINGLE_IMAGE_STRATEGY_LIST_SIZE = 1; */
 
 IceTSizeType SCREEN_WIDTH;
@@ -272,6 +272,7 @@ void initialize_test(int *argcp, char ***argvp, IceTCommunicator comm)
     single_image_strategy_list[1] = ICET_SINGLE_IMAGE_STRATEGY_BSWAP;
     single_image_strategy_list[2] = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
     single_image_strategy_list[3] = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+    single_image_strategy_list[4] = ICET_SINGLE_IMAGE_STRATEGY_FOLD_BSWAP;
 }
 
 IceTBoolean strategy_uses_single_image_strategy(IceTEnum strategy)
