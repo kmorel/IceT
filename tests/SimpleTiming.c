@@ -113,6 +113,7 @@ static void usage(char *argv[])
     printf("  -bswap         Use the binary-swap single-image strategy.\n");
     printf("  -radixk        Use the radix-k single-image strategy.\n");
     printf("  -tree          Use the tree single-image strategy.\n");
+    printf("  -fold-bswap    Use binary-swap with folding for non powers of 2.\n");
     printf("  -magic-k-study Use the radix-k single-image strategy and repeate for multiple\n"
            "                 values of k.\n");
     printf("  -h, -help      Print this help message.\n");
@@ -175,6 +176,8 @@ static void parse_arguments(int argc, char *argv[])
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
         } else if (strcmp(argv[arg], "-tree") == 0) {
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_TREE;
+        } else if (strcmp(argv[arg], "-fold-bswap") == 0) {
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_FOLD_BSWAP;
         } else if (strcmp(argv[arg], "-magic-k-study") == 0) {
             g_do_magic_k_study = ICET_TRUE;
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
