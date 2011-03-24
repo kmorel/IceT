@@ -675,6 +675,7 @@ static IceTImage drawInvokeStrategy(void)
     IceTVoid *value;
     IceTEnum strategy;
     IceTInt display_tile;
+    IceTInt valid_tile;
 
     icetGetPointerv(ICET_DRAW_FUNCTION, &value);
     if (value == NULL) {
@@ -691,16 +692,30 @@ static IceTImage drawInvokeStrategy(void)
     icetStateSetBoolean(ICET_IS_DRAWING_FRAME, 0);
 
     /* Ensure that the returned image is the expected size. */
+    icetGetIntegerv(ICET_VALID_PIXELS_TILE, &valid_tile);
     icetGetIntegerv(ICET_TILE_DISPLAYED, &display_tile);
-    if (display_tile >= 0) {
-        const IceTInt *display_tile_viewport
-            = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS) + 4*display_tile;
-        if (   (display_tile_viewport[2] != icetImageGetWidth(image))
-            || (display_tile_viewport[3] != icetImageGetHeight(image)) ) {
+    if ((valid_tile != display_tile) && icetIsEnabled(ICET_COLLECT_IMAGES)) {
+        icetRaiseDebug2("Display tile: %d, valid tile: %d",
+                        display_tile, valid_tile);
+        icetRaiseError("Got unexpected tile from strategy.",
+                       ICET_SANITY_CHECK_FAIL);
+    }
+    if (valid_tile >= 0) {
+        const IceTInt *valid_tile_viewport
+            = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS) + 4*valid_tile;
+        if (   (valid_tile_viewport[2] != icetImageGetWidth(image))
+            || (valid_tile_viewport[3] != icetImageGetHeight(image)) ) {
+            IceTInt valid_offset;
+            IceTInt valid_num;
+            icetRaiseDebug1("Tile returned from strategy: %d\n", valid_tile);
             icetRaiseDebug4("Expected size: %d %d.  Returned size: %d %d",
-                            display_tile_viewport[2], display_tile_viewport[3],
+                            valid_tile_viewport[2], valid_tile_viewport[3],
                             (int)icetImageGetWidth(image),
                             (int)icetImageGetHeight(image));
+            icetGetIntegerv(ICET_VALID_PIXELS_OFFSET, &valid_offset);
+            icetGetIntegerv(ICET_VALID_PIXELS_NUM, &valid_num);
+            icetRaiseDebug2("Reported pixel offset: %d.  Reported pixel count: %d",
+                            valid_offset, valid_num);
             icetRaiseError("Got unexpected image size from strategy.",
                            ICET_SANITY_CHECK_FAIL);
         }
