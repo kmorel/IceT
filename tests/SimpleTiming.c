@@ -849,12 +849,15 @@ static int SimpleTimingDoRender()
                     total_bytes_sent += timing_collection[p].bytes_sent;
                 }
 
-                printf("LOG,%d,%s,%s,%d,%d,%s,%s,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%ld,%lg\n",
+                printf("LOG,%d,%s,%s,%d,%d,%d,%d,%s,%s,%s,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%ld,%lg\n",
                        num_proc,
                        strategy_name,
                        si_strategy_name,
                        g_num_tiles_x,
                        g_num_tiles_y,
+                       SCREEN_WIDTH,
+                       SCREEN_HEIGHT,
+                       g_transparent ? "yes" : "no",
                        g_no_interlace ? "no" : "yes",
                        g_no_collect ? "no" : "yes",
                        frame,
@@ -896,6 +899,9 @@ int SimpleTimingRun()
                "single-image strategy,"
                "tiles x,"
                "tiles y,"
+               "width,"
+               "height,"
+               "transparent,"
                "interlacing,"
                "collection,"
                "frame,"
