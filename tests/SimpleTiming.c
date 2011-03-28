@@ -540,7 +540,7 @@ static void find_composite_order(const IceTDouble *projection,
                                  region_divide region_divisions)
 {
     int num_proc = icetCommSize();
-    IceTInt *process_ranks = malloc(num_proc * sizeof(IceTInt));
+    IceTInt *process_ranks;
     IceTInt my_position;
     int plane_orientations[3];
     region_divide current_divide;
