@@ -491,6 +491,17 @@ static void find_region(int rank,
     }
 }
 
+/* Free a region divide structure. */
+static void free_region_divide(region_divide divisions)
+{
+    region_divide current_division = divisions;
+    while (current_division != NULL) {
+        region_divide next_division = current_division->next;
+        free(current_division);
+        current_division = next_division;
+    }
+}
+
 /* Given the transformation matricies (representing camera position), determine
  * which side of each axis-aligned plane faces the camera.  The results are
  * stored in plane_orientations, which is expected to be an array of size 3.
@@ -543,7 +554,7 @@ static void find_composite_order(const IceTDouble *projection,
                                  region_divide region_divisions)
 {
     int num_proc = icetCommSize();
-    IceTInt *process_ranks = malloc(num_proc * sizeof(IceTInt));
+    IceTInt *process_ranks;
     IceTInt my_position;
     int plane_orientations[3];
     region_divide current_divide;
@@ -877,6 +888,7 @@ static int SimpleTimingDoRender()
         free(timing_collection);
     }
 
+    free_region_divide(region_divisions);
     free(timing_array);
 
     /* This is to prevent a non-root from printing while the root is writing

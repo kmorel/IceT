@@ -55,6 +55,12 @@ IceTState icetStateCreate(void)
     IceTState state;
 
     state = (IceTState)malloc(sizeof(struct IceTStateValue) * ICET_STATE_SIZE);
+    if (state == NULL) {
+        icetRaiseError("Could not allocate memory for state.",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     memset(state, 0, sizeof(struct IceTStateValue) * ICET_STATE_SIZE);
 
     return state;
@@ -506,8 +512,14 @@ static IceTVoid *stateAllocate(IceTEnum pname,
         state[pname].mod_time = icetGetTimeStamp();
         buffer = state[pname].data;
     } else if (num_entries > 0) {
+        stateFree(pname, state);
         /* Create a new buffer. */
         buffer = malloc(STATE_DATA_ALLOCATE(type, num_entries));
+        if (buffer == NULL) {
+            icetRaiseError("Could not allocate memory for state variable.",
+                           ICET_OUT_OF_MEMORY);
+            return NULL;
+        }
 #ifdef ICET_STATE_CHECK_MEM
         /* Skip past padding. */
         buffer = (IceTByte *)buffer + STATE_PADDING_SIZE;
