@@ -126,8 +126,20 @@ static IceTCommRequest create_request(void)
     IceTCommRequest request;
 
     request = (IceTCommRequest)malloc(sizeof(struct IceTCommRequestStruct));
+    if (request == NULL) {
+        icetRaiseError("Could not allocate memory for IceTCommRequest",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     request->magic_number = ICET_MPI_REQUEST_MAGIC_NUMBER;
     request->internals=malloc(sizeof(struct IceTMPICommRequestInternalsStruct));
+    if (request->internals == NULL) {
+        free(request);
+        icetRaiseError("Could not allocate memory for IceTCommRequest",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
 
     setMPIRequest(request, MPI_REQUEST_NULL);
 
@@ -169,6 +181,12 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     MPI_Errhandler eh;
 #endif
 
+    if (comm == NULL) {
+        icetRaiseError("Could not allocate memory for IceTCommunicator.",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     comm->Duplicate = Duplicate;
     comm->Destroy = Destroy;
     comm->Barrier = Barrier;
@@ -184,7 +202,14 @@ IceTCommunicator icetCreateMPICommunicator(MPI_Comm mpi_comm)
     comm->Waitany = Waitany;
     comm->Comm_size = Comm_size;
     comm->Comm_rank = Comm_rank;
+
     comm->data = malloc(sizeof(MPI_Comm));
+    if (comm->data == NULL) {
+        free(comm);
+        icetRaiseError("Could not allocate memory for IceTCommunicator.",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
     MPI_Comm_dup(mpi_comm, (MPI_Comm *)comm->data);
 
 #ifdef BREAK_ON_MPI_ERROR
@@ -409,6 +434,12 @@ static int  Waitany(IceTCommunicator self,
     (void)self;
 
     mpi_requests = malloc(sizeof(MPI_Request)*count);
+    if (mpi_requests == NULL) {
+        icetRaiseError("Could not allocate array for MPI requests.",
+                       ICET_OUT_OF_MEMORY);
+        return -1;
+    }
+
     for (idx = 0; idx < count; idx++) {
         mpi_requests[idx] = getMPIRequest(array_of_requests[idx]);
     }

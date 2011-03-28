@@ -140,8 +140,13 @@ void icetDataReplicationGroupColor(IceTInt color)
     IceTInt size;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
-    allcolors = malloc(sizeof(IceTInt)*num_proc);
-    mygroup = malloc(sizeof(IceTInt)*num_proc);
+
+    /* Just grab two buffers that should be not be used now.  We will be
+       done with them by the time we return from this function. */
+    allcolors = icetGetStateBuffer(ICET_STRATEGY_BUFFER_0,
+                                   sizeof(IceTInt)*num_proc);
+    mygroup = icetGetStateBuffer(ICET_STRATEGY_BUFFER_1,
+                                 sizeof(IceTInt)*num_proc);
 
     icetCommAllgather(&color, 1, ICET_INT, allcolors);
 
@@ -154,9 +159,6 @@ void icetDataReplicationGroupColor(IceTInt color)
     }
 
     icetDataReplicationGroup(size, mygroup);
-
-    free(allcolors);
-    free(mygroup);
 }
 
 static IceTFloat black[] = {0.0f, 0.0f, 0.0f, 0.0f};

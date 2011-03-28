@@ -118,6 +118,8 @@ int  icetAddTile(IceTInt x, IceTInt y, IceTSizeType width, IceTSizeType height,
     icetStateSetIntegerv(ICET_TILE_VIEWPORTS, (num_tiles+1)*4, viewports);
     icetStateSetIntegerv(ICET_GLOBAL_VIEWPORT, 4, gvp);
 
+    free(viewports);
+
     icetGetIntegerv(ICET_TILE_MAX_WIDTH, &max_width);
     max_width = MAX(max_width, (IceTInt)width);
     icetStateSetInteger(ICET_TILE_MAX_WIDTH, max_width);

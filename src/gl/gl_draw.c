@@ -18,9 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static IceTUByte *display_buffer = NULL;
-static IceTSizeType display_buffer_size = 0;
-
 static void setupOpenGLRender(IceTDouble *projection_matrix,
                               IceTDouble *modelview_matrix,
                               IceTFloat *background_color,
@@ -216,11 +213,12 @@ static void displayImage(const IceTImage image)
     glPopMatrix();
 
   /* This could be made more efficient by natively handling all the
-     image formats.  Don't forget to free memory later if necessary. */
+     image formats. */
     if (icetImageGetColorFormat(image) == ICET_IMAGE_COLOR_RGBA_UBYTE) {
         colorBuffer = icetImageGetColorub(image);
     } else {
-        colorBuffer = malloc(4*icetImageGetNumPixels(image));
+        colorBuffer = icetGetStateBuffer(ICET_GL_DISPLAY_BUFFER,
+                                         4*icetImageGetNumPixels(image));
         icetImageCopyColorub(image, colorBuffer,
                              ICET_IMAGE_COLOR_RGBA_UBYTE);
     }
@@ -255,11 +253,6 @@ static void displayImage(const IceTImage image)
                      GL_RGBA, GL_UNSIGNED_BYTE, colorBuffer);
     }
     glPopAttrib();
-
-  /* Delete the color buffer if we had to create our own. */
-    if (icetImageGetColorFormat(image) != ICET_IMAGE_COLOR_RGBA_UBYTE) {
-        free(colorBuffer);
-    }
 }
 
 static void inflateBuffer(IceTUByte *buffer,
@@ -282,6 +275,7 @@ static void inflateBuffer(IceTUByte *buffer,
         IceTSizeType x_div, y_div;
         IceTUByte *last_scanline;
         IceTInt target_width, target_height;
+        IceTVoid *display_buffer;
         int use_textures = icetIsEnabled(ICET_GL_DISPLAY_INFLATE_WITH_HARDWARE);
 
       /* If using hardware, resize to the nearest greater power of two.
@@ -301,12 +295,9 @@ static void inflateBuffer(IceTUByte *buffer,
             target_height = display_height;
         }
 
-      /* Make sure buffer is big enough. */
-        if (display_buffer_size < target_width*target_height) {
-            free(display_buffer);
-            display_buffer_size = target_width*target_height;
-            display_buffer = malloc(4*sizeof(IceTUByte)*display_buffer_size);
-        }
+      /* Allocate buffer for resized image. */
+        display_buffer = icetGetStateBuffer(ICET_GL_INFLATE_BUFFER,
+                                            4*target_width*target_height);
 
       /* This is how we scale the image with integer arithmetic.
        * If a/b = r = a div b + (a mod b)/b then:

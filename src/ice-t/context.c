@@ -31,6 +31,12 @@ IceTContext icetCreateContext(IceTCommunicator comm)
 {
     IceTContext context = malloc(sizeof(struct IceTContextStruct));
 
+    if (context == NULL) {
+        icetRaiseError("Could not allocate memory for IceT context.",
+                       ICET_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     context->magic_number = CONTEXT_MAGIC_NUMBER;
 
     context->communicator = comm->Duplicate(comm);
@@ -83,6 +89,8 @@ void icetDestroyContext(IceTContext context)
   /* The context is now completely destroyed and now null.  Restore saved
      context. */
     icetSetContext(saved_current_context);
+
+    free(context);
 }
 
 IceTContext icetGetContext(void)
