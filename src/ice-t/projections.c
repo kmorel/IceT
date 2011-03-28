@@ -18,28 +18,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-static IceTInt num_tiles = 0;
-static IceTDouble *tile_projections = NULL;
-static IceTTimeStamp viewport_time = (IceTTimeStamp)-1;
-
 
 static void update_tile_projections(void);
 
 void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
 {
+    IceTInt num_tiles;
     const IceTInt *viewports;
+    const IceTDouble *tile_projections;
     IceTInt tile_width, tile_height;
     IceTInt renderable_width, renderable_height;
-    IceTDouble *tile_proj;
+    const IceTDouble *tile_proj;
     IceTDouble tile_viewport_proj[16];
     const IceTDouble *global_proj;
 
   /* Update tile projections. */
-    if (viewport_time != icetStateGetTime(ICET_TILE_VIEWPORTS)) {
-        update_tile_projections();
-        viewport_time = icetStateGetTime(ICET_TILE_VIEWPORTS);
-    }
+    update_tile_projections();
 
+    icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
     if ((tile < 0) || (tile >= num_tiles)) {
         icetRaiseError("Bad tile passed to icetProjectTile.",
                        ICET_INVALID_VALUE);
@@ -51,6 +47,7 @@ void icetProjectTile(IceTInt tile, IceTDouble *mat_out)
     tile_height = viewports[tile*4+3];
     icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &renderable_width);
     icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &renderable_height);
+    tile_projections = icetUnsafeStateGetDouble(ICET_TILE_PROJECTIONS);
 
     tile_proj = tile_projections + 16*tile;
 
@@ -154,17 +151,25 @@ void icetGetViewportProject(IceTInt x, IceTInt y, IceTSizeType width,
 
 static void update_tile_projections(void)
 {
+    IceTInt num_tiles;
     const IceTInt *viewports;
-    int i;
+    IceTDouble *tile_projections;
+    IceTInt tile_idx;
+
+    if (  icetStateGetTime(ICET_TILE_VIEWPORTS)
+        < icetStateGetTime(ICET_TILE_PROJECTIONS) ) {
+        /* Projections already up to date. */
+        return;
+    }
 
     icetGetIntegerv(ICET_NUM_TILES, &num_tiles);
-    free(tile_projections);
-    tile_projections = malloc(num_tiles*16*sizeof(IceTDouble));
+    tile_projections = icetStateAllocateDouble(ICET_TILE_PROJECTIONS,
+                                               num_tiles*16);
     viewports = icetUnsafeStateGetInteger(ICET_TILE_VIEWPORTS);
 
-    for (i = 0; i < num_tiles; i++) {
-        icetGetViewportProject(viewports[i*4+0], viewports[i*4+1],
-                               viewports[i*4+2], viewports[i*4+3],
-                               tile_projections + 16*i);
+    for (tile_idx = 0; tile_idx < num_tiles; tile_idx++) {
+        icetGetViewportProject(viewports[tile_idx*4+0], viewports[tile_idx*4+1],
+                               viewports[tile_idx*4+2], viewports[tile_idx*4+3],
+                               tile_projections + 16*tile_idx);
     }
 }
