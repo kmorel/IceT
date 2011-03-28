@@ -275,7 +275,7 @@ static void inflateBuffer(IceTUByte *buffer,
         IceTSizeType x_div, y_div;
         IceTUByte *last_scanline;
         IceTInt target_width, target_height;
-        IceTVoid *display_buffer;
+        IceTUByte *display_buffer;
         int use_textures = icetIsEnabled(ICET_GL_DISPLAY_INFLATE_WITH_HARDWARE);
 
       /* If using hardware, resize to the nearest greater power of two.
