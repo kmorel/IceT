@@ -1002,6 +1002,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
     IceTInt main_group_rank;
 
     IceTSparseImage working_image = input_image;
+    IceTSizeType original_image_size = icetSparseImageGetNumPixels(input_image);
 
     main_group_size = radixkFindPower2(group_size);
     sub_group_size = group_size - main_group_size;
@@ -1083,10 +1084,9 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
         global_partition = radixkGetFinalPartitionIndex(num_rounds,
                                                         k_array,
                                                         main_group_rank);
-        *piece_offset
-            = icetGetInterlaceOffset(global_partition,
-                                     group_size,
-                                     icetSparseImageGetNumPixels(input_image));
+        *piece_offset = icetGetInterlaceOffset(global_partition,
+                                               main_group_size,
+                                               original_image_size);
     }
 
     return;
@@ -1254,7 +1254,8 @@ ICET_EXPORT IceTBoolean icetRadixTelescopeSendReceiveTest(void)
                     receiver_group_rank = icetFindRankInGroup(main_group,
                                                               main_group_size,
                                                               receiver_rank);
-                    if (receiver_group_rank < 0) {
+                    if (   (receiver_group_rank < 0)
+                        || (main_group_size <= receiver_group_rank)) {
                         printf("Receiver %d for sub group rank %d is %d"
                                " but is not in main group.\n",
                                receiver_idx,
