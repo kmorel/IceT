@@ -20,6 +20,7 @@ SET(MyTests
   CompressionSize.c
   Interlace.c
   OddImageSizes.c
+  RadixkUnitTests.c
   SimpleTiming.c
   SparseImageCopy.c
   )
