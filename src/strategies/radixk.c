@@ -132,8 +132,11 @@ static IceTInt* radixkGetK(IceTInt world_size, IceTInt* num_rounds_p)
 
         /* If that does not work, look for a factor near the magic_k. */
         if (next_k == -1) {
-            IceTInt try_k;
-            BEGIN_PIVOT_FOR(try_k, 2, magic_k, 2*magic_k) {
+            /* All these unsigned ints just get around a compiler warning
+               about a compiler optimization that assumes no signed overflow.
+               Yes, I am aware that all numbers will be positive. */
+            IceTUInt try_k;
+            BEGIN_PIVOT_FOR(try_k, 2, (IceTUInt)magic_k, 2*(IceTUInt)magic_k) {
                 if ((next_divide % try_k) == 0) {
                     next_k = try_k;
                     break;
