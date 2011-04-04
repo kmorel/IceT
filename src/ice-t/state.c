@@ -170,6 +170,21 @@ void icetStateSetDefaults(void)
         icetStateSetInteger(ICET_MAGIC_K, ICET_MAGIC_K_DEFAULT);
     }
 
+    if (getenv("ICET_MAX_IMAGE_SPLIT") != NULL) {
+        IceTInt max_image_split = atoi(getenv("ICET_MAX_IMAGE_SPLIT"));
+        if (max_image_split > 0) {
+            icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
+        } else {
+            icetRaiseError("Environment variable ICET_MAX_IMAGE_SPLIT must be"
+                           " set to an integer greater than 0.",
+                           ICET_INVALID_VALUE);
+            icetStateSetInteger(ICET_MAX_IMAGE_SPLIT,
+                                ICET_MAX_IMAGE_SPLIT_DEFAULT);
+        }
+    } else {
+        icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, ICET_MAX_IMAGE_SPLIT_DEFAULT);
+    }
+
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
     icetStateSetPointer(ICET_RENDER_LAYER_DESTRUCTOR, NULL);
 

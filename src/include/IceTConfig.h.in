@@ -123,7 +123,8 @@ typedef IceTInt64 IceTPointerArithmetic;
 #error "Unexpected pointer size."
 #endif
 
-#define ICET_MAGIC_K_DEFAULT    @ICET_MAGIC_K@
+#define ICET_MAGIC_K_DEFAULT            @ICET_MAGIC_K@
+#define ICET_MAX_IMAGE_SPLIT_DEFAULT    @ICET_MAX_IMAGE_SPLIT@
 
 #cmakedefine ICET_USE_MPE
 
