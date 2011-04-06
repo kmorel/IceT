@@ -57,6 +57,7 @@ typedef struct radixkRoundInfoStruct {
 typedef struct radixkInfoStruct {
     radixkRoundInfo *rounds; /* Array of per round info. */
     IceTInt num_rounds;
+    IceTInt image_dest; /* Group rank for preferred image destination. */
 } radixkInfo;
 
 typedef struct radixkPartnerInfoStruct {
@@ -187,6 +188,8 @@ static radixkInfo radixkGetK(IceTInt compose_group_size,
     IceTInt max_num_k;
     IceTInt next_divide;
 
+    info.image_dest = image_dest;
+
     /* Special case of when compose_group_size == 1. */
     if (compose_group_size < 2) {
         info.rounds = icetGetStateBuffer(RADIXK_FACTORS_ARRAY_BUFFER,
@@ -311,8 +314,16 @@ static IceTInt radixkGetFinalPartitionIndex(const radixkInfo *info)
 
     partition_index = 0;
     for (current_round = 0; current_round < info->num_rounds; current_round++) {
-        partition_index *= info->rounds[current_round].k;
-        partition_index += info->rounds[current_round].partition_index;
+        const radixkRoundInfo *r = &info->rounds[current_round];
+        if (r->split) {
+            partition_index *= r->k;
+            partition_index += r->partition_index;
+        } else if (r->has_image) {
+            /* partition_index does not change */
+        } else {
+            /* local process has no partition */
+            return -1;
+        }
     }
 
     return partition_index;
@@ -365,9 +376,11 @@ static IceTInt radixkGetGroupRankForFinalPartitionIndex(const radixkInfo *info,
     IceTInt current_round;
     IceTInt partition_up_to_round;
     IceTInt group_rank;
+    IceTBoolean has_collect;
 
     partition_up_to_round = partition_index;
     group_rank = 0;
+    has_collect = ICET_FALSE;
     for (current_round = info->num_rounds - 1;
          current_round >= 0;
          current_round--) {
@@ -376,6 +389,32 @@ static IceTInt radixkGetGroupRankForFinalPartitionIndex(const radixkInfo *info,
             const IceTInt k_value = info->rounds[current_round].k;
             group_rank += step * (partition_up_to_round % k_value);
             partition_up_to_round /= k_value;
+        } else {
+            has_collect = ICET_TRUE;
+        }
+    }
+
+    /* The above computation assumes that any collects go to the first process
+       in the round's group.  There is a special case when the image_dest is
+       not rank 0 and this condition is violated.  Check for this condition
+       by seeing what partition index the image_dest uses. */
+    if (has_collect && (info->image_dest != 0)) {
+        IceTInt image_dest_partition_index = 0;
+        for (current_round = 0;
+             current_round < info->num_rounds;
+             current_round++) {
+            const radixkRoundInfo *r = &info->rounds[current_round];
+            if (r->split) {
+                IceTInt local_partition_index
+                    = (info->image_dest / r->step) % r->k;
+                image_dest_partition_index *= r->k;
+                image_dest_partition_index += local_partition_index;
+            }
+        }
+
+        if (image_dest_partition_index == partition_index) {
+            /* The image_dest stole this partition after all. */
+            return info->image_dest;
         }
     }
 
@@ -1356,7 +1395,7 @@ ICET_EXPORT IceTBoolean icetRadixkPartitionLookupUnitTest(void)
         = sizeof(group_sizes_to_try)/sizeof(IceTInt);
     IceTInt group_size_index;
 
-    printf("\nTetsting rank/partition mapping.\n");
+    printf("\nTesting rank/partition mapping.\n");
 
     for (group_size_index = 0;
          group_size_index < num_group_sizes_to_try;
