@@ -666,7 +666,11 @@ IceTVoid *icetGetStateBuffer(IceTEnum pname, IceTSizeType num_bytes)
     if (   (icetStateGetType(pname) == ICET_VOID)
         && (icetStateGetNumEntries(pname) >= num_bytes) ) {
       /* A big enough buffer is already allocated. */
-        return icetUnsafeStateGet(pname, ICET_VOID);
+        IceTVoid *buffer = icetUnsafeStateGet(pname, ICET_VOID);
+#ifdef ICET_STATE_CHECK_MEM
+        memset(buffer, 0xDC, num_bytes);
+#endif
+        return buffer;
     }
 
   /* Check to make sure this state variable has not been used for anything

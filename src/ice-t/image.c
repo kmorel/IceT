@@ -2410,26 +2410,36 @@ static IceTImage getRenderBuffer(void)
     /* Check to see if we are in the same frame as the last time we returned
        this buffer.  In that case, just restore the buffer because it still has
        the image we need. */
-    if (  icetStateGetTime(ICET_RENDER_BUFFER_SIZE)
+    if (  icetStateGetTime(ICET_RENDER_BUFFER_HOLD)
         > icetStateGetTime(ICET_IS_DRAWING_FRAME) ) {
       /* A little bit of hackery: this assumes that a buffer initialized is the
          same one returned from icetImagePackageForSend.  It (currently)
          does. */
         IceTVoid *buffer;
         icetRaiseDebug("Last render should still be good.");
-        buffer = icetGetStateBuffer(ICET_RENDER_BUFFER, 0);
+        icetGetPointerv(ICET_RENDER_BUFFER_HOLD, &buffer);
         return icetImageUnpackageFromReceive(buffer);       
     } else {
         IceTInt dim[2];
+        IceTImage image;
+        IceTVoid *buffer;
+        IceTSizeType dummy_size;
 
         icetGetIntegerv(ICET_PHYSICAL_RENDER_WIDTH, &dim[0]);
         icetGetIntegerv(ICET_PHYSICAL_RENDER_HEIGHT, &dim[1]);
 
-      /* Creating a new image object.  "Touch" the ICET_RENDER_BUFFER_SIZE state
-         variable to signify the time we created the image so the above check
-         works on the next call. */
+        /* Create a new image object. */
+        image = icetGetStateBufferImage(ICET_RENDER_BUFFER, dim[0], dim[1]);
+
+        /* Record image size and pointer to memory.  It is important to "touch"
+           ICET_RENDER_BUFFER_HOLD to signify the time we created the image so
+           that the above check works on the next call. */
+
         icetStateSetIntegerv(ICET_RENDER_BUFFER_SIZE, 2, dim);
 
-        return icetGetStateBufferImage(ICET_RENDER_BUFFER, dim[0], dim[1]);
+        icetImagePackageForSend(image, &buffer, &dummy_size);
+        icetStateSetPointer(ICET_RENDER_BUFFER_HOLD, buffer);
+
+        return image;
     }
 }
