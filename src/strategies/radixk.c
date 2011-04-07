@@ -149,41 +149,52 @@ static void radixkGetPartitionIndices(radixkInfo info,
     global_partition_index = 0;
     image_dest_global_partition_index = 0;
     step = 1;
-    for (current_round = 0; current_round < info.num_rounds; current_round++) {
+    current_round = 0;
+    while (current_round < info.num_rounds) {
         radixkRoundInfo *round_info = &info.rounds[current_round];
         IceTInt next_total_partitions = total_partitions * round_info->k;
+
+        if (max_image_split < next_total_partitions) { break; }
+
+        total_partitions = next_total_partitions;
+        round_info->split = ICET_TRUE;
+        round_info->has_image = ICET_TRUE;
+        round_info->partition_index = (group_rank / step) % round_info->k;
+        round_info->dest_group_rank = -1;
+        global_partition_index *= round_info->k;
+        global_partition_index += round_info->partition_index;
+        image_dest_global_partition_index *= round_info->k;
+        image_dest_global_partition_index
+            += (image_dest / step) % round_info->k;
+        round_info->step = step;
+        step *= round_info->k;
+
+        current_round++;
+    }
+    while (current_round < info.num_rounds) {
+        radixkRoundInfo *round_info = &info.rounds[current_round];
         IceTInt next_step = step * round_info->k;
-        if (next_total_partitions <= max_image_split) {
-            total_partitions = next_total_partitions;
-            round_info->split = ICET_TRUE;
-            round_info->has_image = ICET_TRUE;
-            round_info->partition_index = (group_rank / step) % round_info->k;
-            round_info->dest_group_rank = -1;
-            global_partition_index *= round_info->k;
-            global_partition_index += round_info->partition_index;
-            image_dest_global_partition_index *= round_info->k;
-            image_dest_global_partition_index
-              += (image_dest / step) % round_info->k;
+
+        IceTInt my_round_group_index = group_rank / next_step;
+        IceTInt dest_round_group_index = image_dest / next_step;
+        IceTBoolean same_group
+            = (my_round_group_index == dest_round_group_index);
+        IceTBoolean same_partition
+            = (global_partition_index == image_dest_global_partition_index);
+        if (same_group && same_partition) {
+            /* Round sends partition to image_dest */
+            round_info->dest_group_rank = image_dest;
         } else {
-            IceTInt my_round_group_index = group_rank / next_step;
-            IceTInt dest_round_group_index = image_dest / next_step;
-            IceTBoolean same_group
-                = (my_round_group_index == dest_round_group_index);
-            IceTBoolean same_partition
-                = (global_partition_index == image_dest_global_partition_index);
-            if (same_group && same_partition) {
-                /* Round sends partition to image_dest */
-                round_info->dest_group_rank = image_dest;
-            } else {
-                /* Image dest not in round group.  Send to lowest rank. */
-                round_info->dest_group_rank = group_rank % step;
-            }
-            round_info->split = ICET_FALSE;
-            round_info->has_image = (group_rank == round_info->dest_group_rank);
-            round_info->partition_index = -1;
+            /* Image dest not in round group.  Send to lowest rank. */
+            round_info->dest_group_rank = group_rank % step;
         }
+        round_info->split = ICET_FALSE;
+        round_info->has_image = (group_rank == round_info->dest_group_rank);
+        round_info->partition_index = -1;
         round_info->step = step;
         step = next_step;
+
+        current_round++;
     }
 
 }
@@ -1527,7 +1538,7 @@ ICET_EXPORT IceTBoolean icetRadixTelescopeSendReceiveTest(void)
 
     printf("\nTesting send/receive of telescope groups.\n");
 
-    for (main_group_size = 2; main_group_size <= 256; main_group_size *= 2) {
+    for (main_group_size = 2; main_group_size <= 512; main_group_size *= 2) {
         IceTInt *main_group = malloc(main_group_size * sizeof(IceTInt));
         IceTInt main_group_idx;
         IceTInt sub_group_size;
