@@ -1420,12 +1420,18 @@ ICET_EXPORT IceTBoolean icetRadixkPartitionLookupUnitTest(void)
              max_image_split/2 < group_size;
              max_image_split *= 2) {
             IceTInt image_dest;
+            IceTInt image_dest_last;
+            IceTInt image_dest_next;
 
             icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
 
             printf("  Maximum num splits set to %d\n", max_image_split);
 
-            for (image_dest = 0; image_dest < group_size; image_dest++) {
+            for (image_dest = 0, image_dest_last = 1;
+                 image_dest < group_size;
+                 image_dest_next = image_dest_last + image_dest,
+                     image_dest_last = image_dest,
+                     image_dest = image_dest_next) {
                 printf("    Image dest set to %d\n", image_dest);
 
                 if (!radixkTryPartitionLookup(group_size, image_dest)) {
@@ -1521,7 +1527,7 @@ ICET_EXPORT IceTBoolean icetRadixTelescopeSendReceiveTest(void)
 
     printf("\nTesting send/receive of telescope groups.\n");
 
-    for (main_group_size = 2; main_group_size <= 1024; main_group_size *= 2) {
+    for (main_group_size = 2; main_group_size <= 256; main_group_size *= 2) {
         IceTInt *main_group = malloc(main_group_size * sizeof(IceTInt));
         IceTInt main_group_idx;
         IceTInt sub_group_size;
@@ -1551,26 +1557,32 @@ ICET_EXPORT IceTBoolean icetRadixTelescopeSendReceiveTest(void)
                 sub_group[sub_group_idx] = SUB_GROUP_RANK(sub_group_idx);
             }
 
-            for (max_image_split = 0;
+            for (max_image_split = 1;
                  max_image_split <= main_group_size;
                  max_image_split *= 2) {
                 IceTInt image_dest;
+                IceTInt image_dest_last;
+                IceTInt image_dest_next;
 
                 printf("    Max image split %d\n", max_image_split);
 
                 icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
 
-                /* for (image_dest = 0; image_dest < main_group_size; image_dest++) */
-                /* { */
-                /*     IceTBoolean result */
-                /*         = radixkTryTelescopeSendReceive(main_group, */
-                /*                                         main_group_size, */
-                /*                                         sub_group, */
-                /*                                         sub_group_size, */
-                /*                                         image_dest); */
+                for (image_dest = 0, image_dest_last = 1;
+                     image_dest < main_group_size;
+                     image_dest_next = image_dest_last + image_dest,
+                         image_dest_last = image_dest,
+                         image_dest = image_dest_next) {
+                    IceTBoolean result;
+                    printf("      Image dest set to %d\n", image_dest);
+                    result = radixkTryTelescopeSendReceive(main_group,
+                                                           main_group_size,
+                                                           sub_group,
+                                                           sub_group_size,
+                                                           image_dest);
 
-                /*     if (!result) { return ICET_FALSE; } */
-                /* } */
+                    if (!result) { return ICET_FALSE; }
+                }
             }
 
             free(sub_group);
