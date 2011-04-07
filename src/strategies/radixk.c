@@ -190,7 +190,7 @@ static void radixkGetPartitionIndices(radixkInfo info,
         }
         round_info->split = ICET_FALSE;
         round_info->has_image = (group_rank == round_info->dest_group_rank);
-        round_info->partition_index = -1;
+        round_info->partition_index = (group_rank / step) % round_info->k;
         round_info->step = step;
         step = next_step;
 
