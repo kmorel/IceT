@@ -470,7 +470,6 @@ static radixkPartnerInfo *radixkGetPartners(const radixkRoundInfo *round_info,
 {
     const IceTInt current_k = round_info->k;
     const IceTInt step = round_info->step;
-    const IceTInt partition_index = round_info->partition_index;
     radixkPartnerInfo *partners;
     IceTBoolean receiving_data;
     IceTBoolean sending_data;
@@ -511,7 +510,7 @@ static radixkPartnerInfo *radixkGetPartners(const radixkRoundInfo *round_info,
         send_buf_pool = NULL;
     }
 
-    first_partner_group_rank = group_rank - partition_index * step;
+    first_partner_group_rank = group_rank % step;
     for (i = 0; i < current_k; i++) {
         radixkPartnerInfo *p = &partners[i];
         IceTInt partner_group_rank = first_partner_group_rank + i*step;
