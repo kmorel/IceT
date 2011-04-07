@@ -660,7 +660,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
                                            sizeof(IceTCommRequest));
         if (round_info->has_image) {
             send_requests[0] = ICET_COMM_REQUEST_NULL;
-            p->receiveImage = image;
+            p->receiveImage = p->sendImage = image;
             p->offset = start_offset;
             p->compositeLevel = 0;
         } else {
