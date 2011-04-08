@@ -1320,7 +1320,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
 
     /* If we interlaced the image and are actually returning something,
        correct the offset. */
-    if (use_interlace && !icetSparseImageIsNull(*result_image)) {
+    if (use_interlace && (0 < icetSparseImageGetNumPixels(*result_image))) {
         radixkInfo info;
         IceTInt global_partition;
 
