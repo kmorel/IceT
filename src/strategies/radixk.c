@@ -511,7 +511,8 @@ static radixkPartnerInfo *radixkGetPartners(const radixkRoundInfo *round_info,
         send_buf_pool = NULL;
     }
 
-    first_partner_group_rank = group_rank % step;
+    first_partner_group_rank
+        = group_rank % step + (group_rank/(step*current_k))*(step*current_k);
     for (i = 0; i < current_k; i++) {
         radixkPartnerInfo *p = &partners[i];
         IceTInt partner_group_rank = first_partner_group_rank + i*step;
