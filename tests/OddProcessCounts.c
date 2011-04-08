@@ -197,9 +197,9 @@ static int OddProcessCountsTryCount(void)
                              -1.0, 1.0);
         } else {
             /* Outside of visible range. */
-            icetBoundingBoxd(-100000.0, 100000.0,
-                             -100000.0, 100000.0,
-                             -100000.0, 100000.0);
+            icetBoundingBoxd(100000.0, 100001.0,
+                             100000.0, 100001.0,
+                             100000.0, 100001.0);
         }
 
         result = OddProcessCountsTryStrategy();
