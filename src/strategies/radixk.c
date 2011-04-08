@@ -184,14 +184,14 @@ static void radixkGetPartitionIndices(radixkInfo info,
         if (same_group && same_partition) {
             /* Round sends partition to image_dest */
             round_info->dest_partner = (image_dest/step) % round_info->k;
-            round_info->has_image = (group_rank == image_dest);
         } else {
             /* Image dest not in round group.  Send to lowest rank. */
             round_info->dest_partner = 0;
-            round_info->has_image = (group_rank == 0);
         }
         round_info->split = ICET_FALSE;
         round_info->partition_index = (group_rank / step) % round_info->k;
+        round_info->has_image
+            = (round_info->partition_index == round_info->dest_partner);
         round_info->step = step;
         step = next_step;
 
@@ -913,6 +913,8 @@ static radixkInfo icetRadixkBasicCompose(const IceTInt *compose_group,
         my_offset = partners[round_info->partition_index].offset;
         if (round_info->split) {
             remaining_partitions /= round_info->k;
+        } else if (!round_info->has_image) {
+            break;
         }
     } /* for all rounds */
 
