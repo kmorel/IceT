@@ -832,14 +832,14 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
     }
 }
 
-static void icetRadixkBasicCompose(const IceTInt *compose_group,
-                                   IceTInt group_size,
-                                   IceTInt total_num_partitions,
-                                   IceTInt image_dest,
-                                   IceTSparseImage working_image,
-                                   IceTSizeType *piece_offset)
+static radixkInfo icetRadixkBasicCompose(const IceTInt *compose_group,
+                                         IceTInt group_size,
+                                         IceTInt total_num_partitions,
+                                         IceTInt image_dest,
+                                         IceTSparseImage working_image,
+                                         IceTSizeType *piece_offset)
 {
-    radixkInfo info;
+    radixkInfo info = { NULL, 0, image_dest };
 
     IceTSizeType my_offset;
     IceTInt current_round;
@@ -851,14 +851,14 @@ static void icetRadixkBasicCompose(const IceTInt *compose_group,
         icetRaiseError("Local process not in compose_group?",
                        ICET_SANITY_CHECK_FAIL);
         *piece_offset = 0;
-        return;
+        return info;
     }
 
     if (group_size == 1) {
         /* I am the only process in the group.  No compositing to be done.
          * Just return and the image will be complete. */
         *piece_offset = 0;
-        return;
+        return info;
     }
 
     info = radixkGetK(group_size, group_rank, image_dest);
@@ -918,7 +918,7 @@ static void icetRadixkBasicCompose(const IceTInt *compose_group,
 
     *piece_offset = my_offset;
 
-    return;
+    return info;
 }
 
 static IceTInt icetRadixkTelescopeFindUpperGroupSender(
@@ -1007,26 +1007,28 @@ static void icetRadixkTelescopeFindLowerGroupReceivers(
     *num_receivers_p = num_receivers;
 }
 
-static void icetRadixkTelescopeComposeReceive(const IceTInt *my_group,
-                                              IceTInt my_group_size,
-                                              const IceTInt *upper_group,
-                                              IceTInt upper_group_size,
-                                              IceTInt total_num_partitions,
-                                              IceTInt image_dest,
-                                              IceTBoolean local_in_front,
-                                              IceTSparseImage input_image,
-                                              IceTSparseImage *result_image,
-                                              IceTSizeType *piece_offset)
+static radixkInfo icetRadixkTelescopeComposeReceive(
+                                                  const IceTInt *my_group,
+                                                  IceTInt my_group_size,
+                                                  const IceTInt *upper_group,
+                                                  IceTInt upper_group_size,
+                                                  IceTInt total_num_partitions,
+                                                  IceTInt image_dest,
+                                                  IceTBoolean local_in_front,
+                                                  IceTSparseImage input_image,
+                                                  IceTSparseImage *result_image,
+                                                  IceTSizeType *piece_offset)
 {
     IceTSparseImage working_image = input_image;
+    radixkInfo info;
 
     /* Start with the basic compose of my group. */
-    icetRadixkBasicCompose(my_group,
-                           my_group_size,
-                           total_num_partitions,
-                           image_dest,
-                           working_image,
-                           piece_offset);
+    info = icetRadixkBasicCompose(my_group,
+                                  my_group_size,
+                                  total_num_partitions,
+                                  image_dest,
+                                  working_image,
+                                  piece_offset);
 
     /* Collect image from upper group. */
     if (upper_group_size > 0) {
@@ -1079,6 +1081,8 @@ static void icetRadixkTelescopeComposeReceive(const IceTInt *my_group,
     } else {
         *result_image = working_image;
     }
+
+    return info;
 }
 
 static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
@@ -1117,18 +1121,21 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
         IceTInt *piece_offsets;
         IceTSparseImage *image_pieces;
         IceTInt receiver_idx;
+        IceTInt num_local_partitions;
         IceTCommRequest *send_requests;
+        radixkInfo info;
 
-        icetRadixkTelescopeComposeReceive(main_group,
-                                          main_group_size,
-                                          sub_group,
-                                          sub_group_size,
-                                          total_num_partitions,
-                                          0,
-                                          main_in_front,
-                                          input_image,
-                                          &working_image,
-                                          &piece_offset);
+        info = icetRadixkTelescopeComposeReceive(main_group,
+                                                 main_group_size,
+                                                 sub_group,
+                                                 sub_group_size,
+                                                 total_num_partitions,
+                                                 0,
+                                                 main_in_front,
+                                                 input_image,
+                                                 &working_image,
+                                                 &piece_offset);
+        num_local_partitions = radixkGetTotalNumPartitions(&info);
 
         icetRadixkTelescopeFindLowerGroupReceivers(lower_group,
                                                    lower_group_size,
@@ -1141,7 +1148,7 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
         partition_num_pixels = icetSparseImageSplitPartitionNumPixels(
                                      icetSparseImageGetNumPixels(working_image),
                                      num_receivers,
-                                     total_num_partitions/main_group_size);
+                                     total_num_partitions/num_local_partitions);
         sparse_image_size = icetSparseImageBufferSize(partition_num_pixels, 1);
         send_buf_pool = icetGetStateBuffer(RADIXK_SEND_BUFFER,
                                            sparse_image_size * num_receivers);
@@ -1159,12 +1166,16 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                               partition_num_pixels, 1);
         }
 
-        icetSparseImageSplit(working_image,
-                             piece_offset,
-                             num_receivers,
-                             total_num_partitions/main_group_size,
-                             image_pieces,
-                             piece_offsets);
+        if (num_receivers > 1) {
+            icetSparseImageSplit(working_image,
+                                 piece_offset,
+                                 num_receivers,
+                                 total_num_partitions/num_local_partitions,
+                                 image_pieces,
+                                 piece_offsets);
+        } else {
+            image_pieces[0] = working_image;
+        }
 
         send_requests
             = icetGetStateBuffer(RADIXK_SEND_REQUEST_BUFFER,
@@ -1273,7 +1284,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
                                           main_group_size,
                                           sub_group,
                                           sub_group_size,
-                                          main_group_size,
+                                          total_num_partitions,
                                           main_group_image_dest,
                                           main_in_front,
                                           working_image,
@@ -1285,7 +1296,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
                                        main_group_size,
                                        sub_group,
                                        sub_group_size,
-                                       main_group_size,
+                                       total_num_partitions,
                                        main_group_image_dest,
                                        working_image);
         *result_image = icetSparseImageNull();
