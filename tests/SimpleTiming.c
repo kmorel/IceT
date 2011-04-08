@@ -90,6 +90,8 @@ static IceTEnum g_strategy;
 static IceTEnum g_single_image_strategy;
 static IceTBoolean g_do_magic_k_study;
 static IceTInt g_max_magic_k;
+static IceTBoolean g_do_image_split_study;
+static IceTInt g_min_image_split;
 
 static float g_color[4];
 
@@ -97,24 +99,26 @@ static void usage(char *argv[])
 {
     printf("\nUSAGE: %s [testargs]\n", argv[0]);
     printf("\nWhere  testargs are:\n");
-    printf("  -tilesx <num>  Sets the number of tiles horizontal (default 1).\n");
-    printf("  -tilesy <num>  Sets the number of tiles vertical (default 1).\n");
-    printf("  -frames        Sets the number of frames to render (default 2).\n");
-    printf("  -seed <num>    Use the given number as the random seed.\n");
-    printf("  -transparent   Render transparent images.  (Uses 4 floats for colors.)\n");
+    printf("  -tilesx <num> Sets the number of tiles horizontal (default 1).\n");
+    printf("  -tilesy <num> Sets the number of tiles vertical (default 1).\n");
+    printf("  -frames       Sets the number of frames to render (default 2).\n");
+    printf("  -seed <num>   Use the given number as the random seed.\n");
+    printf("  -transparent  Render transparent images.  (Uses 4 floats for colors.)\n");
     printf("  -colored-background Use a color for the background and correct as necessary.\n");
-    printf("  -no-interlace  Turn off the image interlacing optimization.\n");
-    printf("  -no-collect    Turn off image collection.\n");
-    printf("  -sync-render   Synchronize rendering by adding a barrier to the draw callback.\n");
-    printf("  -write-image   Write an image on the first frame.\n");
-    printf("  -reduce        Use the reduce strategy (default).\n");
-    printf("  -vtree         Use the virtual trees strategy.\n");
-    printf("  -sequential    Use the sequential strategy.\n");
-    printf("  -bswap         Use the binary-swap single-image strategy.\n");
-    printf("  -radixk        Use the radix-k single-image strategy.\n");
-    printf("  -tree          Use the tree single-image strategy.\n");
-    printf("  -magic-k-study Use the radix-k single-image strategy and repeate for multiple\n"
-           "                 values of k.\n");
+    printf("  -no-interlace Turn off the image interlacing optimization.\n");
+    printf("  -no-collect   Turn off image collection.\n");
+    printf("  -sync-render  Synchronize rendering by adding a barrier to the draw callback.\n");
+    printf("  -write-image  Write an image on the first frame.\n");
+    printf("  -reduce       Use the reduce strategy (default).\n");
+    printf("  -vtree        Use the virtual trees strategy.\n");
+    printf("  -sequential   Use the sequential strategy.\n");
+    printf("  -bswap        Use the binary-swap single-image strategy.\n");
+    printf("  -radixk       Use the radix-k single-image strategy.\n");
+    printf("  -tree         Use the tree single-image strategy.\n");
+    printf("  -magic-k-study <num> Use the radix-k single-image strategy and repeat for\n"
+           "                multiple values of k, up to <num>, doubling each time.\n");
+    printf("  -max-image-split-study <num> Repeat the test for multiple maximum image\n"
+           "                splits starting at <num> and doubling each time.\n");
     printf("  -h, -help      Print this help message.\n");
     printf("\nFor general testing options, try -h or -help before test name.\n");
 }
@@ -137,6 +141,8 @@ static void parse_arguments(int argc, char *argv[])
     g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_AUTOMATIC;
     g_do_magic_k_study = ICET_FALSE;
     g_max_magic_k = 0;
+    g_do_image_split_study = ICET_FALSE;
+    g_min_image_split = 0;
 
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-tilesx") == 0) {
@@ -180,6 +186,11 @@ static void parse_arguments(int argc, char *argv[])
             g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
             arg++;
             g_max_magic_k = atoi(argv[arg]);
+        } else if (strcmp(argv[arg], "-max-image-split-study") == 0) {
+            g_do_image_split_study = ICET_TRUE;
+            g_single_image_strategy = ICET_SINGLE_IMAGE_STRATEGY_RADIXK;
+            arg++;
+            g_min_image_split = atoi(argv[arg]);
         } else if (   (strcmp(argv[arg], "-h") == 0)
                    || (strcmp(argv[arg], "-help")) ) {
             usage(argv);
@@ -816,6 +827,7 @@ static int SimpleTimingDoRender()
         timings_type *timing_collection = malloc(num_proc*sizeof(timings_type));
         const char *strategy_name;
         const char *si_strategy_name;
+        IceTInt max_image_split;
 
         strategy_name = icetGetStrategyName();
         if (g_single_image_strategy == ICET_SINGLE_IMAGE_STRATEGY_RADIXK) {
@@ -828,6 +840,8 @@ static int SimpleTimingDoRender()
         } else {
             si_strategy_name = icetGetSingleImageStrategyName();
         }
+
+        icetGetIntegerv(ICET_MAX_IMAGE_SPLIT, &max_image_split);
 
         for (frame = 0; frame < g_num_frames; frame++) {
             timings_type *timing = &timing_array[frame];
@@ -857,7 +871,7 @@ static int SimpleTimingDoRender()
                     total_bytes_sent += timing_collection[p].bytes_sent;
                 }
 
-                printf("LOG,%d,%s,%s,%d,%d,%d,%d,%s,%s,%s,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%ld,%lg\n",
+                printf("LOG,%d,%s,%s,%d,%d,%d,%d,%s,%s,%s,%d,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%ld,%lg\n",
                        num_proc,
                        strategy_name,
                        si_strategy_name,
@@ -868,6 +882,7 @@ static int SimpleTimingDoRender()
                        g_transparent ? "yes" : "no",
                        g_no_interlace ? "no" : "yes",
                        g_no_collect ? "no" : "yes",
+                       max_image_split,
                        frame,
                        timing->render_time,
                        timing->buffer_read_time,
@@ -913,6 +928,7 @@ int SimpleTimingRun()
                "transparent,"
                "interlacing,"
                "collection,"
+               "max image split,"
                "frame,"
                "render time,"
                "buffer read time,"
@@ -937,6 +953,42 @@ int SimpleTimingRun()
 
             /* This is a bit hackish.  The magic k value is set when the IceT
                context is initialized.  Thus, for the environment to take
+               effect, we need to make a new context.  (Another benefit:
+               resetting buffers.)  To make a new context, we need to get the
+               communiator. */
+            {
+                IceTCommunicator comm = icetGetCommunicator();
+                icetCreateContext(comm);
+            }
+
+            retval = SimpleTimingDoRender();
+
+            /* We no longer need the context we just created. */
+            icetDestroyContext(icetGetContext());
+            icetSetContext(original_context);
+
+            if (retval != TEST_PASSED) { return retval; }
+        }
+        return TEST_PASSED;
+    } else if (g_do_image_split_study) {
+        IceTContext original_context = icetGetContext();
+        IceTInt num_proc;
+        IceTInt magic_k;
+        IceTInt image_split;
+
+        icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+        icetGetIntegerv(ICET_MAGIC_K, &magic_k);
+
+        for (image_split = g_min_image_split;
+             image_split/magic_k < num_proc;
+             image_split *= magic_k) {
+            char image_split_string[32];
+            int retval;
+            sprintf(image_split_string, "%d", image_split);
+            setenv("ICET_MAX_IMAGE_SPLIT", image_split_string, ICET_TRUE);
+
+            /* This is a bit hackish.  The max image split value is set when the
+               IceT context is initialized.  Thus, for the environment to take
                effect, we need to make a new context.  (Another benefit:
                resetting buffers.)  To make a new context, we need to get the
                communiator. */
