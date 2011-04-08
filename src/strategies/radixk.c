@@ -769,7 +769,6 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
 
     /* If not receiving an image, return right away. */
     if ((!round_info->split) && (!round_info->has_image)) {
-        icetSparseImageSetDimensions(image, 0, 0);
         return;
     }
 
@@ -915,6 +914,7 @@ static radixkInfo icetRadixkBasicCompose(const IceTInt *compose_group,
         if (round_info->split) {
             remaining_partitions /= round_info->k;
         } else if (!round_info->has_image) {
+            icetSparseImageSetDimensions(working_image, 0, 0);
             break;
         }
     } /* for all rounds */
