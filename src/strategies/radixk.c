@@ -1020,6 +1020,7 @@ static radixkInfo icetRadixkTelescopeComposeReceive(
                                                   IceTSizeType *piece_offset)
 {
     IceTSparseImage working_image = input_image;
+    IceTInt upper_sender;
     radixkInfo info;
 
     /* Start with the basic compose of my group. */
@@ -1030,20 +1031,23 @@ static radixkInfo icetRadixkTelescopeComposeReceive(
                                   working_image,
                                   piece_offset);
 
-    /* Collect image from upper group. */
-    if (upper_group_size > 0) {
-        IceTInt upper_sender;
-        IceTVoid *incoming_image_buffer;
-        IceTSparseImage incoming_image;
-        IceTSparseImage composited_image;
-        IceTSizeType sparse_image_size;
-
+    if (0 < upper_group_size) {
         upper_sender
             = icetRadixkTelescopeFindUpperGroupSender(my_group,
                                                       my_group_size,
                                                       upper_group,
                                                       upper_group_size,
                                                       image_dest);
+    } else {
+        upper_sender = -1;
+    }
+
+    /* Collect image from upper group. */
+    if (0 <= upper_sender) {
+        IceTVoid *incoming_image_buffer;
+        IceTSparseImage incoming_image;
+        IceTSparseImage composited_image;
+        IceTSizeType sparse_image_size;
 
         sparse_image_size = icetSparseImageBufferSize(
                                  icetSparseImageGetNumPixels(working_image), 1);
