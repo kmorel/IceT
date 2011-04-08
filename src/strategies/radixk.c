@@ -51,7 +51,7 @@ typedef struct radixkRoundInfoStruct {
     IceTBoolean split; /* True if image should be split and divided. */
     IceTBoolean has_image; /* True if local process collects image data this round. */
     IceTInt partition_index; /* Index of partition at this round (if has_image true). */
-    IceTInt dest_group_rank; /* Destination of images (if has_image false). */
+    IceTInt dest_partner; /* Destination of images (if has_image false). */
 } radixkRoundInfo;
 
 typedef struct radixkInfoStruct {
@@ -160,7 +160,7 @@ static void radixkGetPartitionIndices(radixkInfo info,
         round_info->split = ICET_TRUE;
         round_info->has_image = ICET_TRUE;
         round_info->partition_index = (group_rank / step) % round_info->k;
-        round_info->dest_group_rank = -1;
+        round_info->dest_partner = -1;
         global_partition_index *= round_info->k;
         global_partition_index += round_info->partition_index;
         image_dest_global_partition_index *= round_info->k;
@@ -183,13 +183,14 @@ static void radixkGetPartitionIndices(radixkInfo info,
             = (global_partition_index == image_dest_global_partition_index);
         if (same_group && same_partition) {
             /* Round sends partition to image_dest */
-            round_info->dest_group_rank = image_dest;
+            round_info->dest_partner = (image_dest/step) % round_info->k;
+            round_info->has_image = (group_rank == image_dest);
         } else {
             /* Image dest not in round group.  Send to lowest rank. */
-            round_info->dest_group_rank = group_rank % step;
+            round_info->dest_partner = 0;
+            round_info->has_image = (group_rank == 0);
         }
         round_info->split = ICET_FALSE;
-        round_info->has_image = (group_rank == round_info->dest_group_rank);
         round_info->partition_index = (group_rank / step) % round_info->k;
         round_info->step = step;
         step = next_step;
@@ -665,13 +666,14 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
         } else {
             IceTVoid *package_buffer;
             IceTSizeType package_size;
+            IceTInt recv_rank = partners[round_info->dest_partner].rank;
 
             icetSparseImagePackageForSend(image,&package_buffer,&package_size);
 
             send_requests[0] = icetCommIsend(package_buffer,
                                              package_size,
                                              ICET_BYTE,
-                                             p->rank,
+                                             recv_rank,
                                              tag);
 
             p->offset = 0;
