@@ -566,10 +566,14 @@ static IceTCommRequest *radixkPostReceives(radixkPartnerInfo *partners,
     receive_requests =icetGetStateBuffer(RADIXK_RECEIVE_REQUEST_BUFFER,
                                          round_info->k*sizeof(IceTCommRequest));
 
-    partition_num_pixels
-      = icetSparseImageSplitPartitionNumPixels(start_size,
-                                               round_info->k,
-                                               remaining_partitions);
+    if (round_info->split) {
+        partition_num_pixels
+            = icetSparseImageSplitPartitionNumPixels(start_size,
+                                                     round_info->k,
+                                                     remaining_partitions);
+    } else {
+        partition_num_pixels = start_size;
+    }
     sparse_image_size = icetSparseImageBufferSize(partition_num_pixels, 1);
 
     tag = RADIXK_SWAP_IMAGE_TAG_START + current_round;
