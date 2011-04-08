@@ -1241,6 +1241,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
     IceTBoolean use_interlace;
     IceTInt main_group_rank;
     IceTInt total_num_partitions;
+    IceTInt save_max_image_split;
 
     IceTSparseImage working_image = input_image;
     IceTSizeType original_image_size = icetSparseImageGetNumPixels(input_image);
@@ -1270,6 +1271,14 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
         total_num_partitions = radixkGetTotalNumPartitions(&info);
     }
 
+    /* This is a corner case I found.  It is possible for the main group to have
+       a smaller number of partitions than the sub group when the sub group
+       causes a smaller k in the last room that fits within the max image split.
+       To prevent this from happening, temporarily set the max image split to
+       the total number of partitions we know we are using. */
+    icetGetIntegerv(ICET_MAX_IMAGE_SPLIT, &save_max_image_split);
+    icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, total_num_partitions);
+
     /* Since we know the number of final pieces we will create, now is a good
        place to interlace the image (and then later adjust the offset. */
     {
@@ -1277,7 +1286,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
         use_interlace = icetIsEnabled(ICET_INTERLACE_IMAGES);
 
         icetGetIntegerv(ICET_MAGIC_K, &magic_k);
-        use_interlace &= total_num_partitions > magic_k;
+        use_interlace &= (total_num_partitions > magic_k);
     }
 
     if (use_interlace) {
@@ -1306,7 +1315,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
                                           result_image,
                                           piece_offset);
     } else {
-        /* In the sub group. */
+        /* In the sub group. */\
         icetRadixkTelescopeComposeSend(main_group,
                                        main_group_size,
                                        sub_group,
@@ -1317,6 +1326,9 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
         *result_image = icetSparseImageNull();
         *piece_offset = 0;
     }
+
+    /* Restore the true image split. */
+    icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, save_max_image_split);
 
     /* If we interlaced the image and are actually returning something,
        correct the offset. */
