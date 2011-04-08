@@ -1152,10 +1152,18 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                                    &receiver_ranks,
                                                    &num_receivers);
 
-        partition_num_pixels = icetSparseImageSplitPartitionNumPixels(
+        if (num_receivers > 1) {
+            partition_num_pixels = icetSparseImageSplitPartitionNumPixels(
                                      icetSparseImageGetNumPixels(working_image),
                                      num_receivers,
                                      total_num_partitions/num_local_partitions);
+        } else if (num_receivers == 1) {
+            partition_num_pixels = icetSparseImageGetNumPixels(working_image);
+        } else { /* num_receivers == 0 */
+            /* Nothing to send.  Quit. */
+            return;
+        }
+
         sparse_image_size = icetSparseImageBufferSize(partition_num_pixels, 1);
         send_buf_pool = icetGetStateBuffer(RADIXK_SEND_BUFFER,
                                            sparse_image_size * num_receivers);
