@@ -13,6 +13,7 @@
 #include "test_codes.h"
 #include "test-util.h"
 
+#include <IceTDevCommunication.h>
 #include <IceTDevState.h>
 
 #include <stdlib.h>
@@ -79,6 +80,8 @@ static int OddProcessCountsTryFrame(void)
     /* For now, just invoke a frame and see if it crashes.  May want to
        check for image correctness later. */
     icetDrawFrame(identity, identity, black);
+
+    icetCommBarrier();
 
     return TEST_PASSED;
 }
@@ -187,7 +190,7 @@ static int OddProcessCountsTryCount(void)
             printf("  Using %d processes\n", num_proc);
         }
 
-        if (rank < num_proc) {
+        if ((max_proc - rank) <= num_proc) {
             /* In visible range. */
             icetBoundingBoxd(-1.0, 1.0,
                              -1.0, 1.0,
@@ -221,7 +224,7 @@ static int OddProcessCountsRun(void)
     icetDrawCallback(draw);
 
     icetResetTiles();
-    icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+    icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, num_proc-1);
 
     return OddProcessCountsTryCount();
 }
