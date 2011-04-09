@@ -26,7 +26,6 @@ static void draw(const IceTDouble *projection_matrix,
                  IceTImage result)
 {
     IceTUByte *color_buffer;
-    IceTFloat *depth_buffer;
     IceTSizeType num_pixels;
     IceTSizeType i;
 
@@ -41,11 +40,6 @@ static void draw(const IceTDouble *projection_matrix,
     color_buffer = icetImageGetColorub(result);
     for (i = 0; i < num_pixels*4; i++) {
         color_buffer[i] = 255;
-    }
-
-    depth_buffer = icetImageGetDepthf(result);
-    for (i = 0; i < num_pixels; i++) {
-        depth_buffer[i] = 0.5f;
     }
 }
 
@@ -218,13 +212,28 @@ static int OddProcessCountsTryCount(void)
 static int OddProcessCountsRun(void)
 {
     IceTInt num_proc;
+    IceTInt *process_ranks;
+    IceTInt proc;
 
     icetGetIntegerv(ICET_NUM_PROCESSES, &num_proc);
+
+    icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
+    icetDisable(ICET_CORRECT_COLORED_BACKGROUND);
 
     icetDrawCallback(draw);
 
     icetResetTiles();
     icetAddTile(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, num_proc-1);
+
+    process_ranks = malloc(num_proc * sizeof(IceTInt));
+    for (proc = 0; proc < num_proc; proc++) {
+        process_ranks[proc] = proc;
+    }
+    icetEnable(ICET_ORDERED_COMPOSITE);
+    icetCompositeOrder(process_ranks);
+    free(process_ranks);
 
     return OddProcessCountsTryCount();
 }
