@@ -51,13 +51,11 @@ typedef struct radixkRoundInfoStruct {
     IceTBoolean split; /* True if image should be split and divided. */
     IceTBoolean has_image; /* True if local process collects image data this round. */
     IceTInt partition_index; /* Index of partition at this round (if has_image true). */
-    IceTInt dest_partner; /* Destination of images (if has_image false). */
 } radixkRoundInfo;
 
 typedef struct radixkInfoStruct {
     radixkRoundInfo *rounds; /* Array of per round info. */
     IceTInt num_rounds;
-    IceTInt image_dest; /* Group rank for preferred image destination. */
 } radixkInfo;
 
 typedef struct radixkPartnerInfoStruct {
@@ -126,28 +124,22 @@ static void radixkSwapImages(IceTSparseImage *image1, IceTSparseImage *image2)
    inputs:
      info: holds the number of rounds and k values for each round
      group_rank: my rank in composite order (compose_group in icetRadixkCompose)
-     image_dest: the group rank of the preferred location of image pixels
 
    outputs:
      fills info with split, has_image, and partition_index for each round.
 */
 static void radixkGetPartitionIndices(radixkInfo info,
-                                      IceTInt group_rank,
-                                      IceTInt image_dest)
+                                      IceTInt group_rank)
 {
 
     IceTInt step; /* step size in rank for a lattice direction */
     IceTInt total_partitions;
-    IceTInt global_partition_index;
-    IceTInt image_dest_global_partition_index;
     IceTInt current_round;
     IceTInt max_image_split;
 
     icetGetIntegerv(ICET_MAX_IMAGE_SPLIT, &max_image_split);
 
     total_partitions = 1;
-    global_partition_index = 0;
-    image_dest_global_partition_index = 0;
     step = 1;
     current_round = 0;
     while (current_round < info.num_rounds) {
@@ -160,12 +152,6 @@ static void radixkGetPartitionIndices(radixkInfo info,
         round_info->split = ICET_TRUE;
         round_info->has_image = ICET_TRUE;
         round_info->partition_index = (group_rank / step) % round_info->k;
-        round_info->dest_partner = -1;
-        global_partition_index *= round_info->k;
-        global_partition_index += round_info->partition_index;
-        image_dest_global_partition_index *= round_info->k;
-        image_dest_global_partition_index
-            += (image_dest / step) % round_info->k;
         round_info->step = step;
         step *= round_info->k;
 
@@ -175,23 +161,9 @@ static void radixkGetPartitionIndices(radixkInfo info,
         radixkRoundInfo *round_info = &info.rounds[current_round];
         IceTInt next_step = step * round_info->k;
 
-        IceTInt my_round_group_index = group_rank / next_step;
-        IceTInt dest_round_group_index = image_dest / next_step;
-        IceTBoolean same_group
-            = (my_round_group_index == dest_round_group_index);
-        IceTBoolean same_partition
-            = (global_partition_index == image_dest_global_partition_index);
-        if (same_group && same_partition) {
-            /* Round sends partition to image_dest */
-            round_info->dest_partner = (image_dest/step) % round_info->k;
-        } else {
-            /* Image dest not in round group.  Send to lowest rank. */
-            round_info->dest_partner = 0;
-        }
         round_info->split = ICET_FALSE;
         round_info->partition_index = (group_rank / step) % round_info->k;
-        round_info->has_image
-            = (round_info->partition_index == round_info->dest_partner);
+        round_info->has_image = (round_info->partition_index == 0);
         round_info->step = step;
         step = next_step;
 
@@ -201,8 +173,7 @@ static void radixkGetPartitionIndices(radixkInfo info,
 }
 
 static radixkInfo radixkGetK(IceTInt compose_group_size,
-                             IceTInt group_rank,
-                             IceTInt image_dest)
+                             IceTInt group_rank)
 {
     /* Divide the world size into groups that are closest to the magic k
        value. */
@@ -210,8 +181,6 @@ static radixkInfo radixkGetK(IceTInt compose_group_size,
     IceTInt magic_k;
     IceTInt max_num_k;
     IceTInt next_divide;
-
-    info.image_dest = image_dest;
 
     /* Special case of when compose_group_size == 1. */
     if (compose_group_size < 2) {
@@ -311,7 +280,7 @@ static radixkInfo radixkGetK(IceTInt compose_group_size,
         }
     }
 
-    radixkGetPartitionIndices(info, group_rank, image_dest);
+    radixkGetPartitionIndices(info, group_rank);
 
     return info;
 }
@@ -399,11 +368,9 @@ static IceTInt radixkGetGroupRankForFinalPartitionIndex(const radixkInfo *info,
     IceTInt current_round;
     IceTInt partition_up_to_round;
     IceTInt group_rank;
-    IceTBoolean has_collect;
 
     partition_up_to_round = partition_index;
     group_rank = 0;
-    has_collect = ICET_FALSE;
     for (current_round = info->num_rounds - 1;
          current_round >= 0;
          current_round--) {
@@ -413,31 +380,7 @@ static IceTInt radixkGetGroupRankForFinalPartitionIndex(const radixkInfo *info,
             group_rank += step * (partition_up_to_round % k_value);
             partition_up_to_round /= k_value;
         } else {
-            has_collect = ICET_TRUE;
-        }
-    }
-
-    /* The above computation assumes that any collects go to the first process
-       in the round's group.  There is a special case when the image_dest is
-       not rank 0 and this condition is violated.  Check for this condition
-       by seeing what partition index the image_dest uses. */
-    if (has_collect && (info->image_dest != 0)) {
-        IceTInt image_dest_partition_index = 0;
-        for (current_round = 0;
-             current_round < info->num_rounds;
-             current_round++) {
-            const radixkRoundInfo *r = &info->rounds[current_round];
-            if (r->split) {
-                IceTInt local_partition_index
-                    = (info->image_dest / r->step) % r->k;
-                image_dest_partition_index *= r->k;
-                image_dest_partition_index += local_partition_index;
-            }
-        }
-
-        if (image_dest_partition_index == partition_index) {
-            /* The image_dest stole this partition after all. */
-            return info->image_dest;
+            /* Partition rank does not change when not splitting. */
         }
     }
 
@@ -671,7 +614,7 @@ static IceTCommRequest *radixkPostSends(radixkPartnerInfo *partners,
         } else {
             IceTVoid *package_buffer;
             IceTSizeType package_size;
-            IceTInt recv_rank = partners[round_info->dest_partner].rank;
+            IceTInt recv_rank = partners[0].rank;
 
             icetSparseImagePackageForSend(image,&package_buffer,&package_size);
 
@@ -835,11 +778,10 @@ static void radixkCompositeIncomingImages(radixkPartnerInfo *partners,
 static void icetRadixkBasicCompose(const IceTInt *compose_group,
                                    IceTInt group_size,
                                    IceTInt total_num_partitions,
-                                   IceTInt image_dest,
                                    IceTSparseImage working_image,
                                    IceTSizeType *piece_offset)
 {
-    radixkInfo info = { NULL, 0, image_dest };
+    radixkInfo info = { NULL, 0 };
 
     IceTSizeType my_offset;
     IceTInt current_round;
@@ -861,7 +803,7 @@ static void icetRadixkBasicCompose(const IceTInt *compose_group,
         return;
     }
 
-    info = radixkGetK(group_size, group_rank, image_dest);
+    info = radixkGetK(group_size, group_rank);
 
     /* num_rounds > 0 is assumed several places throughout this function */
     if (info.num_rounds <= 0) {
@@ -928,8 +870,7 @@ static IceTInt icetRadixkTelescopeFindUpperGroupSender(
                                                      const IceTInt *my_group,
                                                      IceTInt my_group_size,
                                                      const IceTInt *upper_group,
-                                                     IceTInt upper_group_size,
-                                                     IceTInt image_dest)
+                                                     IceTInt upper_group_size)
 {
     radixkInfo info;
     IceTInt my_group_rank;
@@ -941,7 +882,7 @@ static IceTInt icetRadixkTelescopeFindUpperGroupSender(
     IceTInt sender_group_rank;
 
     my_group_rank = icetFindMyRankInGroup(my_group, my_group_size);
-    info = radixkGetK(my_group_size, my_group_rank, image_dest);
+    info = radixkGetK(my_group_size, my_group_rank);
 
     my_partition_index = radixkGetFinalPartitionIndex(&info);
     if (my_partition_index < 0) {
@@ -951,7 +892,7 @@ static IceTInt icetRadixkTelescopeFindUpperGroupSender(
 
     my_num_partitions = radixkGetTotalNumPartitions(&info);
 
-    info = radixkGetK(radixkFindPower2(upper_group_size), 0, 0);
+    info = radixkGetK(radixkFindPower2(upper_group_size), 0);
     upper_num_partitions = radixkGetTotalNumPartitions(&info);
     group_difference_factor = my_num_partitions/upper_num_partitions;
 
@@ -968,7 +909,6 @@ static void icetRadixkTelescopeFindLowerGroupReceivers(
                                                      IceTInt lower_group_size,
                                                      const IceTInt *my_group,
                                                      IceTInt my_group_size,
-                                                     IceTInt lower_image_dest,
                                                      IceTInt **receiver_ranks_p,
                                                      IceTInt *num_receivers_p)
 {
@@ -982,7 +922,7 @@ static void icetRadixkTelescopeFindLowerGroupReceivers(
     IceTInt *receiver_ranks;
     IceTInt receiver_idx;
 
-    info = radixkGetK(my_group_size, my_group_rank, 0);
+    info = radixkGetK(my_group_size, my_group_rank);
     my_num_partitions = radixkGetTotalNumPartitions(&info);
     my_partition_index = radixkGetFinalPartitionIndex(&info);
     if (my_partition_index < 0) {
@@ -991,7 +931,7 @@ static void icetRadixkTelescopeFindLowerGroupReceivers(
         return;
     }
 
-    info = radixkGetK(lower_group_size, 0, lower_image_dest);
+    info = radixkGetK(lower_group_size, 0);
     lower_num_partitions = radixkGetTotalNumPartitions(&info);
     num_receivers = lower_num_partitions/my_num_partitions;
     receiver_ranks = icetGetStateBuffer(RADIXK_RANK_LIST_BUFFER,
@@ -1015,7 +955,6 @@ static void icetRadixkTelescopeComposeReceive(const IceTInt *my_group,
                                               const IceTInt *upper_group,
                                               IceTInt upper_group_size,
                                               IceTInt total_num_partitions,
-                                              IceTInt image_dest,
                                               IceTBoolean local_in_front,
                                               IceTSparseImage input_image,
                                               IceTSparseImage *result_image,
@@ -1028,7 +967,6 @@ static void icetRadixkTelescopeComposeReceive(const IceTInt *my_group,
     icetRadixkBasicCompose(my_group,
                            my_group_size,
                            total_num_partitions,
-                           image_dest,
                            working_image,
                            piece_offset);
 
@@ -1037,8 +975,7 @@ static void icetRadixkTelescopeComposeReceive(const IceTInt *my_group,
             = icetRadixkTelescopeFindUpperGroupSender(my_group,
                                                       my_group_size,
                                                       upper_group,
-                                                      upper_group_size,
-                                                      image_dest);
+                                                      upper_group_size);
     } else {
         upper_sender = -1;
     }
@@ -1095,7 +1032,6 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                            const IceTInt *my_group,
                                            IceTInt my_group_size,
                                            IceTInt total_num_partitions,
-                                           IceTInt lower_image_dest,
                                            IceTSparseImage input_image)
 {
     const IceTInt *main_group;
@@ -1134,14 +1070,13 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                           sub_group,
                                           sub_group_size,
                                           total_num_partitions,
-                                          0,
                                           main_in_front,
                                           input_image,
                                           &working_image,
                                           &piece_offset);
 
         {
-            radixkInfo info = radixkGetK(main_group_size, 0, 0);
+            radixkInfo info = radixkGetK(main_group_size, 0);
             num_local_partitions = radixkGetTotalNumPartitions(&info);
         }
 
@@ -1149,7 +1084,6 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                                    lower_group_size,
                                                    main_group,
                                                    main_group_size,
-                                                   lower_image_dest,
                                                    &receiver_ranks,
                                                    &num_receivers);
 
@@ -1221,7 +1155,6 @@ static void icetRadixkTelescopeComposeSend(const IceTInt *lower_group,
                                        sub_group,
                                        sub_group_size,
                                        total_num_partitions,
-                                       0,
                                        input_image);
     }
 }
@@ -1237,7 +1170,6 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
     IceTInt main_group_size;
     const IceTInt *sub_group;
     IceTInt sub_group_size;
-    IceTInt main_group_image_dest;
     IceTBoolean main_in_front;
     IceTBoolean use_interlace;
     IceTInt main_group_rank;
@@ -1254,12 +1186,10 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
     if (image_dest < main_group_size) {
         main_group = compose_group;
         sub_group = compose_group + main_group_size;
-        main_group_image_dest = image_dest;
         main_in_front = ICET_TRUE;
     } else {
         sub_group = compose_group;
         main_group = compose_group + sub_group_size;
-        main_group_image_dest = image_dest - sub_group_size;
         main_in_front = ICET_FALSE;
     }
     main_group_rank = icetFindMyRankInGroup(main_group, main_group_size);
@@ -1268,7 +1198,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
        partitions. */
     {
         /* Middle argument does not matter. */
-        radixkInfo info = radixkGetK(main_group_size, 0, main_group_image_dest);
+        radixkInfo info = radixkGetK(main_group_size, 0);
         total_num_partitions = radixkGetTotalNumPartitions(&info);
     }
 
@@ -1310,7 +1240,6 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
                                           sub_group,
                                           sub_group_size,
                                           total_num_partitions,
-                                          main_group_image_dest,
                                           main_in_front,
                                           working_image,
                                           result_image,
@@ -1322,7 +1251,6 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
                                        sub_group,
                                        sub_group_size,
                                        total_num_partitions,
-                                       main_group_image_dest,
                                        working_image);
         *result_image = icetSparseImageNull();
         *piece_offset = 0;
@@ -1344,8 +1272,7 @@ static void icetRadixkTelescopeCompose(const IceTInt *compose_group,
         }
 
         info = radixkGetK(main_group_size,
-                          main_group_rank,
-                          main_group_image_dest);
+                          main_group_rank);
 
         global_partition = radixkGetFinalPartitionIndex(&info);
         *piece_offset = icetGetInterlaceOffset(global_partition,
@@ -1372,8 +1299,7 @@ void icetRadixkCompose(const IceTInt *compose_group,
                                piece_offset);
 }
 
-static IceTBoolean radixkTryPartitionLookup(IceTInt group_size,
-                                            IceTInt image_dest)
+static IceTBoolean radixkTryPartitionLookup(IceTInt group_size)
 {
     IceTInt *partition_assignments;
     IceTInt group_rank;
@@ -1392,7 +1318,7 @@ static IceTBoolean radixkTryPartitionLookup(IceTInt group_size,
         radixkInfo info;
         IceTInt rank_assignment;
 
-        info = radixkGetK(group_size, group_rank, image_dest);
+        info = radixkGetK(group_size, group_rank);
         partition_index = radixkGetFinalPartitionIndex(&info);
         /* Check if this rank has no partition. */
         if (partition_index < 0) { continue; }
@@ -1422,7 +1348,7 @@ static IceTBoolean radixkTryPartitionLookup(IceTInt group_size,
 
     {
         radixkInfo info;
-        info = radixkGetK(group_size, 0, image_dest);
+        info = radixkGetK(group_size, 0);
         if (num_partitions != radixkGetTotalNumPartitions(&info)) {
             printf("Expected %d partitions, found %d\n",
                    radixkGetTotalNumPartitions(&info),
@@ -1474,24 +1400,12 @@ ICET_EXPORT IceTBoolean icetRadixkPartitionLookupUnitTest(void)
         for (max_image_split = 1;
              max_image_split/2 < group_size;
              max_image_split *= 2) {
-            IceTInt image_dest;
-            IceTInt image_dest_last;
-            IceTInt image_dest_next;
-
             icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
 
             printf("  Maximum num splits set to %d\n", max_image_split);
 
-            for (image_dest = 0, image_dest_last = 1;
-                 image_dest < group_size;
-                 image_dest_next = image_dest_last + image_dest,
-                     image_dest_last = image_dest,
-                     image_dest = image_dest_next) {
-                printf("    Image dest set to %d\n", image_dest);
-
-                if (!radixkTryPartitionLookup(group_size, image_dest)) {
-                    return ICET_FALSE;
-                }
+            if (!radixkTryPartitionLookup(group_size)) {
+                return ICET_FALSE;
             }
         }
     }
@@ -1504,8 +1418,7 @@ ICET_EXPORT IceTBoolean icetRadixkPartitionLookupUnitTest(void)
 static IceTBoolean radixkTryTelescopeSendReceive(IceTInt *main_group,
                                                  IceTInt main_group_size,
                                                  IceTInt *sub_group,
-                                                 IceTInt sub_group_size,
-                                                 IceTInt main_group_image_dest)
+                                                 IceTInt sub_group_size)
 {
     IceTInt rank;
     IceTInt sub_group_idx;
@@ -1525,7 +1438,6 @@ static IceTBoolean radixkTryTelescopeSendReceive(IceTInt *main_group,
                                                    main_group_size,
                                                    sub_group,
                                                    sub_group_size,
-                                                   main_group_image_dest,
                                                    &receiver_ranks,
                                                    &num_receivers);
         sub_group[sub_group_idx] = SUB_GROUP_RANK(sub_group_idx);
@@ -1554,12 +1466,10 @@ static IceTBoolean radixkTryTelescopeSendReceive(IceTInt *main_group,
             /* FindUpperGroupSend uses local rank to identify in group.
                Temporarily replace the rank in the group. */
             main_group[receiver_group_rank] = rank;
-            send_rank = icetRadixkTelescopeFindUpperGroupSender(
-                                                         main_group,
-                                                         main_group_size,
-                                                         sub_group,
-                                                         sub_group_size,
-                                                         main_group_image_dest);
+            send_rank = icetRadixkTelescopeFindUpperGroupSender(main_group,
+                                                                main_group_size,
+                                                                sub_group,
+                                                                sub_group_size);
             main_group[receiver_group_rank] = receiver_rank;
 
             if (send_rank != SUB_GROUP_RANK(sub_group_idx)) {
@@ -1615,29 +1525,18 @@ ICET_EXPORT IceTBoolean icetRadixTelescopeSendReceiveTest(void)
             for (max_image_split = 1;
                  max_image_split <= main_group_size;
                  max_image_split *= 2) {
-                IceTInt image_dest;
-                IceTInt image_dest_last;
-                IceTInt image_dest_next;
+                IceTInt result;
 
                 printf("    Max image split %d\n", max_image_split);
 
                 icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
 
-                for (image_dest = 0, image_dest_last = 1;
-                     image_dest < main_group_size;
-                     image_dest_next = image_dest_last + image_dest,
-                         image_dest_last = image_dest,
-                         image_dest = image_dest_next) {
-                    IceTBoolean result;
-                    printf("      Image dest set to %d\n", image_dest);
-                    result = radixkTryTelescopeSendReceive(main_group,
-                                                           main_group_size,
-                                                           sub_group,
-                                                           sub_group_size,
-                                                           image_dest);
+                result = radixkTryTelescopeSendReceive(main_group,
+                                                       main_group_size,
+                                                       sub_group,
+                                                       sub_group_size);
 
-                    if (!result) { return ICET_FALSE; }
-                }
+                if (!result) { return ICET_FALSE; }
             }
 
             free(sub_group);
