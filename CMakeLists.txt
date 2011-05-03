@@ -53,7 +53,7 @@ IF (NOT ${ICET_MAGIC_K} GREATER 1)
 ENDIF (NOT ${ICET_MAGIC_K} GREATER 1)
 
 # Option to set the preferred number of ways to break up an image.
-SET(initial_max_image_split 2048)
+SET(initial_max_image_split 512)
 IF ("$ENV{ICET_MAX_IMAGE_SPLIT}" GREATER 0)
   SET(initial_max_image_split $ENV{ICET_MAX_IMAGE_SPLIT})
 ENDIF ("$ENV{ICET_MAX_IMAGE_SPLIT}" GREATER 0)
