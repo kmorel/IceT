@@ -170,6 +170,21 @@ void icetStateSetDefaults(void)
         icetStateSetInteger(ICET_MAGIC_K, ICET_MAGIC_K_DEFAULT);
     }
 
+    if (getenv("ICET_MAX_IMAGE_SPLIT") != NULL) {
+        IceTInt max_image_split = atoi(getenv("ICET_MAX_IMAGE_SPLIT"));
+        if (max_image_split > 0) {
+            icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, max_image_split);
+        } else {
+            icetRaiseError("Environment variable ICET_MAX_IMAGE_SPLIT must be"
+                           " set to an integer greater than 0.",
+                           ICET_INVALID_VALUE);
+            icetStateSetInteger(ICET_MAX_IMAGE_SPLIT,
+                                ICET_MAX_IMAGE_SPLIT_DEFAULT);
+        }
+    } else {
+        icetStateSetInteger(ICET_MAX_IMAGE_SPLIT, ICET_MAX_IMAGE_SPLIT_DEFAULT);
+    }
+
     icetStateSetPointer(ICET_DRAW_FUNCTION, NULL);
     icetStateSetPointer(ICET_RENDER_LAYER_DESTRUCTOR, NULL);
 
@@ -651,7 +666,11 @@ IceTVoid *icetGetStateBuffer(IceTEnum pname, IceTSizeType num_bytes)
     if (   (icetStateGetType(pname) == ICET_VOID)
         && (icetStateGetNumEntries(pname) >= num_bytes) ) {
       /* A big enough buffer is already allocated. */
-        return icetUnsafeStateGet(pname, ICET_VOID);
+        IceTVoid *buffer = icetUnsafeStateGet(pname, ICET_VOID);
+#ifdef ICET_STATE_CHECK_MEM
+        memset(buffer, 0xDC, num_bytes);
+#endif
+        return buffer;
     }
 
   /* Check to make sure this state variable has not been used for anything

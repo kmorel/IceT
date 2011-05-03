@@ -58,7 +58,7 @@ ICET_INTERLACE_IMAGES
 
 icetSparseImageInterlace
 
-ICET_MAGIC_K environment variable
+ICET_MAGIC_K environment variable, cmake variable, state variable
 
 ICET_COLLECT_TIME: The fraction of ICET_COMPOSITE_TIME spent in collecting
 image fragments to display process.
@@ -94,3 +94,5 @@ processes contain all pixels in the image (ICET_VALID_PIXELS_OFFSET is 0
 and ICET_VALID_PIXELS_NUM is the number of pixels in the image), and all
 other processes have no pixel data.  Strategies taking advantage of turning
 off ICET_COLLECT_IMAGES should set this.
+
+ICET_MAX_IMAGE_SPLIT environment variable, cmake variable, state variable

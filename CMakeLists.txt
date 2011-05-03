@@ -40,7 +40,7 @@ OPTION(ICET_USE_MPI "Build MPI communication layer for IceT." ON)
 # Option to set the preferred K value to use in the radix-k algorithm
 SET(initial_magic_k 8)
 IF ("${CMAKE_SYSTEM_NAME}" MATCHES "^BlueGene")
-  SET(initial_magic_k 32)
+  SET(initial_magic_k 16)
 ENDIF ("${CMAKE_SYSTEM_NAME}" MATCHES "^BlueGene")
 IF ("$ENV{ICET_MAGIC_K}" GREATER 1)
   SET(initial_magic_k $ENV{ICET_MAGIC_K})
@@ -51,6 +51,15 @@ SET(ICET_MAGIC_K ${initial_magic_k} CACHE STRING
 IF (NOT ${ICET_MAGIC_K} GREATER 1)
   MESSAGE(SEND_ERROR "ICET_MAGIC_K must be set to a number greater than 1.")
 ENDIF (NOT ${ICET_MAGIC_K} GREATER 1)
+
+# Option to set the preferred number of ways to break up an image.
+SET(initial_max_image_split 512)
+IF ("$ENV{ICET_MAX_IMAGE_SPLIT}" GREATER 0)
+  SET(initial_max_image_split $ENV{ICET_MAX_IMAGE_SPLIT})
+ENDIF ("$ENV{ICET_MAX_IMAGE_SPLIT}" GREATER 0)
+SET(ICET_MAX_IMAGE_SPLIT ${initial_max_image_split} CACHE STRING
+  "Sets the preferred number of times an image may be split.  Some image compositing algorithms prefer to partition the images such that each process gets a piece.  Too many partitions, though, and you end up spending more time collecting them than you save balancing the compositing."
+  )
 
 # Configure MPE support
 IF (ICET_USE_MPI)
